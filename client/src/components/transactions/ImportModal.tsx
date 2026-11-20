@@ -3,6 +3,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Upload, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
+import { NumberField } from '../ui/NumberField';
+import { Select } from '../ui/Select';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import {
@@ -84,8 +90,17 @@ const NUMBER_FORMAT_LABELS: Record<NumberFormat, string> = {
   comma: '1.234,56',
 };
 
-const selectClass = 'w-full text-xs border border-border rounded px-1.5 py-1 bg-surface text-text';
-const optionLabelClass = 'text-xs font-medium text-text-tertiary space-y-1';
+const DATE_FORMAT_OPTIONS = Object.entries(DATE_FORMAT_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const NUMBER_FORMAT_OPTIONS = Object.entries(NUMBER_FORMAT_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+/** What an unset Dates or Amounts shows: the file didn't say, so the person picks */
+const CHOOSE_FORMAT = 'Choose…';
 
 const importedSpan = (rows: ImportRow[]) => {
   const dates = rows.map((r) => r.date).sort();
@@ -99,6 +114,12 @@ const pendingSaves = new Map<string, Promise<void>>();
 
 /** The most rows one import may send (the server's limit) */
 const MAX_IMPORT_ROWS = 100_000;
+
+/** The most rows above a header an import remembers (skipRows in server/src/utils/importSettings.ts) */
+const MAX_ROWS_ABOVE_HEADER = 1000;
+
+/** Rows above the header when the file has only one row: the range message would say "0 to 0" */
+const NO_ROOM_ABOVE_HEADER = 'Enter 0 — this file has no rows above the header.';
 
 /** Where a row the file may repeat came from, for "Looks like X on <day>, ..." */
 const DUPLICATE_SOURCE = {
@@ -121,8 +142,8 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
   const [delimiter, setDelimiter] = useState<Delimiter>(',');
   const [records, setRecords] = useState<string[][]>([]);
   const [skipRows, setSkipRows] = useState(0);
-  // What's typed in "Rows above the header" while it isn't a number yet (an emptied field)
-  const [skipRowsDraft, setSkipRowsDraft] = useState<string | null>(null);
+  // Whether "Rows above the header" holds a row it can use: Preview waits until it does
+  const rowsAbove = useAmountValidity();
   const [saved, setSaved] = useState<ImportSettings | null>(null);
   const [usingSaved, setUsingSaved] = useState(false);
   // null = what the file looks like (detectDateFormat / detectNumberFormat)
@@ -170,7 +191,6 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
     setDelimiter(',');
     setRecords([]);
     setSkipRows(0);
-    setSkipRowsDraft(null);
     setSaved(null);
     setUsingSaved(false);
     setDateFormatChoice(null);
@@ -447,6 +467,8 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
       },
   ].filter((f): f is { what: string; format: string } => !!f);
   const hasDirection = roles.includes('direction');
+  // The header row is one of the file's rows, and the saved settings allow 1000 above it
+  const maxRowsAbove = Math.min(MAX_ROWS_ABOVE_HEADER, Math.max(records.length - 1, 0));
   const needsOutWord = hasDirection && !outWord.trim() && detected.unknownDirections.length > 0;
 
   function handlePreview() {
@@ -695,23 +717,21 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
               This file has statements for {statements.length} accounts. Which one belongs to this
               account?
             </p>
-            <label className={optionLabelClass}>
-              <span>Statement</span>
-              <select
-                value={statementIdx}
-                onChange={(e) => setStatementIdx(Number(e.target.value))}
-                className={selectClass}
-              >
-                {statements.map((s, i) => (
-                  <option key={i} value={i}>
-                    {s.account ?? 'Account without a number'} ({s.transactions.length} transactions)
-                    {knownStatementAccount !== null &&
-                      statementAccountKey(s.account) === knownStatementAccount &&
-                      ', imported here before'}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select
+              label="Statement"
+              fieldSize="sm"
+              value={String(statementIdx)}
+              onChange={(value) => setStatementIdx(Number(value))}
+              options={statements.map((s, i) => ({
+                value: String(i),
+                label:
+                  `${s.account ?? 'Account without a number'} (${s.transactions.length} transactions)` +
+                  (knownStatementAccount !== null &&
+                  statementAccountKey(s.account) === knownStatementAccount
+                    ? ', imported here before'
+                    : ''),
+              }))}
+            />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setStep('upload')}>
                 Back
@@ -733,96 +753,60 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
               {usingSaved && ' Using the settings from your last import into this account.'}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <label className={optionLabelClass}>
-                <span>Separator</span>
-                <select
-                  value={delimiter}
-                  onChange={(e) => changeDelimiter(e.target.value as Delimiter)}
-                  className={selectClass}
-                >
-                  {DELIMITERS.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={optionLabelClass}>
-                <span>Encoding</span>
-                <select
-                  value={encoding}
-                  onChange={(e) => changeEncoding(e.target.value as CsvEncoding)}
-                  className={selectClass}
-                >
-                  {CSV_ENCODINGS.map((e) => (
-                    <option key={e.value} value={e.value}>
-                      {e.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={optionLabelClass}>
-                <span>Rows above the header</span>
-                <input
-                  type="number"
+              <Select
+                label="Separator"
+                fieldSize="sm"
+                value={delimiter}
+                onChange={(value) => changeDelimiter(value as Delimiter)}
+                options={DELIMITERS}
+              />
+              <Select
+                label="Encoding"
+                fieldSize="sm"
+                value={encoding}
+                onChange={(value) => changeEncoding(value as CsvEncoding)}
+                options={CSV_ENCODINGS}
+              />
+              <AmountFields report={rowsAbove.report}>
+                {/* Text that isn't a row keeps its message and the last table that could be read */}
+                <NumberField
+                  label="Rows above the header"
+                  fieldSize="sm"
+                  value={skipRows}
                   min={0}
-                  max={Math.max(records.length - 1, 0)}
-                  value={skipRowsDraft ?? skipRows}
-                  onChange={(e) => {
-                    // An emptied field is being retyped: keep the table until there's a number
-                    setSkipRowsDraft(e.target.value);
-                    if (e.target.value.trim() === '') return;
-                    const n = Math.trunc(Number(e.target.value));
-                    if (Number.isFinite(n) && n >= 0 && n < records.length) {
-                      showTable(records, n, saved, roles);
-                    }
+                  max={maxRowsAbove}
+                  errorMessage={maxRowsAbove === 0 ? NO_ROOM_ABOVE_HEADER : undefined}
+                  onChange={(n) => {
+                    if (n !== null) showTable(records, n, saved, roles);
                   }}
-                  onBlur={() => setSkipRowsDraft(null)}
-                  className={selectClass}
                 />
-              </label>
-              <label className={optionLabelClass}>
-                <span>Dates</span>
-                <select
-                  value={dateFormat ?? ''}
-                  onChange={(e) => setDateFormatChoice(e.target.value as DateFormat)}
-                  className={selectClass}
-                >
-                  {!dateFormat && <option value="">Choose…</option>}
-                  {Object.entries(DATE_FORMAT_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={optionLabelClass}>
-                <span>Amounts</span>
-                <select
-                  value={numberFormat ?? ''}
-                  onChange={(e) => setNumberFormatChoice(e.target.value as NumberFormat)}
-                  className={selectClass}
-                >
-                  {!numberFormat && <option value="">Choose…</option>}
-                  {Object.entries(NUMBER_FORMAT_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              </AmountFields>
+              <Select
+                label="Dates"
+                fieldSize="sm"
+                value={dateFormat ?? ''}
+                onChange={(value) => setDateFormatChoice(value as DateFormat)}
+                options={DATE_FORMAT_OPTIONS}
+                placeholder={CHOOSE_FORMAT}
+              />
+              <Select
+                label="Amounts"
+                fieldSize="sm"
+                value={numberFormat ?? ''}
+                onChange={(value) => setNumberFormatChoice(value as NumberFormat)}
+                options={NUMBER_FORMAT_OPTIONS}
+                placeholder={CHOOSE_FORMAT}
+              />
               {hasDirection && (
-                <label className={optionLabelClass}>
-                  <span>Word for money out</span>
-                  <input
-                    type="text"
+                <Field label="Word for money out">
+                  <Input
+                    fieldSize="sm"
                     value={outWord}
                     maxLength={50}
                     placeholder="Optional, e.g. Af"
                     onChange={(e) => setOutWord(e.target.value)}
-                    className={selectClass}
                   />
-                </label>
+                </Field>
               )}
             </div>
             {(!dateFormat || !numberFormat || needsOutWord) && (
@@ -862,18 +846,15 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                     {headers.map((h, i) => (
                       <th key={i} className="px-2 py-1 text-left border-b border-border">
                         <div className="text-xs font-medium text-text-tertiary mb-1">{h}</div>
-                        <select
-                          value={roles[i]}
+                        {/* Its list is a popover outside the table, so the scroll box can't clip it */}
+                        <Select
                           aria-label={`Column ${h}`}
-                          onChange={(e) => setRole(i, e.target.value as ColumnRole)}
-                          className={selectClass}
-                        >
-                          {roleOptions.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
+                          fieldSize="sm"
+                          value={roles[i]}
+                          onChange={(value) => setRole(i, value as ColumnRole)}
+                          options={roleOptions}
+                          className="w-full min-w-36"
+                        />
                       </th>
                     ))}
                   </tr>
@@ -898,7 +879,7 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
               <Button variant="secondary" onClick={() => setStep('upload')}>
                 Back
               </Button>
-              <Button onClick={handlePreview} disabled={loading}>
+              <Button onClick={handlePreview} disabled={loading || !rowsAbove.allValid}>
                 {loading ? 'Checking...' : 'Preview'}
               </Button>
             </div>
@@ -1009,12 +990,10 @@ export function ImportModal({ isOpen, onClose, accountId, onImported }: Props) {
                       className={`border-t border-border-light ${excluded.has(i) ? (row.possibleDuplicate && !row.isDuplicate ? 'opacity-80' : 'opacity-40') : ''} ${row.isDuplicate || row.possibleDuplicate ? 'bg-caution-subtle' : ''}`}
                     >
                       <td className="px-2 py-1.5">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={!excluded.has(i)}
-                          onChange={() => toggleExclude(i)}
+                          onCheckedChange={() => toggleExclude(i)}
                           aria-label={`Import ${row.payeeName ?? 'row'} on ${formatDay(row.date)}`}
-                          className="w-3.5 h-3.5 accent-brand-600"
                         />
                       </td>
                       <td className="px-2 py-1.5 text-xs text-text-secondary">

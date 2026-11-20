@@ -2,7 +2,8 @@ import { Fragment, useState, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '../../api/longTerm';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Checkbox } from '../ui/Checkbox';
+import { Select } from '../ui/Select';
 import { formatCurrency } from '../../utils/currency';
 import { CLASS_LABEL, STUDY_KIND_LABEL } from '../../utils/longTerm';
 import { MoneyField, RateField, WholeNumberField } from './fields';
@@ -15,6 +16,7 @@ const CLASSES: api.AccountClass[] = [
   'vehicles',
   'other',
 ];
+const CLASS_OPTIONS = CLASSES.map((k) => ({ value: k, label: CLASS_LABEL[k] }));
 
 /** One loan's rate, repayment and term, saved on its own (they belong to the account, not the plan) */
 function LoanRow({ loan }: { loan: api.StartingPoint['loans'][number] }) {
@@ -88,7 +90,10 @@ function LoanRow({ loan }: { loan: api.StartingPoint['loans'][number] }) {
   );
 }
 
-const STUDY_KINDS = Object.keys(STUDY_KIND_LABEL) as api.StudyLoanKind[];
+const STUDY_KIND_OPTIONS = (Object.keys(STUDY_KIND_LABEL) as api.StudyLoanKind[]).map((k) => ({
+  value: k,
+  label: STUDY_KIND_LABEL[k],
+}));
 
 /**
  * A study loan's kind and voluntary payments. These belong to the plan, so they wait for Save
@@ -129,20 +134,13 @@ function StudyLoanRow({
         <span className="tabular-nums text-negative">{formatCurrency(loan.balance)}</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label className="block text-xs font-medium text-text-secondary space-y-1">
-          <span>{loan.name}: kind of loan</span>
-          <Select
-            aria-label={`${loan.name}: kind of loan`}
-            value={current.kind}
-            onChange={(e) => update({ kind: e.target.value as api.StudyLoanKind })}
-          >
-            {STUDY_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {STUDY_KIND_LABEL[k]}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <Select
+          label={`${loan.name}: kind of loan`}
+          value={current.kind}
+          onChange={(kind) => update({ kind: kind as api.StudyLoanKind })}
+          options={STUDY_KIND_OPTIONS}
+          className="min-w-0"
+        />
         {current.kind !== 'other' && (
           <MoneyField
             label={`${loan.name}: extra payment per year (today's dollars)`}
@@ -219,11 +217,10 @@ export function AccountsPanel({
                 return (
                   <tr key={a.id} className="border-t border-border-light align-top">
                     <td className="py-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         aria-label={`Include ${a.name}`}
                         checked={c?.included !== false}
-                        onChange={(e) => update(a.id, { included: e.target.checked })}
+                        onCheckedChange={(included) => update(a.id, { included })}
                       />
                     </td>
                     <td className="py-2">{a.name}</td>
@@ -231,21 +228,13 @@ export function AccountsPanel({
                       <Select
                         aria-label={`${a.name} kind`}
                         value={cls}
-                        onChange={(e) =>
+                        onChange={(kind) =>
                           update(a.id, {
-                            cls:
-                              e.target.value === a.cls
-                                ? null
-                                : (e.target.value as api.AccountClass),
+                            cls: kind === a.cls ? null : (kind as api.AccountClass),
                           })
                         }
-                      >
-                        {CLASSES.map((k) => (
-                          <option key={k} value={k}>
-                            {CLASS_LABEL[k]}
-                          </option>
-                        ))}
-                      </Select>
+                        options={CLASS_OPTIONS}
+                      />
                     </td>
                     <td className="py-2 pr-3 w-36">
                       <RateField

@@ -71,26 +71,20 @@ test('Cash flow clicks scope transactions to the category, group and chart range
 });
 
 // Months from a local Date, as the page's own presets work them out
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 const monthOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+/** A YYYY-MM month's en-US name, built as fillMonth (fixtures.ts) builds it: no list of our own */
+const nameOf = (ym: string, month: 'short' | 'long') => {
+  const [year, number] = ym.split('-').map(Number);
+  const name = new Date(Date.UTC(year, number - 1, 1)).toLocaleString('en-US', {
+    month,
+    timeZone: 'UTC',
+  });
+  return `${name} ${year}`;
+};
 /** "Oct 2026", as formatMonth writes a month */
-const shortMonth = (ym: string) =>
-  `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1].slice(0, 3)} ${ym.slice(0, 4)}`;
+const shortMonth = (ym: string) => nameOf(ym, 'short');
 /** "October 2026", a month button's name in the grid */
-const longMonth = (ym: string) => `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
+const longMonth = (ym: string) => nameOf(ym, 'long');
 
 // The browser's clock is pinned, so "this month" is a known one: January 2026, whose previous
 // month is in the year before, so the grid's year step is always taken (02-REVIEW IN-05)

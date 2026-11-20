@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { DatePicker } from '../ui/DatePicker';
 import { Input } from '../ui/Input';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { GuideLink } from '../guide/GuideLink';
@@ -69,20 +70,15 @@ export function SplitModal({ holding, onClose }: { holding: Holding; onClose: ()
             How splits work
           </GuideLink>
         </p>
-        <Field
+        <DatePicker
           label="Effective on"
-          htmlFor="split-date"
-          hint="The first day the new units count. Sales from this day on must be recorded after the split."
-        >
-          <Input
-            id="split-date"
-            type="date"
-            value={date}
-            max={today()}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-        </Field>
+          id="split-date"
+          value={date}
+          onChange={setDate}
+          maxValue={today()}
+          isRequired
+          description="The first day the new units count. Sales from this day on must be recorded after the split."
+        />
         <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <Field label="New units" htmlFor="split-to" hint="2 for 1: you now hold 2">
             <Input
@@ -90,7 +86,7 @@ export function SplitModal({ holding, onClose }: { holding: Holding; onClose: ()
               inputMode="numeric"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              aria-invalid={to.trim() !== '' && toUnits === null}
+              isInvalid={to.trim() !== '' && toUnits === null}
               required
             />
           </Field>
@@ -100,7 +96,7 @@ export function SplitModal({ holding, onClose }: { holding: Holding; onClose: ()
               inputMode="numeric"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              aria-invalid={from.trim() !== '' && fromUnits === null}
+              isInvalid={from.trim() !== '' && fromUnits === null}
               required
             />
           </Field>

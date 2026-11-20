@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { typeAmount, type Api } from './fixtures';
+import { categoryOption, typeAmount, type Api } from './fixtures';
 import { test, expect, open, thisMonth } from './fixtures';
 for (const phone of [false, true]) {
   test(`category goal progress and manual compatibility${phone ? ' on phone' : ''}`, async ({
@@ -16,7 +16,9 @@ for (const phone of [false, true]) {
     await dialog.getByLabel('Name', { exact: true }).fill('Trip');
     await dialog.getByLabel('Target', { exact: true }).fill('500');
     await dialog.getByLabel('Target', { exact: true }).press('Tab');
-    await dialog.getByLabel('Progress source').selectOption(category.id);
+    // The category picker (G3): its button names what it shows, its rows are options
+    await dialog.getByRole('button', { name: 'Progress source: Manual tracking' }).click();
+    await categoryOption(page, 'Groceries', { exact: true }).click();
     await expect(dialog.getByLabel('Saved so far')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Add goal' }).click();
     await expect(dialog).toBeHidden();
@@ -55,7 +57,8 @@ for (const phone of [false, true]) {
     // Every row has a visible Edit, which does not open the category
     await page.getByRole('button', { name: 'Edit Trip' }).click();
     await expect(page).toHaveURL(/#\/goals$/);
-    await dialog.getByLabel('Progress source').selectOption('');
+    await dialog.getByRole('button', { name: 'Progress source: Groceries' }).click();
+    await categoryOption(page, 'Manual tracking', { exact: true }).click();
     await expect(dialog.getByLabel('Saved so far')).toHaveValue('');
     await dialog.getByLabel('Saved so far').fill('75');
     await dialog.getByLabel('Saved so far').press('Tab');
@@ -78,6 +81,89 @@ for (const phone of [false, true]) {
     await expect(dialog.getByLabel('Saved so far')).toBeVisible();
   });
 }
+
+// Wave G3 (#267): the status dialog's pickers are the shared ones (the replacement a Combobox,
+// the destination the category picker with each category's available figure) and the amount is
+// CurrencyInput, which marks text that isn't an amount when it is left
+test('pausing a category goal moves money through the shared pickers', async ({ page, api }) => {
+  await api.createAccount('Goal cash', 100_000);
+  const car = await api.category('Car Maintenance');
+  const groceries = await api.category('Groceries');
+  await api.call('PUT', `/budget/${thisMonth()}/${car.id}`, { budgeted: 80_000 });
+  await api.call('POST', '/goals', {
+    name: 'New tyres',
+    targetAmount: 120_000,
+    categoryId: car.id,
+  });
+  const holiday = await api.call('POST', '/goals', { name: 'Holiday', targetAmount: 200_000 });
+  await open(page, '/goals');
+  await page
+    .getByTestId('goal-row')
+    .filter({ hasText: 'New tyres' })
+    .getByRole('button', { name: 'Actions' })
+    .click();
+  await page.getByRole('menuitem', { name: 'Pause goal' }).click();
+  const dialog = page.getByRole('dialog', { name: /^Pause/ });
+  // The shared Combobox: typing opens its filtered list, then the row is picked
+  const replacedBy = dialog.getByRole('combobox', { name: 'Replaced by (optional)' });
+  await expect(replacedBy).toHaveValue('No replacement');
+  await replacedBy.fill('Hol');
+  await page.getByRole('option', { name: 'Holiday', exact: true }).click();
+  await expect(replacedBy).toHaveValue('Holiday');
+
+  await dialog
+    .getByRole('button', { name: 'Move to category: Keep it in Car Maintenance' })
+    .click();
+  await categoryOption(page, /^Groceries \(.+ available\)$/).click();
+  await expect(dialog.getByRole('button', { name: 'Move to category: Groceries' })).toBeVisible();
+
+  const amount = dialog.getByRole('textbox', { name: 'Amount to move' });
+  const pause = dialog.getByRole('button', { name: 'Pause', exact: true });
+  await typeAmount(amount, '12.5.0');
+  await expect(amount).toHaveAttribute('aria-invalid', 'true');
+  await expect(dialog.getByText("That isn't an amount.", { exact: false })).toBeVisible();
+  // Text that isn't an amount holds the confirm (the dialog's AmountFields)
+  await expect(pause).toBeDisabled();
+  await typeAmount(amount, '300');
+  await expect(amount).not.toHaveAttribute('aria-invalid');
+  await expect(amount).toHaveValue(/^\$300(\.00)?$/);
+  await expect(pause).toBeEnabled();
+  await typeAmount(amount, 'abc');
+  await expect(pause).toBeDisabled();
+
+  // Keeping the money removes the field and what held the confirm; choosing the category again
+  // shows the last amount, which confirms (03 review)
+  await dialog.getByRole('button', { name: 'Move to category: Groceries' }).click();
+  await categoryOption(page, /^Keep it in Car Maintenance/).click();
+  await expect(amount).toHaveCount(0);
+  await expect(pause).toBeEnabled();
+  await dialog
+    .getByRole('button', { name: 'Move to category: Keep it in Car Maintenance' })
+    .click();
+  await categoryOption(page, /^Groceries \(.+ available\)$/).click();
+  await expect(amount).toHaveValue(/^\$300(\.00)?$/);
+  await expect(amount).not.toHaveAttribute('aria-invalid');
+  await expect(dialog.getByRole('status')).toContainText(/\$300(\.00)? moves/);
+  await expect(pause).toBeEnabled();
+
+  await pause.click();
+  await expect(dialog).toBeHidden();
+  const goals = await api.call<{ name: string; status: string; available: number }[]>(
+    'GET',
+    '/goals',
+  );
+  expect(goals.find((g) => g.name === 'New tyres')).toMatchObject({
+    status: 'paused',
+    available: 50_000,
+    replacedByGoalId: holiday.id,
+  });
+  const budget = await api.call<{ categories: { id: string; budgeted: number }[] }[]>(
+    'GET',
+    `/budget/${thisMonth()}`,
+  );
+  const row = budget.flatMap((g) => g.categories).find((c) => c.id === groceries.id);
+  expect(row?.budgeted).toBe(30_000);
+});
 
 // UX audit AU-009: the confirmation used to say "This cannot be undone" although Undo works
 test('deleting a goal says it can be undone, and Undo brings it back', async ({ page, api }) => {

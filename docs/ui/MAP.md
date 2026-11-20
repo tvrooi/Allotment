@@ -71,6 +71,31 @@ or a picker wrapper, and the leftover gate in 03-15-PLAN.md prints 0 over their 
   upcoming length), `Checkbox`, `MerchantSelect`.
 - Native by decision (D-17): the account logo, payee logo and receipt photo file inputs.
 
+Shared controls on the Wave G3 screens (#267; the leftover gate in 03-23-PLAN.md prints 0 over
+their files):
+
+- `/goals`: goal form `Field` and `Input`, `CategorySelectButton` (Progress source, none is
+  Manual tracking), `Combobox` (linked account), `CurrencyInput`, `DatePicker`; goal status
+  `Input`, `Combobox` (replaced by), `CategorySelectButton` (move to category, keep as
+  `extraItem`), `CurrencyInput`.
+- `/investments`: `DatePicker` (required, up to today), `Select` (income kind, security type),
+  `Combobox` (a holding's account and security), `RadioGroup` (parcels sold), `Checkbox`, `Input`,
+  `CurrencyInput`.
+- `/forecast`: cash runway `NumberField` (spending and income percents, goal growth),
+  `CurrencyInput`, `DatePicker`, `Select` (horizon, history, income from, bill shares),
+  `Combobox` (saved scenarios); long-term forecast `NumberField` (`WholeNumberField`, `RateField`,
+  a life event's last year), `Select`, `Combobox` (plan, compare with, loan, add an account to the
+  savings order), `RadioGroup`, `Checkbox`, `Input`, `CurrencyInput`.
+- `/reports`, `/reports/custom`: `Select` (Group by, sm), `Checkbox` (accounts, category tree,
+  trend categories), `MonthRangePicker`.
+- `/files`: `Input` (search, sm, Clear), `Select` (kind, sm), `DatePicker` (From and To, sm);
+  details `CategorySelectButton` or `Combobox` (the link), `DatePicker`, `Textarea`, `Input`.
+- Import dialogs (from the register, Welcome and Settings → Data): CSV and CAMT `Select` (sm),
+  `NumberField` (rows above the header), `Checkbox`, `Input`; YNAB `Select` (date and amount
+  format), `Combobox` (target account), `Input`; category mapping `CategorySelectButton`,
+  `Combobox` (group for a new category).
+- Native by decision (D-17): the Files drop zone and the CSV and YNAB file inputs.
+
 Every page also uses `components/ui`, and most use `components/guide` for the page guide.
 Cross-cutting specs: accessibility, dialog-focus, load-errors, menus, navigation, tabs,
 unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amounts-phone.
@@ -174,8 +199,8 @@ Shared form controls (Wave G1, #267): the field and selector files above are bui
 `CategoryPicker`, payees use `PayeeCombobox` (both wrappers over `ui/Combobox.tsx`), a fixed list
 uses `Select` from `components/ui/Select.tsx`, a list the user grows uses `Combobox`; phones get native
 select, date and month controls. A bounded number uses `NumberField`, money `CurrencyInput`. The
-Wave G2 screens (listed under the routes table) have moved; the rest keep the native `Select` in
-`ui/Input.tsx` until G3 and Phase 4 move them. `MerchantSelect` (rules and recurring payees) is a
+Wave G2 and G3 screens (listed under the routes table) have moved; the rest keep the native
+`Select` in `ui/Input.tsx` until Phase 4 moves them. `MerchantSelect` (rules and recurring payees) is a
 wrapper over the shared Combobox; `CategorySelectButton` opens `CategoryPicker` and is named
 `<label>: <shown>`.
 

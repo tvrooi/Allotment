@@ -9,6 +9,8 @@ import type {
 } from '../../api/longTerm';
 import { formatCurrency } from '../../utils/currency';
 import { CLASS_LABEL } from '../../utils/longTerm';
+import { Checkbox } from '../ui/Checkbox';
+import { Radio, RadioGroup } from '../ui/RadioGroup';
 import { EscalationField, MoneyField, RateField, WholeNumberField } from './fields';
 
 /** An amount that starts from the budget's own figure unless the owner types one */
@@ -27,20 +29,14 @@ function OverrideMoney({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-text-secondary">{label}</p>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="radio" name={label} checked={value === null} onChange={() => onChange(null)} />
-        From my budget: {formatCurrency(budget)} a year
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="radio"
-          name={label}
-          checked={value !== null}
-          onChange={() => onChange(value ?? budget)}
-        />
-        Use my own figure
-      </label>
+      <RadioGroup
+        label={label}
+        value={value === null ? 'budget' : 'own'}
+        onChange={(choice) => onChange(choice === 'budget' ? null : (value ?? budget))}
+      >
+        <Radio value="budget">From my budget: {formatCurrency(budget)} a year</Radio>
+        <Radio value="own">Use my own figure</Radio>
+      </RadioGroup>
       {value !== null && (
         <MoneyField
           label={`${label}: my figure per year (today's dollars)`}
@@ -228,21 +224,13 @@ export function AssumptionsPanel({
             hint="Up to 15%, often 7–10% after franking credits and discounts. Leave 0 when the growth rate is already after tax. A pension's earnings are tax-free."
           />
         </div>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={sup.minimumDrawdown}
-            onChange={(e) => setSuper({ minimumDrawdown: e.target.checked })}
-          />
-          <span>
-            Pay the minimum pension once retired and released
-            <span className="block text-xs text-text-tertiary">
-              Each year at least 4% of the balance (5% from 65, rising to 14% from 95) moves from
-              super into spendable cash. That money becomes accessible and pays for spending first.
-            </span>
-          </span>
-        </label>
+        <Checkbox
+          checked={sup.minimumDrawdown}
+          onCheckedChange={(minimumDrawdown) => setSuper({ minimumDrawdown })}
+          description="Each year at least 4% of the balance (5% from 65, rising to 14% from 95) moves from super into spendable cash. That money becomes accessible and pays for spending first."
+        >
+          Pay the minimum pension once retired and released
+        </Checkbox>
         <details className="text-sm">
           <summary className="cursor-pointer text-text-secondary">
             Contribution and pension caps
@@ -268,14 +256,12 @@ export function AssumptionsPanel({
             />
           </div>
         </details>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={s.agePension.enabled}
-            onChange={(e) => set({ agePension: { ...s.agePension, enabled: e.target.checked } })}
-          />
+        <Checkbox
+          checked={s.agePension.enabled}
+          onCheckedChange={(enabled) => set({ agePension: { ...s.agePension, enabled } })}
+        >
           Include the Age Pension
-        </label>
+        </Checkbox>
         {s.agePension.enabled && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <MoneyField
@@ -309,21 +295,13 @@ export function AssumptionsPanel({
             HELP is repaid before a Student Start-up Loan. Repayment income here is your gross
             salary (super above) plus the figure below.
           </p>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={study.withheldFromPay}
-              onChange={(e) => setStudy({ withheldFromPay: e.target.checked })}
-            />
-            <span>
-              My take-home pay already has study loan repayments withheld
-              <span className="block text-xs text-text-tertiary">
-                Usual when your employer knows about the debt. Once it is repaid, that pay is no
-                longer withheld, so your take-home rises.
-              </span>
-            </span>
-          </label>
+          <Checkbox
+            checked={study.withheldFromPay}
+            onCheckedChange={(withheldFromPay) => setStudy({ withheldFromPay })}
+            description="Usual when your employer knows about the debt. Once it is repaid, that pay is no longer withheld, so your take-home rises."
+          >
+            My take-home pay already has study loan repayments withheld
+          </Checkbox>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <MoneyField
               label="Other repayment income per year (today's dollars)"
@@ -332,16 +310,14 @@ export function AssumptionsPanel({
               hint="Taxable income beyond your salary: interest, dividends, rent, reportable fringe benefits."
             />
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={study.indexationBps === null}
-                  onChange={(e) =>
-                    setStudy({ indexationBps: e.target.checked ? null : s.inflationBps })
-                  }
-                />
+              <Checkbox
+                checked={study.indexationBps === null}
+                onCheckedChange={(withInflation) =>
+                  setStudy({ indexationBps: withInflation ? null : s.inflationBps })
+                }
+              >
                 Index study debts with inflation
-              </label>
+              </Checkbox>
               {study.indexationBps !== null && (
                 <RateField
                   label="Study loan indexation"

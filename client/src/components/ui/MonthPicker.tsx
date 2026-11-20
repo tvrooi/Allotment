@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
 import { Button as AriaButton, Dialog, DialogTrigger, Group, Popover } from 'react-aria-components';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { thisMonthIso } from '../../utils/calendarDay';
-import { formatMonth, isMonth } from '../../utils/dateRange';
+import { formatMonth, isMonth, monthNames } from '../../utils/dateRange';
 import { NativePicker } from './DatePicker';
 import { describedByIds, FieldLines } from './Field';
 import {
@@ -17,21 +17,6 @@ import { errorLine, fieldSubject, monthRangeMessage } from './fieldMessages';
 import { Label } from './Label';
 import { supportsMonthInput } from './nativeInput';
 
-const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const FULL = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 /** Earliest year the grid steps back to, as MonthRangePicker's ("All" starts in 2020) */
 const MIN_YEAR = 2000;
 
@@ -87,6 +72,8 @@ interface MonthGridProps {
   focusOnOpen?: boolean;
   /** The earliest year the stepper goes back to, when later than 2000 */
   minYear?: number;
+  /** The last year the stepper goes forward to: the year of the latest month that can be chosen */
+  maxYear?: number;
 }
 
 /**
@@ -101,11 +88,14 @@ export function MonthGrid({
   label,
   focusOnOpen = false,
   minYear,
+  maxYear,
 }: MonthGridProps) {
   const thisMonth = thisMonthIso();
   const floor = Math.max(MIN_YEAR, minYear ?? MIN_YEAR);
+  // Never below the floor, so a bad bound cannot leave the grid with no year to show
+  const ceiling = Math.max(floor, maxYear ?? Infinity);
   const start = parts(value) ?? parts(thisMonth);
-  const [year, setYear] = useState(() => Math.max(floor, start?.year ?? floor));
+  const [year, setYear] = useState(() => Math.min(ceiling, Math.max(floor, start?.year ?? floor)));
   const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -145,6 +135,7 @@ export function MonthGrid({
         <AriaButton
           aria-label="Next year"
           slot={null}
+          isDisabled={year >= ceiling}
           onPress={() => setYear(year + 1)}
           className={stepperButton}
         >
@@ -152,17 +143,18 @@ export function MonthGrid({
         </AriaButton>
       </div>
       <div ref={gridRef} className="grid grid-cols-3 gap-1">
-        {SHORT.map((short, i) => {
+        {Array.from({ length: 12 }, (_, i) => {
           const month = toMonth(year, i + 1);
+          const names = monthNames(month);
           const chosen = month === value;
           const disabled = isDisabled(month);
           return (
             <button
-              key={short}
+              key={month}
               type="button"
               disabled={disabled}
               aria-pressed={chosen}
-              aria-label={`${FULL[i]} ${year}`}
+              aria-label={names.long}
               data-this-month={month === thisMonth || undefined}
               onClick={() => onPick(month)}
               onKeyDown={(event) => move(event, i)}
@@ -174,7 +166,7 @@ export function MonthGrid({
                     : 'text-text-secondary hover:bg-hover'
               }`}
             >
-              {short}
+              {names.short}
             </button>
           );
         })}
@@ -267,6 +259,7 @@ export function MonthPicker(props: Props) {
   const labelId = `${ids}-label`;
   const valueId = `${ids}-value`;
   const minYear = parts(minValue)?.year;
+  const maxYear = parts(maxValue)?.year;
 
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
@@ -308,6 +301,7 @@ export function MonthPicker(props: Props) {
                   }}
                   isDisabled={(month) => outside(month, minValue, maxValue)}
                   minYear={minYear}
+                  maxYear={maxYear}
                   focusOnOpen
                 />
               )}

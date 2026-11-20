@@ -44,3 +44,22 @@ test("the demo's reached goal has flowered (#241)", async ({ page }) => {
   await expect(row.getByTestId('goal-plant')).toHaveAttribute('data-stage', 'flower');
   await expect(row).toContainText('Goal reached');
 });
+
+// Wave G3 (#267): the goal form's Progress source is the shared category picker in the demo too
+test("the demo's goal form takes its progress source from the category picker", async ({
+  page,
+}) => {
+  await page.goto('/demo/#/goals');
+  await expect(page.getByRole('region', { name: 'Demo' })).toBeVisible();
+  const name = await page.evaluate(async () => {
+    const groups = await (await fetch('/api/categories')).json();
+    return groups.find((g: { isIncome: number }) => !g.isIncome).categories[0].name as string;
+  });
+  await page.getByRole('button', { name: 'Add goal' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Add goal' });
+  await expect(dialog.getByLabel('Saved so far')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Progress source: Manual tracking' }).click();
+  await page.getByRole('option', { name, exact: true }).click();
+  await expect(dialog.getByRole('button', { name: `Progress source: ${name}` })).toBeVisible();
+  await expect(dialog.getByLabel('Saved so far')).toHaveCount(0);
+});

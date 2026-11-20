@@ -1,18 +1,16 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { Checkbox } from '../ui/Checkbox';
+import { Combobox } from '../ui/Combobox';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
+import { NumberField } from '../ui/NumberField';
+import { Select } from '../ui/Select';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Modal } from '../ui/Modal';
 import type { Plan, PlanEvent, Reductions, StartingPoint } from '../../api/longTerm';
 import { draftIssues, incomeSources, kindLabel } from '../../utils/longTerm';
-import {
-  EscalationField,
-  Field,
-  MoneyField,
-  RateField,
-  WholeNumberField,
-  WhenField,
-} from './fields';
+import { EscalationField, MoneyField, RateField, WholeNumberField, WhenField } from './fields';
 
 // One editor per kind of life event. It works on a draft held here: opening it saves nothing,
 // and the plan changes only when the owner chooses Create (or Save, when editing).
@@ -54,6 +52,11 @@ function ReductionsField({
     </div>
   );
 }
+
+const DEPOSIT_KINDS = [
+  { value: 'percent', label: 'Percent of price' },
+  { value: 'amount', label: 'Dollar amount' },
+];
 
 const Grid = ({ children }: { children: ReactNode }) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
@@ -127,7 +130,6 @@ export function EventEditor({
           </p>
           <Field label="Name">
             <Input
-              aria-label="Name"
               value={e.name}
               maxLength={100}
               onChange={(x) => patch({ name: x.target.value })}
@@ -143,41 +145,37 @@ export function EventEditor({
                   value={e.price}
                   onChange={(price) => patch({ price })}
                 />
-                <div className="flex min-w-0 flex-col gap-1 text-xs font-medium text-text-secondary">
-                  Deposit
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select
-                      aria-label="Deposit type"
-                      value={e.deposit.kind}
-                      onChange={(x) =>
-                        patch({
-                          deposit:
-                            x.target.value === 'amount'
-                              ? { kind: 'amount', cents: Math.round(e.price / 5) }
-                              : { kind: 'percent', bps: 2000 },
-                        })
-                      }
-                    >
-                      <option value="percent">Percent of price</option>
-                      <option value="amount">Dollar amount</option>
-                    </Select>
-                    {e.deposit.kind === 'percent' ? (
-                      <RateField
-                        label="Deposit percent"
-                        defaultBps={2000}
-                        bps={e.deposit.bps}
-                        min={0}
-                        max={100}
-                        onChange={(bps) => patch({ deposit: { kind: 'percent', bps } })}
-                      />
-                    ) : (
-                      <MoneyField
-                        label="Deposit amount"
-                        value={e.deposit.cents}
-                        onChange={(cents) => patch({ deposit: { kind: 'amount', cents } })}
-                      />
-                    )}
-                  </div>
+                <div className="grid min-w-0 grid-cols-2 items-start gap-2">
+                  <Select
+                    label="Deposit type"
+                    value={e.deposit.kind}
+                    onChange={(kind) =>
+                      patch({
+                        deposit:
+                          kind === 'amount'
+                            ? { kind: 'amount', cents: Math.round(e.price / 5) }
+                            : { kind: 'percent', bps: 2000 },
+                      })
+                    }
+                    options={DEPOSIT_KINDS}
+                    className="min-w-0"
+                  />
+                  {e.deposit.kind === 'percent' ? (
+                    <RateField
+                      label="Deposit percent"
+                      defaultBps={2000}
+                      bps={e.deposit.bps}
+                      min={0}
+                      max={100}
+                      onChange={(bps) => patch({ deposit: { kind: 'percent', bps } })}
+                    />
+                  ) : (
+                    <MoneyField
+                      label="Deposit amount"
+                      value={e.deposit.cents}
+                      onChange={(cents) => patch({ deposit: { kind: 'amount', cents } })}
+                    />
+                  )}
                 </div>
                 <RateField
                   label="Loan interest rate"
@@ -232,14 +230,12 @@ export function EventEditor({
                   onChange={(cents) => patch({ repaymentOverride: cents > 0 ? cents : undefined })}
                 />
               </Grid>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={e.replaceRent}
-                  onChange={(x) => patch({ replaceRent: x.target.checked })}
-                />
+              <Checkbox
+                checked={e.replaceRent}
+                onCheckedChange={(replaceRent) => patch({ replaceRent })}
+              >
                 The home replaces my rent
-              </label>
+              </Checkbox>
               <p className="text-xs text-text-tertiary">
                 The deposit and costs are paid in the year you buy, from your cash flow and then
                 your savings. Loan repayments start the year after, and the property starts growing
@@ -349,14 +345,12 @@ export function EventEditor({
                 value={e.amount}
                 onChange={(amount) => patch({ amount })}
               />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={e.todaysDollars}
-                  onChange={(x) => patch({ todaysDollars: x.target.checked })}
-                />
+              <Checkbox
+                checked={e.todaysDollars}
+                onCheckedChange={(todaysDollars) => patch({ todaysDollars })}
+              >
                 The amount is in today's dollars (it rises with inflation to its year)
-              </label>
+              </Checkbox>
             </div>
           )}
 
@@ -376,19 +370,17 @@ export function EventEditor({
                   max={100}
                   onChange={(everyYears) => patch({ everyYears })}
                 />
-                <Field label="Last year">
-                  <Input
-                    aria-label="Last year"
-                    type="number"
-                    placeholder="No end"
-                    value={e.endYear ?? ''}
-                    onChange={(x) =>
-                      patch({
-                        endYear: x.target.value === '' ? null : Math.trunc(Number(x.target.value)),
-                      })
-                    }
-                  />
-                </Field>
+                {/* The server takes 1900 to 2300, or none (longTermConfig.ts) */}
+                <NumberField
+                  label="Last year"
+                  value={e.endYear}
+                  onChange={(endYear) => patch({ endYear })}
+                  min={1900}
+                  max={2300}
+                  optional
+                  errorMessage="Enter a whole year between 1900 and 2300, or leave this blank."
+                  description="Leave blank for no end"
+                />
               </Grid>
               <EscalationField
                 value={e.escalation}
@@ -425,20 +417,14 @@ export function EventEditor({
           {e.kind === 'payOff' && (
             <div className="space-y-3">
               <Grid>
-                <Field label="Loan">
-                  <Select
-                    aria-label="Loan"
-                    value={e.loanId}
-                    onChange={(x) => patch({ loanId: x.target.value })}
-                  >
-                    <option value="">Choose a loan</option>
-                    {loans.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                <Combobox
+                  label="Loan"
+                  placeholder="Choose a loan"
+                  items={loans.map((l) => ({ value: l.id, label: l.name }))}
+                  value={e.loanId}
+                  onChange={(loanId) => patch({ loanId })}
+                  className="min-w-0"
+                />
                 <MoneyField
                   label="Amount (leave 0 to pay it all off)"
                   value={e.amount ?? 0}
@@ -455,14 +441,9 @@ export function EventEditor({
             </div>
           )}
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={e.enabled}
-              onChange={(x) => patch({ enabled: x.target.checked })}
-            />
+          <Checkbox checked={e.enabled} onCheckedChange={(enabled) => patch({ enabled })}>
             Include in the forecast
-          </label>
+          </Checkbox>
         </AmountFields>
         {issues.length > 0 && (
           <ul

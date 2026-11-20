@@ -121,6 +121,16 @@ export function decodeRangeParam(param: string | null): ReportDateRange | undefi
 export const formatMonth = (m: string) =>
   isMonth(m) ? format(parseISO(`${m}-01`), 'MMM yyyy') : m;
 
+/**
+ * A YYYY-MM month's names as the month grid shows them: `short` "Oct" on its button, `long`
+ * "October 2026" as its accessible name. Formatted by date-fns, as formatMonth is, so the grid
+ * and the trigger's "Oct 2026" come from one source (02-REVIEW IN-02).
+ */
+export function monthNames(m: string): { short: string; long: string } {
+  const first = parseISO(`${m}-01`);
+  return { short: format(first, 'MMM'), long: format(first, 'MMMM yyyy') };
+}
+
 /** A month range as one line: "Nov 2026" when it is one month, else "Jan 2025 – Nov 2026" */
 export const formatMonthRange = (from: string, to: string) =>
   from === to ? formatMonth(from) : `${formatMonth(from)} – ${formatMonth(to)}`;

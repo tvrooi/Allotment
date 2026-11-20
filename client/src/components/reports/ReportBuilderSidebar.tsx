@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { computeDateRange, DATE_PRESETS } from '../../utils/dateRange';
 import { MonthRangePicker } from '../ui/MonthRangePicker';
+import { Select } from '../ui/Select';
 import ChartTypeSelector from './ChartTypeSelector';
 import AccountMultiSelect from './AccountMultiSelect';
 import CategoryTreePicker from './CategoryTreePicker';
@@ -102,18 +103,16 @@ export default function ReportBuilderSidebar({ config, onChange }: Props) {
       </Section>
 
       <Section label="Group by">
-        <select
+        <Select
           aria-label="Group by"
+          fieldSize="sm"
           value={config.groupBy}
-          onChange={(e) => onChange(set(config, 'groupBy', e.target.value as ReportGroupBy))}
-          className="w-full rounded-md border border-border text-sm py-1.5 px-2 bg-surface text-text focus:border-brand-600 focus:ring-1 focus:ring-brand-600 focus:outline-none"
-        >
-          {GROUP_BY_OPTIONS.filter((g) => g.modes.includes(config.mode)).map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => onChange(set(config, 'groupBy', v as ReportGroupBy))}
+          options={GROUP_BY_OPTIONS.filter((g) => g.modes.includes(config.mode)).map((g) => ({
+            value: g.id,
+            label: g.label,
+          }))}
+        />
       </Section>
 
       <Section label="Balance type">

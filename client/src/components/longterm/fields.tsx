@@ -1,40 +1,23 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { CurrencyInput } from '../ui/CurrencyInput';
-import { Input, Select } from '../ui/Input';
-import { bpsToInput, inputToBps } from '../../utils/longTerm';
-import { useReportAmountValidity } from '../ui/amountValidity';
+import { describedByIds, FieldLines } from '../ui/Field';
+import { Label } from '../ui/Label';
+import { NumberField } from '../ui/NumberField';
+import { Select } from '../ui/Select';
+import { bpsToInput } from '../../utils/longTerm';
 import type { Escalation, When } from '../../api/longTerm';
 
-/** A labelled input, with an optional hint (for an assumption: the default beside it) */
-export function Field({
-  label,
-  hint,
-  children,
-  className = '',
-}: {
-  label: string;
-  hint?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <label
-      className={`relative flex min-w-0 flex-col gap-1 text-xs font-medium text-text-secondary ${className}`}
-    >
-      {label}
-      {children}
-      {hint && <span className="font-normal text-text-tertiary">{hint}</span>}
-    </label>
-  );
-}
-
+/**
+ * A money amount: the shared CurrencyInput under its label, with an optional hint tied to it.
+ * CurrencyInput is not a React Aria input, so the label points at it by id, as other screens do.
+ */
 export function MoneyField({
   label,
   value,
   onChange,
   hint,
   allowNegative,
-  className,
+  className = '',
 }: {
   label: string;
   value: number;
@@ -43,19 +26,28 @@ export function MoneyField({
   allowNegative?: boolean;
   className?: string;
 }) {
+  const id = useId();
   return (
-    <Field label={label} hint={hint} className={className}>
+    <div className={`flex min-w-0 flex-col gap-1 ${className}`}>
+      <Label htmlFor={id}>{label}</Label>
       <CurrencyInput
+        id={id}
         aria-label={label}
+        aria-describedby={describedByIds(id, hint, undefined)}
         value={value}
         onChange={onChange}
         allowNegative={allowNegative}
       />
-    </Field>
+      <FieldLines id={id} description={hint} error={undefined} />
+    </div>
   );
 }
 
-/** A percentage typed as text (6.5), held as basis points. Text that is not a rate waits, marked. */
+/**
+ * A percentage typed as text (6.5), held as basis points: the shared NumberField with decimals.
+ * Only a rate inside [min, max] reaches onChange; other text waits, marked, and holds up the
+ * dialog or panel around it. An assumption shows its default, with "Use default" while changed.
+ */
 export function RateField({
   label,
   bps,
@@ -76,76 +68,52 @@ export function RateField({
   hint?: ReactNode;
   className?: string;
 }) {
-  const [text, setText] = useState(bpsToInput(bps));
-  const [last, setLast] = useState(bps);
-  if (bps !== last) {
-    setLast(bps);
-    if (inputToBps(text) !== bps) setText(bpsToInput(bps));
-  }
-  const parsed = inputToBps(text);
-  const invalid = parsed === null || parsed < min * 100 || parsed > max * 100;
-  useReportAmountValidity(!invalid);
-  const id = useId();
-  return (
-    <Field
-      label={label}
-      className={className}
-      hint={
+  const assumption = defaultBps !== undefined && (
+    <>
+      Assumption, default {bpsToInput(defaultBps)}%
+      {bps !== defaultBps && (
         <>
-          {invalid ? (
-            <span id={id} className="text-negative">
-              Enter a rate between {min}% and {max}%
-            </span>
-          ) : defaultBps !== undefined ? (
-            <>
-              Assumption, default {bpsToInput(defaultBps)}%
-              {bps !== defaultBps && (
-                <>
-                  {' · '}
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={() => {
-                      setText(bpsToInput(defaultBps));
-                      setLast(defaultBps);
-                      onChange(defaultBps);
-                    }}
-                  >
-                    Use default
-                  </button>
-                </>
-              )}
-            </>
-          ) : null}
-          {hint && <> {hint}</>}
+          {' · '}
+          <button type="button" className="underline" onClick={() => onChange(defaultBps)}>
+            Use default
+          </button>
         </>
+      )}
+    </>
+  );
+  return (
+    <NumberField
+      label={label}
+      value={Number(bpsToInput(bps))}
+      onChange={(percent) => {
+        // Not optional, so never null. Whole basis points, rounded as inputToBps rounds
+        if (percent !== null) onChange(Math.round(percent * 100));
+      }}
+      min={min}
+      max={max}
+      allowDecimal
+      precision={2}
+      suffix="%"
+      errorMessage={`Enter a rate between ${min}% and ${max}%`}
+      description={
+        assumption || hint ? (
+          <>
+            {assumption}
+            {assumption && hint ? ' ' : null}
+            {hint}
+          </>
+        ) : undefined
       }
-    >
-      <div className="relative">
-        <Input
-          aria-label={label}
-          aria-invalid={invalid}
-          aria-describedby={invalid ? id : undefined}
-          inputMode="decimal"
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            const v = inputToBps(e.target.value);
-            if (v !== null && v >= min * 100 && v <= max * 100) {
-              setLast(v);
-              onChange(v);
-            }
-          }}
-          style={{ paddingRight: '2rem' }}
-        />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-tertiary">
-          %
-        </span>
-      </div>
-    </Field>
+      className={className}
+    />
   );
 }
 
+/**
+ * A whole number (a year, an age, a count): the shared NumberField. What is typed stays as typed;
+ * only a whole number in range reaches the plan, and while the text is anything else the dialog
+ * or panel around it cannot be saved.
+ */
 export function WholeNumberField({
   label,
   value,
@@ -163,51 +131,26 @@ export function WholeNumberField({
   hint?: ReactNode;
   className?: string;
 }) {
-  // What is typed stays as typed; only a whole number in range reaches the plan, and while the
-  // text is anything else the dialog or panel around it cannot be saved
-  const [text, setText] = useState(String(value));
-  const [last, setLast] = useState(value);
-  if (value !== last) {
-    setLast(value);
-    if (Number(text) !== value) setText(String(value));
-  }
-  const n = text.trim() === '' ? NaN : Number(text);
-  const valid = Number.isInteger(n) && n >= min && n <= max;
-  useReportAmountValidity(valid);
-  const id = useId();
   return (
-    <Field
+    <NumberField
       label={label}
+      value={value}
+      onChange={(n) => {
+        // Not optional, so a committed value is always a whole number in range
+        if (n !== null) onChange(n);
+      }}
+      min={min}
+      max={max}
+      description={hint}
       className={className}
-      hint={
-        <>
-          {!valid && (
-            <span id={id} role="alert" className="text-negative">
-              Enter a whole number from {min} to {max}.{' '}
-            </span>
-          )}
-          {hint}
-        </>
-      }
-    >
-      <Input
-        aria-label={label}
-        aria-invalid={!valid}
-        aria-describedby={valid ? undefined : id}
-        inputMode="numeric"
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          const next = e.target.value.trim() === '' ? NaN : Number(e.target.value);
-          if (Number.isInteger(next) && next >= min && next <= max) {
-            setLast(next);
-            onChange(next);
-          }
-        }}
-      />
-    </Field>
+    />
   );
 }
+
+const WHEN_AS = [
+  { value: 'year', label: 'A year' },
+  { value: 'age', label: 'An age' },
+];
 
 /** A year or an age, as the event's date */
 export function WhenField({
@@ -225,18 +168,15 @@ export function WhenField({
   const year = 'year' in when ? when.year : birthYear + when.age;
   const age = 'age' in when ? when.age : when.year - birthYear;
   return (
-    <fieldset className="relative grid min-w-0 grid-cols-2 gap-3 items-end">
+    <fieldset className="relative grid min-w-0 grid-cols-2 gap-3 items-start">
       <legend className="sr-only">{label}</legend>
-      <Field label={`${label} as`}>
-        <Select
-          aria-label={`${label} as`}
-          value={byAge ? 'age' : 'year'}
-          onChange={(e) => onChange(e.target.value === 'age' ? { age } : { year })}
-        >
-          <option value="year">A year</option>
-          <option value="age">An age</option>
-        </Select>
-      </Field>
+      <Select
+        label={`${label} as`}
+        value={byAge ? 'age' : 'year'}
+        onChange={(v) => onChange(v === 'age' ? { age } : { year })}
+        options={WHEN_AS}
+        className="min-w-0"
+      />
       {byAge ? (
         <WholeNumberField
           label={`${label}: age`}
@@ -260,6 +200,12 @@ export function WhenField({
   );
 }
 
+const ESCALATION_MODES: { value: Escalation['mode']; label: string }[] = [
+  { value: 'inflation', label: 'With inflation' },
+  { value: 'rate', label: 'By a set rate' },
+  { value: 'none', label: 'Not at all' },
+];
+
 export function EscalationField({
   label = 'Changes each year',
   value,
@@ -270,21 +216,17 @@ export function EscalationField({
   onChange: (e: Escalation) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 items-end">
-      <Field label={label}>
-        <Select
-          aria-label={label}
-          value={value.mode}
-          onChange={(e) => {
-            const mode = e.target.value as Escalation['mode'];
-            onChange(mode === 'rate' ? { mode, rateBps: 200 } : ({ mode } as Escalation));
-          }}
-        >
-          <option value="inflation">With inflation</option>
-          <option value="rate">By a set rate</option>
-          <option value="none">Not at all</option>
-        </Select>
-      </Field>
+    <div className="grid grid-cols-2 gap-3 items-start">
+      <Select
+        label={label}
+        value={value.mode}
+        onChange={(v) => {
+          const mode = v as Escalation['mode'];
+          onChange(mode === 'rate' ? { mode, rateBps: 200 } : ({ mode } as Escalation));
+        }}
+        options={ESCALATION_MODES}
+        className="min-w-0"
+      />
       {value.mode === 'rate' && (
         <RateField
           label={`${label}: rate`}

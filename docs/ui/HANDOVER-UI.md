@@ -1,13 +1,32 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Wave G2 entry written 20 November 2026
-(PR #278 from `feat/wave-g2-screens`, up.176, not merged). Wave F entry rewritten 15 November 2026
+Overwritten at the end of each UI session, never appended. Wave G3 entry written 21 November 2026
+(PR from `feat/wave-g3-screens`, up.177, not merged); Wave G2 entry 20 November 2026 (PR #278,
+up.176, merged into `redesign`). Wave F entry rewritten 15 November 2026
 for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
-- Wave G2 (#267, WAVG-05; up.176, PR #278 from `feat/wave-g2-screens`, not merged): the everyday money
+- Wave G3 (#267, WAVG-06; up.177, PR from `feat/wave-g3-screens`, not merged): the planning,
+  reports, files and import screens use only the shared controls. Goals (`GoalFormModal`,
+  `GoalStatusModal`), Investments (`IncomeModals`, `InvestmentModals`, `SaleModals`,
+  `SplitModals`), Forecast (`CashRunway`), the long-term forecast (`fields.tsx`, `EventEditor`,
+  `EventList`, `LongTermForecast`, `SavingsPanel`, `SimulationPanel`, `AccountsPanel`,
+  `AssumptionsPanel`), Reports (`ReportBuilderSidebar`, `AccountMultiSelect`,
+  `CategoryTreePicker`, `ReportDetail`), Files (`Files.tsx`, `FileDetailModal`) and the import
+  dialogs (`ImportModal`, `YnabImportModal`, `ImportCategories`). The leftover gate in
+  03-23-PLAN.md prints 0 over these files. Bounded numbers now say when they are out of range
+  (D-14): the runway's Variable spending % (0-500), Income % (0-200) and Goal growth % a year
+  (-100 to 50), a life event's Last year (1900-2300 or blank) and the CSV wizard's Rows above the
+  header (0 to the smaller of 1000 and the file's rows less one). The long-term `WholeNumberField`
+  and `RateField` are wrappers over `NumberField`. The month grid's names come from date-fns
+  (`monthNames` in `utils/dateRange.ts`, IN-02) and Next year stops at the grid's max (`maxYear`,
+  IN-03). Files keeps From and To in page state beside the URL (`useUrlHeldDay`, see Traps).
+  Stays native (D-17): the Files drop zone and the CSV and YNAB file inputs. Exports are download
+  buttons; `settings/DataExport.tsx` moves with Settings in Phase 4 (owner, 19 November 2026).
+  Every behaviour change and changed selector is in the G3 PR's body and `CHANGELOG.md`.
+- Wave G2 (#267, WAVG-05; up.176, PR #278 from `feat/wave-g2-screens`, merged into `redesign`): the everyday money
   screens use only the shared controls. Transactions (`TransactionFormRow`, `TransactionDetailPanel`,
   `AddTransactionModal`, `BulkEditModal`, `BulkDeleteModal`, `SplitTransactionModal`,
   `TransferSuggestions`, the register's pick-to-share boxes, `TransactionFilters`,
@@ -123,7 +142,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.176 are prepared, not tagged.
+- None committed half-done. `redesign` is ahead of `main`; up.154 to up.177 are prepared, not tagged.
 - Wave G shared form controls (#267): G0, the audit, is
   [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md) (PR #275): every field and selector in
   `client/src` with its file and line, what it becomes and the phase that moves it.
@@ -146,13 +165,11 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   on MonthPicker's `MonthGrid` inside React Aria's dialog, with two native month inputs (From and
   To) on phones and its props unchanged. Its three users are `reports/DateRangeControl.tsx`,
   `reports/ReportBuilderSidebar.tsx` and `pages/CashFlow.tsx`.
-- What has not moved yet: G3 (WAVG-06) is next, after the owner merges G2: Goals, Forecast and
-  long-term forecast, Investments, Reports and the report builder, Files, and the import dialogs
-  (`ImportModal`, `YnabImportModal`, `ImportCategories`, `ImportHistory`; exports are download
-  buttons, and `settings/DataExport.tsx` moves with Settings). Phase 4 (G4) moves Settings, the
-  bank connection sections (`ConnectedBanks`) and the shelved and split-candidate pages (Review,
-  Cash flow, Household, Tax); G5 adds the lint rule and removes the native `Select` in
-  `ui/Input.tsx`. `CategorySelect.tsx` stays until Payment plans move.
+- What has not moved yet: Phase 4 is next, after the owner merges G3. G4 moves Settings
+  (with `settings/DataExport.tsx`), the bank connection sections (`ConnectedBanks`) and the shelved
+  and split-candidate pages (Review, Cash flow, Household, Tax); G5 adds the lint rule and removes
+  the native `Select` in `ui/Input.tsx` and `CategorySelect.tsx` (it stays until Payment plans
+  move).
 
 ## Next up (issues)
 
@@ -181,8 +198,8 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - Pickers (Wave G1, #267, replacing Wave E's short-list rule): categories use `CategoryPicker`,
   payees use `PayeeCombobox`, a fixed list uses `Select` (`components/ui/Select.tsx`), and a list
   the user grows uses `Combobox`; phones get native select, date and month controls. A bounded
-  number uses `NumberField`, money `CurrencyInput` (D-14). The G2 screens are on this; the rest
-  move in G3 and Phase 4, and until a screen moves it keeps the native `Select` in `ui/Input.tsx`.
+  number uses `NumberField`, money `CurrencyInput` (D-14). The G2 and G3 screens are on this; the
+  rest move in Phase 4, and until a screen moves it keeps the native `Select` in `ui/Input.tsx`.
 - Gutter: page title rows and the content under them use `PAGE_GUTTER`
   (`components/ui/pageGutter.ts`): 16 px on phones, 24 px from `md`; `e2e/tests/phone/page-gutter.spec.ts`
   checks every route (#240).
@@ -223,6 +240,14 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - `CategoryPicker` and `PayeeCombobox` are wrappers over `ui/Combobox.tsx`: change list keyboard
   or popover behaviour there, not in the wrapper. Their rows are `option`s and the payee field is
   a `combobox`; specs reach category rows through `categoryOption`.
+- `DatePicker` holds the day for the `value` it was given and resets to a new `value` as soon as
+  one arrives. A caller whose value catches up a render late (one read back from the URL) loses
+  the second figure of a typed day: keep the day in page state as well, as Files does with
+  `useUrlHeldDay`.
+- The shared `Combobox` opens its list on typing (`menuTrigger` `input`), not on a click. Specs
+  type part of the name and click the option on the page; `chooseOption` is for `Select`. Pass
+  `menuTrigger="focus"` only where a click must open the list (the runway's saved scenarios, the
+  YNAB account target).
 
 ## Verify
 

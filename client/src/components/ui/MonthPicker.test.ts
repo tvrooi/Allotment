@@ -146,6 +146,29 @@ describe('MonthGrid', () => {
     expect(previous(grid({ value: '2026-05', minYear: 2026 }))).toMatch(/ disabled=""/);
   });
 
+  it('stops at the last year it allows, so Next year never opens a year with no month to pick', () => {
+    const nextDisabled = (html: string) =>
+      / disabled=""/.test(html.match(/<button[^>]*aria-label="Next year"[^>]*>/)![0]);
+    expect(nextDisabled(grid({ value: '2026-11', maxYear: 2026 }))).toBe(true);
+    expect(nextDisabled(grid({ value: '2025-03', maxYear: 2026 }))).toBe(false);
+    expect(nextDisabled(grid({ value: '2026-11' }))).toBe(false);
+  });
+
+  it('opens on its last year when this month is later than it', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2031, 2, 10, 12));
+    const shownYear = (html: string) => html.match(/tabular-nums">(\d+)</)?.[1];
+    expect(shownYear(grid({ value: '', maxYear: 2026 }))).toBe('2026');
+    expect(shownYear(grid({ value: '' }))).toBe('2031');
+  });
+
+  it("shows each month's short name and is named by its full name and year", () => {
+    const html = grid();
+    expect(html).toMatch(/aria-label="November 2026"[^>]*>Nov<\/button>/);
+    expect(html).toMatch(/aria-label="September 2026"[^>]*>Sep<\/button>/);
+    expect(html).toMatch(/aria-label="May 2026"[^>]*>May<\/button>/);
+  });
+
   it('months it is told are out of range are disabled buttons', () => {
     const html = grid({ isDisabled: (m) => m > '2026-10' });
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="November 2026"/);

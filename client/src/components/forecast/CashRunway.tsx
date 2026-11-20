@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { UncategorisedNotice } from '../review/UncategorisedBanner';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Copy, Download, Plus, Save, Trash2, X } from 'lucide-react';
@@ -14,7 +14,15 @@ import { PrivateSection } from '../ui/Private';
 import { EmptyState } from '../ui/EmptyState';
 import { Button, ButtonLink } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { Input, Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
+import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
+import { Select, type SelectOption } from '../ui/Select';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
+import { NumberField } from '../ui/NumberField';
+import { percentRangeMessage } from '../ui/fieldMessages';
 import { StatCardRow } from '../reports/ChartHelpers';
 import { FillChart } from '../charts/FillChart';
 import { LegendKey } from '../charts/ChartLegend';
@@ -23,15 +31,10 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useGoals } from '../../hooks/useGoals';
 import { MAX_SLOTS, useScenarioSlots, type Slot } from '../../hooks/useScenarioSlots';
 import { chartColors } from '../../utils/chartColors';
-import {
-  centsToInput,
-  formatExampleMoney,
-  formatCurrency,
-  isUnreadableAmount,
-  parseCents,
-} from '../../utils/currency';
+import { formatExampleMoney, formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { downloadCsv } from '../../utils/exportCsv';
+import { bpsToInput, inputToBps } from '../../utils/longTerm';
 import { onTabListKeyDown } from '../ui/tabList';
 import { addDaysIso, todayIso } from '../../utils/calendarDay';
 
@@ -94,32 +97,47 @@ const TEMPLATES: {
     }),
   },
 ];
-const field = 'flex flex-col gap-1 text-xs text-text-secondary';
+const HORIZON_OPTIONS: SelectOption[] = [30, 90, 180, 365, 730].map((d) => ({
+  value: String(d),
+  label: d < 365 ? `${d} days` : `${d / 365} year${d > 365 ? 's' : ''}`,
+}));
+const LOOKBACK_OPTIONS: SelectOption[] = [28, 90, 180, 365].map((d) => ({
+  value: String(d),
+  label: `Last ${d} days`,
+}));
+// The shared Select reads '' as no choice, so Automatic (null in the request) has its own value
+const AUTOMATIC = 'auto';
+const INCOME_SOURCE_OPTIONS: SelectOption[] = [
+  { value: AUTOMATIC, label: 'Automatic' },
+  { value: 'payday', label: 'Payday plans' },
+  { value: 'schedules', label: 'Scheduled income' },
+];
+const HOUSEHOLD_OPTIONS: SelectOption[] = [
+  { value: AUTOMATIC, label: 'Automatic' },
+  { value: 'true', label: 'Include my share' },
+  { value: 'false', label: 'Leave out' },
+];
 
-function AmountInput({
-  value,
-  onChange,
+/** A scenario's date row field: a half-typed or cleared date keeps the last whole one */
+function ScenarioDate({
   label,
-  allowEmpty,
-  placeholder = 'History',
+  value,
+  minValue,
+  onChange,
 }: {
-  value: number | null;
-  onChange: (n: number | null) => void;
   label: string;
-  allowEmpty?: boolean;
-  placeholder?: string;
+  value: string;
+  minValue?: string;
+  onChange: (iso: string) => void;
 }) {
-  const [raw, setRaw] = useState(value === null ? '' : centsToInput(value));
   return (
-    <Input
-      aria-label={label}
-      inputMode="decimal"
-      value={raw}
-      placeholder={allowEmpty ? placeholder : undefined}
-      onChange={(e) => {
-        setRaw(e.target.value);
-        if (allowEmpty && e.target.value.trim() === '') onChange(null);
-        else if (!isUnreadableAmount(e.target.value)) onChange(parseCents(e.target.value));
+    <DatePicker
+      label={label}
+      hideLabel
+      value={value}
+      minValue={minValue}
+      onChange={(iso) => {
+        if (iso) onChange(iso);
       }}
     />
   );
@@ -172,259 +190,286 @@ function ScenarioEditor({
   today: string;
   goals: { id: string; name: string }[];
   otherNames: string[];
-  footer?: ReactNode;
+  /**
+   * The slot bar, told whether every field in this editor holds a value it can save, and whether
+   * an amount is being typed
+   */
+  footer?: (allValid: boolean, drafting: boolean) => ReactNode;
   onChange: (s: api.ForecastScenarioInput) => void;
 }) {
+  // Scenario edits apply live, so a field only passes on values inside the server's caps
+  // (scenarioSchema, forecastConfig.ts); while one holds text it can't use, Save waits for it
+  const { allValid, report } = useAmountValidity();
+  // An amount applies when its field is left, so until then the scenario doesn't hold it. Save
+  // counts the text being typed as a change: the click that leaves the field (applying the
+  // amount) is then the click that saves, instead of only enabling Save for a second one.
+  const [drafting, setDrafting] = useState(false);
+  const amountDraft = {
+    onTextChange: () => setDrafting(true),
+    onBlur: () => setDrafting(false),
+  };
+  const ids = useId();
   const percent = (key: 'spendingPercent' | 'incomePercent', label: string, max: number) => (
-    <label className={field}>
-      {label}
-      <Input
-        type="number"
-        min={0}
-        max={max}
-        value={scenario[key]}
-        onChange={(e) =>
-          onChange({ ...scenario, [key]: Math.min(max, Math.max(0, Math.round(+e.target.value))) })
-        }
-      />
-    </label>
+    <NumberField
+      label={label}
+      value={scenario[key]}
+      min={0}
+      max={max}
+      onChange={(n) => {
+        if (n !== null) onChange({ ...scenario, [key]: n });
+      }}
+    />
   );
   return (
     <Card padding="sm">
-      <div className="text-sm text-text mb-2 flex items-center gap-2">
-        <span
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: color }}
-          aria-hidden
-        />
-        <NameInput
-          name={scenario.name}
-          otherNames={otherNames}
-          onChange={(name) => onChange({ ...scenario, name })}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {percent('spendingPercent', 'Variable spending %', 500)}
-        {percent('incomePercent', 'Income %', 200)}
-        <label className={field}>
-          Spending per day
-          <AmountInput
-            label={`${scenario.name} spending per day`}
-            allowEmpty
-            value={scenario.dailySpending}
-            onChange={(n) => onChange({ ...scenario, dailySpending: n })}
+      <AmountFields report={report}>
+        <div className="text-sm text-text mb-2 flex items-center gap-2">
+          <span
+            className="w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: color }}
+            aria-hidden
           />
-        </label>
-        <label className={field}>
-          Goal growth % a year
-          <Input
-            type="number"
-            step="0.1"
+          <NameInput
+            name={scenario.name}
+            otherNames={otherNames}
+            onChange={(name) => onChange({ ...scenario, name })}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {percent('spendingPercent', 'Variable spending %', 500)}
+          {percent('incomePercent', 'Income %', 200)}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${ids}-daily`}>Spending per day</Label>
+            <CurrencyInput
+              id={`${ids}-daily`}
+              aria-label={`${scenario.name} spending per day`}
+              {...amountDraft}
+              nullable
+              placeholder="History"
+              value={scenario.dailySpending}
+              onChange={(n) => onChange({ ...scenario, dailySpending: n })}
+            />
+          </div>
+          <NumberField
+            label="Goal growth % a year"
+            value={Number(bpsToInput(scenario.annualReturnBasisPoints))}
             min={-100}
             max={50}
-            value={scenario.annualReturnBasisPoints / 100}
-            onChange={(e) =>
+            allowDecimal
+            // Basis points are hundredths of a percent, so 5.555 is acknowledged as 5.56
+            precision={2}
+            errorMessage={percentRangeMessage(-100, 50)}
+            onChange={(n) => {
+              // toFixed, not String: String(0.0000001) is "1e-7", which inputToBps refuses
+              const bps = n === null ? null : inputToBps(n.toFixed(2));
+              if (bps !== null) onChange({ ...scenario, annualReturnBasisPoints: bps });
+            }}
+          />
+        </div>
+        {goals.length > 0 && (
+          <details className="mt-3">
+            <summary className="text-xs text-text-secondary cursor-pointer">
+              Goal contributions per pay
+            </summary>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {goals.map((g) => (
+                <div key={g.id} className="flex flex-col gap-1">
+                  <Label htmlFor={`${ids}-goal-${g.id}`}>{g.name}</Label>
+                  <CurrencyInput
+                    id={`${ids}-goal-${g.id}`}
+                    aria-label={`${scenario.name} contribution to ${g.name}`}
+                    {...amountDraft}
+                    nullable
+                    placeholder="Plan"
+                    value={
+                      scenario.goalContributions.find((c) => c.goalId === g.id)?.amountPerPay ??
+                      null
+                    }
+                    onChange={(n) =>
+                      onChange({
+                        ...scenario,
+                        goalContributions: [
+                          ...scenario.goalContributions.filter((c) => c.goalId !== g.id),
+                          ...(n === null ? [] : [{ goalId: g.id, amountPerPay: n }]),
+                        ],
+                      })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+        <div className="mt-3 space-y-2">
+          {scenario.oneOffs.map((o, i) => {
+            const set = (patch: Partial<typeof o>) =>
               onChange({
                 ...scenario,
-                annualReturnBasisPoints: Math.min(
-                  5000,
-                  Math.max(-10000, Math.round(+e.target.value * 100)),
-                ),
+                oneOffs: scenario.oneOffs.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+              });
+            return (
+              <div key={i} className="grid grid-cols-2 gap-1 items-start">
+                <div className="col-span-2 flex items-center gap-1">
+                  <Input
+                    aria-label="One-off description"
+                    className="w-full min-w-0"
+                    value={o.description}
+                    onChange={(e) => set({ description: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove one-off"
+                    className="p-1 text-text-tertiary hover:text-negative"
+                    onClick={() =>
+                      onChange({
+                        ...scenario,
+                        oneOffs: scenario.oneOffs.filter((_, j) => j !== i),
+                      })
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <ScenarioDate
+                  label="One-off date"
+                  minValue={today}
+                  value={o.date}
+                  onChange={(date) => set({ date })}
+                />
+                <CurrencyInput
+                  aria-label="One-off amount (negative for spending)"
+                  {...amountDraft}
+                  allowNegative
+                  value={o.amount}
+                  onChange={(amount) => set({ amount })}
+                />
+              </div>
+            );
+          })}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              onChange({
+                ...scenario,
+                oneOffs: [
+                  ...scenario.oneOffs,
+                  { date: today, amount: -10000, description: 'One-off' },
+                ],
               })
             }
-          />
-        </label>
-      </div>
-      {goals.length > 0 && (
-        <details className="mt-3">
-          <summary className="text-xs text-text-secondary cursor-pointer">
-            Goal contributions per pay
-          </summary>
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {goals.map((g) => (
-              <label key={g.id} className={field}>
-                {g.name}
-                <AmountInput
-                  label={`${scenario.name} contribution to ${g.name}`}
-                  allowEmpty
-                  placeholder="Plan"
-                  value={
-                    scenario.goalContributions.find((c) => c.goalId === g.id)?.amountPerPay ?? null
-                  }
-                  onChange={(n) =>
-                    onChange({
-                      ...scenario,
-                      goalContributions: [
-                        ...scenario.goalContributions.filter((c) => c.goalId !== g.id),
-                        ...(n === null ? [] : [{ goalId: g.id, amountPerPay: Math.max(0, n) }]),
-                      ],
-                    })
-                  }
-                />
-              </label>
-            ))}
+          >
+            <Plus size={14} /> One-off amount
+          </Button>
+        </div>
+        <details
+          className="mt-3"
+          open={scenario.incomePauses.length + scenario.costChanges.length > 0}
+        >
+          <summary className="text-xs text-text-secondary cursor-pointer">Life events</summary>
+          <div className="mt-2 space-y-2">
+            <div className="flex flex-wrap gap-1">
+              {TEMPLATES.map((t) => (
+                <Button
+                  key={t.label}
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onChange(t.apply(scenario, today))}
+                >
+                  {t.label}
+                </Button>
+              ))}
+            </div>
+            {scenario.incomePauses.map((p, i) => {
+              const set = (patch: Partial<typeof p>) =>
+                onChange({
+                  ...scenario,
+                  incomePauses: scenario.incomePauses.map((x, j) =>
+                    j === i ? { ...x, ...patch } : x,
+                  ),
+                });
+              return (
+                <div key={i} className="grid grid-cols-2 gap-1 items-start">
+                  <div className="col-span-2 flex items-center justify-between gap-1">
+                    <span className="text-xs text-text-secondary">No income</span>
+                    <button
+                      type="button"
+                      aria-label="Remove income pause"
+                      className="p-1 text-text-tertiary hover:text-negative"
+                      onClick={() =>
+                        onChange({
+                          ...scenario,
+                          incomePauses: scenario.incomePauses.filter((_, j) => j !== i),
+                        })
+                      }
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <ScenarioDate
+                    label="No income from"
+                    value={p.from}
+                    onChange={(from) => set({ from })}
+                  />
+                  <ScenarioDate
+                    label="No income until"
+                    value={p.to}
+                    onChange={(to) => set({ to })}
+                  />
+                </div>
+              );
+            })}
+            {scenario.costChanges.map((c, i) => {
+              const set = (patch: Partial<typeof c>) =>
+                onChange({
+                  ...scenario,
+                  costChanges: scenario.costChanges.map((x, j) =>
+                    j === i ? { ...x, ...patch } : x,
+                  ),
+                });
+              return (
+                <div key={i} className="grid grid-cols-2 gap-1 items-start">
+                  <div className="col-span-2 flex items-center gap-1">
+                    <Input
+                      aria-label="Cost change description"
+                      className="w-full min-w-0"
+                      value={c.description}
+                      onChange={(e) => set({ description: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove cost change"
+                      className="p-1 text-text-tertiary hover:text-negative"
+                      onClick={() =>
+                        onChange({
+                          ...scenario,
+                          costChanges: scenario.costChanges.filter((_, j) => j !== i),
+                        })
+                      }
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <ScenarioDate
+                    label="Cost change from"
+                    minValue={today}
+                    value={c.from}
+                    onChange={(from) => set({ from })}
+                  />
+                  <CurrencyInput
+                    aria-label="Extra cost per month"
+                    {...amountDraft}
+                    allowNegative
+                    value={c.monthlyAmount}
+                    onChange={(monthlyAmount) => set({ monthlyAmount })}
+                  />
+                </div>
+              );
+            })}
           </div>
         </details>
-      )}
-      <div className="mt-3 space-y-2">
-        {scenario.oneOffs.map((o, i) => {
-          const set = (patch: Partial<typeof o>) =>
-            onChange({
-              ...scenario,
-              oneOffs: scenario.oneOffs.map((x, j) => (j === i ? { ...x, ...patch } : x)),
-            });
-          return (
-            <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-1 items-center">
-              <Input
-                aria-label="One-off description"
-                value={o.description}
-                onChange={(e) => set({ description: e.target.value })}
-              />
-              <Input
-                aria-label="One-off date"
-                type="date"
-                min={today}
-                value={o.date}
-                onChange={(e) => set({ date: e.target.value })}
-              />
-              <AmountInput
-                label="One-off amount (negative for spending)"
-                value={o.amount}
-                onChange={(n) => set({ amount: n ?? 0 })}
-              />
-              <button
-                type="button"
-                aria-label="Remove one-off"
-                className="p-1 text-text-tertiary hover:text-negative"
-                onClick={() =>
-                  onChange({ ...scenario, oneOffs: scenario.oneOffs.filter((_, j) => j !== i) })
-                }
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          );
-        })}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() =>
-            onChange({
-              ...scenario,
-              oneOffs: [
-                ...scenario.oneOffs,
-                { date: today, amount: -10000, description: 'One-off' },
-              ],
-            })
-          }
-        >
-          <Plus size={14} /> One-off amount
-        </Button>
-      </div>
-      <details
-        className="mt-3"
-        open={scenario.incomePauses.length + scenario.costChanges.length > 0}
-      >
-        <summary className="text-xs text-text-secondary cursor-pointer">Life events</summary>
-        <div className="mt-2 space-y-2">
-          <div className="flex flex-wrap gap-1">
-            {TEMPLATES.map((t) => (
-              <Button
-                key={t.label}
-                size="sm"
-                variant="secondary"
-                onClick={() => onChange(t.apply(scenario, today))}
-              >
-                {t.label}
-              </Button>
-            ))}
-          </div>
-          {scenario.incomePauses.map((p, i) => {
-            const set = (patch: Partial<typeof p>) =>
-              onChange({
-                ...scenario,
-                incomePauses: scenario.incomePauses.map((x, j) =>
-                  j === i ? { ...x, ...patch } : x,
-                ),
-              });
-            return (
-              <div
-                key={i}
-                className="grid grid-cols-[auto_1fr_1fr_auto] gap-1 items-center text-xs"
-              >
-                <span className="text-text-secondary">No income</span>
-                <Input
-                  aria-label="No income from"
-                  type="date"
-                  value={p.from}
-                  onChange={(e) => set({ from: e.target.value })}
-                />
-                <Input
-                  aria-label="No income until"
-                  type="date"
-                  value={p.to}
-                  onChange={(e) => set({ to: e.target.value })}
-                />
-                <button
-                  type="button"
-                  aria-label="Remove income pause"
-                  className="p-1 text-text-tertiary hover:text-negative"
-                  onClick={() =>
-                    onChange({
-                      ...scenario,
-                      incomePauses: scenario.incomePauses.filter((_, j) => j !== i),
-                    })
-                  }
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            );
-          })}
-          {scenario.costChanges.map((c, i) => {
-            const set = (patch: Partial<typeof c>) =>
-              onChange({
-                ...scenario,
-                costChanges: scenario.costChanges.map((x, j) => (j === i ? { ...x, ...patch } : x)),
-              });
-            return (
-              <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-1 items-center">
-                <Input
-                  aria-label="Cost change description"
-                  value={c.description}
-                  onChange={(e) => set({ description: e.target.value })}
-                />
-                <Input
-                  aria-label="Cost change from"
-                  type="date"
-                  min={today}
-                  value={c.from}
-                  onChange={(e) => set({ from: e.target.value })}
-                />
-                <AmountInput
-                  label="Extra cost per month"
-                  value={c.monthlyAmount}
-                  onChange={(n) => set({ monthlyAmount: n ?? 0 })}
-                />
-                <button
-                  type="button"
-                  aria-label="Remove cost change"
-                  className="p-1 text-text-tertiary hover:text-negative"
-                  onClick={() =>
-                    onChange({
-                      ...scenario,
-                      costChanges: scenario.costChanges.filter((_, j) => j !== i),
-                    })
-                  }
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </details>
-      {footer}
+      </AmountFields>
+      {footer?.(allValid, drafting)}
     </Card>
   );
 }
@@ -433,12 +478,16 @@ function ScenarioEditor({
 function SaveBar({
   slot,
   dirty,
+  allValid,
   canDuplicate,
   canRemove,
   slots,
 }: {
   slot: Slot;
+  /** The scenario differs from its saved copy, or an amount is being typed into it */
   dirty: boolean;
+  /** False while a field in the scenario holds text it can't use (out of range, not a number) */
+  allValid: boolean;
   canDuplicate: boolean;
   canRemove: boolean;
   slots: ReturnType<typeof useScenarioSlots>;
@@ -459,7 +508,12 @@ function SaveBar({
                 Use theirs
               </Button>
             )}
-            <Button size="sm" variant="secondary" onClick={() => slots.keepMine(slot)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!allValid}
+              onClick={() => slots.keepMine(slot)}
+            >
               {slot.theirs ? 'Keep mine' : 'Save as new'}
             </Button>
           </div>
@@ -477,7 +531,7 @@ function SaveBar({
         <Button
           size="sm"
           variant={slot.saved && dirty ? 'primary' : 'secondary'}
-          disabled={!dirty || slot.theirs !== undefined}
+          disabled={!dirty || !allValid || slot.theirs !== undefined}
           aria-label={`Save ${name}`}
           onClick={() => slots.save(slot)}
         >
@@ -535,6 +589,7 @@ export function CashRunway() {
   const slots = useScenarioSlots(DEFAULT_SCENARIOS);
   const { scenarios } = slots;
   const [selected, setSelected] = useState(0);
+  const [savedQuery, setSavedQuery] = useState('');
   const request = useDebounce<api.ForecastRequest>(
     { horizonDays, lookbackDays, incomeSource, includeHousehold, scenarios },
     300,
@@ -702,52 +757,34 @@ export function CashRunway() {
             assumptions, not predictions or confidence intervals.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <label className={field}>
-              Horizon
-              <Select value={horizonDays} onChange={(e) => setHorizon(+e.target.value)}>
-                {[30, 90, 180, 365, 730].map((d) => (
-                  <option key={d} value={d}>
-                    {d < 365 ? `${d} days` : `${d / 365} year${d > 365 ? 's' : ''}`}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className={field}>
-              Spending history
-              <Select value={lookbackDays} onChange={(e) => setLookback(+e.target.value)}>
-                {[28, 90, 180, 365].map((d) => (
-                  <option key={d} value={d}>
-                    Last {d} days
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className={field}>
-              Income from
-              <Select
-                value={incomeSource ?? ''}
-                onChange={(e) =>
-                  setIncomeSource((e.target.value || null) as api.ForecastRequest['incomeSource'])
-                }
-              >
-                <option value="">Automatic</option>
-                <option value="payday">Payday plans</option>
-                <option value="schedules">Scheduled income</option>
-              </Select>
-            </label>
-            <label className={field}>
-              Household bill shares
-              <Select
-                value={includeHousehold === null ? '' : String(includeHousehold)}
-                onChange={(e) =>
-                  setHousehold(e.target.value === '' ? null : e.target.value === 'true')
-                }
-              >
-                <option value="">Automatic</option>
-                <option value="true">Include my share</option>
-                <option value="false">Leave out</option>
-              </Select>
-            </label>
+            <Select
+              label="Horizon"
+              options={HORIZON_OPTIONS}
+              value={String(horizonDays)}
+              onChange={(v) => setHorizon(Number(v))}
+            />
+            <Select
+              label="Spending history"
+              options={LOOKBACK_OPTIONS}
+              value={String(lookbackDays)}
+              onChange={(v) => setLookback(Number(v))}
+            />
+            <Select
+              label="Income from"
+              options={INCOME_SOURCE_OPTIONS}
+              value={incomeSource ?? AUTOMATIC}
+              onChange={(v) =>
+                setIncomeSource(
+                  v === AUTOMATIC ? null : (v as NonNullable<api.ForecastRequest['incomeSource']>),
+                )
+              }
+            />
+            <Select
+              label="Household bill shares"
+              options={HOUSEHOLD_OPTIONS}
+              value={includeHousehold === null ? AUTOMATIC : String(includeHousehold)}
+              onChange={(v) => setHousehold(v === AUTOMATIC ? null : v === 'true')}
+            />
           </div>
           {error && (
             <p role="alert" className="text-sm text-negative">
@@ -993,32 +1030,34 @@ export function CashRunway() {
                 Scenario assumptions
               </h2>
               {slots.available.length > 0 && (
-                <label className="flex items-center gap-2 text-xs text-text-secondary">
-                  {slots.slots.length < MAX_SLOTS
-                    ? 'Open saved'
-                    : `Replace ${slots.slots[Math.min(selected, slots.slots.length - 1)].scenario.name} with`}
-                  <Select
-                    aria-label="Open a saved scenario"
-                    value=""
-                    onChange={(e) => {
-                      const saved = slots.available.find((s) => s.id === e.target.value);
-                      if (!saved) return;
-                      slots.open(
-                        saved,
-                        slots.slots.length < MAX_SLOTS
-                          ? undefined
-                          : slots.slots[Math.min(selected, slots.slots.length - 1)],
-                      );
-                    }}
-                  >
-                    <option value="">Choose…</option>
-                    {slots.available.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.scenario.name}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
+                <Combobox
+                  label={
+                    slots.slots.length < MAX_SLOTS
+                      ? 'Open saved'
+                      : `Replace ${slots.slots[Math.min(selected, slots.slots.length - 1)].scenario.name} with`
+                  }
+                  aria-label="Open a saved scenario"
+                  placeholder="Choose…"
+                  className="w-56 max-w-full"
+                  items={slots.available.map((s) => ({ value: s.id, label: s.scenario.name }))}
+                  // A click shows the list, as the select it replaces did
+                  menuTrigger="focus"
+                  // Choosing opens the scenario, so the field itself never holds one
+                  value=""
+                  inputValue={savedQuery}
+                  onInputChange={setSavedQuery}
+                  onChange={(id) => {
+                    const saved = slots.available.find((s) => s.id === id);
+                    setSavedQuery('');
+                    if (!saved) return;
+                    slots.open(
+                      saved,
+                      slots.slots.length < MAX_SLOTS
+                        ? undefined
+                        : slots.slots[Math.min(selected, slots.slots.length - 1)],
+                    );
+                  }}
+                />
               )}
             </div>
             <p className="text-xs text-text-tertiary">
@@ -1035,15 +1074,16 @@ export function CashRunway() {
                   goals={goalOptions}
                   otherNames={scenarios.filter((_, j) => j !== i).map((x) => x.name)}
                   onChange={(next) => slots.change(slot.uid, next)}
-                  footer={
+                  footer={(allValid, drafting) => (
                     <SaveBar
                       slot={slot}
-                      dirty={slots.isDirty(slot)}
+                      dirty={drafting || slots.isDirty(slot)}
+                      allValid={allValid}
                       canDuplicate={slots.slots.length < MAX_SLOTS}
                       canRemove={slots.slots.length > 1}
                       slots={slots}
                     />
-                  }
+                  )}
                 />
               ))}
             </div>

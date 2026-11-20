@@ -274,7 +274,9 @@ test('the range bounds can be chosen, months outside are disabled', async ({ pag
     await expect(dialog.getByRole('button', { name, exact: true })).toBeEnabled();
   for (const name of ['February 2026', 'December 2026'])
     await expect(dialog.getByRole('button', { name, exact: true })).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'Next year' })).toBeEnabled();
+  // 2026 holds the last month in range, so the grid stops there, as it does at its floor (IN-03)
+  await expect(dialog.getByRole('button', { name: 'Next year' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Previous year' })).toBeDisabled();
   await dialog.getByRole('button', { name: 'March 2026', exact: true }).click();
   await expect(monthShown(page, 'Ranged')).toHaveText('2026-03');
   await expect(specimen(page, 'MonthPicker', 'Ranged').getByText(/^Choose a month/)).toHaveCount(0);

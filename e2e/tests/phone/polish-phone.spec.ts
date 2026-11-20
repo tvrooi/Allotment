@@ -307,3 +307,41 @@ for (const width of [320, WIDTH]) {
     expect(await sidewaysOverflow(page)).toEqual([]);
   });
 }
+
+// The import's category mapping is a fixed table with a third for the file's names: a long
+// single word must wrap inside that column, not run under the category button (03-25 review)
+test('a long category name in the import mapping stays in its own column', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 0);
+  await open(page, `/accounts/${account.id}`);
+  await page.getByRole('button', { name: 'Import CSV' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import transactions' });
+  const day = (n: number) => isoDay(n).split('-').reverse().join('/');
+  const file =
+    'Date,Payee,Category,Memo,Outflow,Inflow\n' +
+    `${day(-40)},Telco,Telecommunications,,$60.00,\n` +
+    `${day(-39)},Telco,Telecommunications,,$60.00,\n`;
+  await dialog.getByLabel('Bank file').setInputFiles({
+    name: 'register.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(file),
+  });
+  await dialog.getByRole('button', { name: 'Preview' }).click();
+  const target = dialog.getByRole('button', { name: 'Category for Telecommunications' });
+  await expect(target).toBeVisible();
+  const label = target.locator('xpath=ancestor::tr[1]/td[1]');
+  // The text's own extent, which a table cell does not clip, against the cell's inner edge
+  const { text, inner } = await label.evaluate((td) => {
+    const range = document.createRange();
+    range.selectNodeContents(td);
+    const cell = td.getBoundingClientRect();
+    return {
+      text: range.getBoundingClientRect().right,
+      inner: cell.right - parseFloat(getComputedStyle(td).paddingRight),
+    };
+  });
+  expect(text).toBeLessThanOrEqual(inner + 0.5);
+  expect(text).toBeLessThanOrEqual((await box(target)).x);
+});
