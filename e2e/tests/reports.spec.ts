@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, thisMonth, type Api } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, chooseOption, type Api } from './fixtures';
 
 // Reports: the built-in dashboard, the custom report builder, and saving a report.
 
@@ -98,13 +98,15 @@ test.describe('reports', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Custom report' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Table' }).click();
-    await page.getByRole('combobox', { name: 'Group by' }).selectOption('category');
+    // Group by is the shared Select (03-20): a button trigger named by its value and label
+    const groupBy = page.getByRole('button', { name: /Group by$/ });
+    await chooseOption(groupBy, 'Category');
     const table = page.getByRole('table');
     await expect(table.getByRole('row', { name: 'Groceries $48.50' })).toBeVisible();
     await expect(table.getByRole('row', { name: 'Uncategorised $4' })).toBeVisible();
     await expect(table.getByRole('row', { name: 'Total $52.50' })).toBeVisible();
 
-    await page.getByRole('combobox', { name: 'Group by' }).selectOption('payee');
+    await chooseOption(groupBy, 'Payee');
     await expect(table.getByRole('row', { name: 'Market $42.50' })).toBeVisible();
     await expect(table.getByRole('row', { name: 'Corner Shop $10' })).toBeVisible();
 

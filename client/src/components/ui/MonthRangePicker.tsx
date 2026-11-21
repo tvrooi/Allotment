@@ -6,6 +6,7 @@ import { thisMonthIso } from '../../utils/calendarDay';
 import {
   formatMonth,
   formatMonthRange,
+  isMonth,
   pickRangeMonth,
   type MonthRange,
 } from '../../utils/dateRange';
@@ -79,6 +80,8 @@ export function MonthRangePicker({
   const isPhone = useIsPhone();
   const [open, setOpen] = useState(defaultOpen);
   const [draft, setDraft] = useState<MonthRange>({ from, to });
+  // Neither grid steps past the year of the last month either can choose (02-REVIEW IN-03)
+  const maxYear = isMonth(max) ? Number(max.split('-')[0]) : undefined;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const ids = useId();
@@ -227,6 +230,7 @@ export function MonthRangePicker({
                     value={draft.from}
                     onPick={pick('from')}
                     isDisabled={(month) => month > max}
+                    maxYear={maxYear}
                     focusOnOpen
                   />
                 </div>
@@ -236,6 +240,7 @@ export function MonthRangePicker({
                     value={draft.to}
                     onPick={pick('to')}
                     isDisabled={(month) => month < draft.from || month > max}
+                    maxYear={maxYear}
                   />
                 </div>
               </div>

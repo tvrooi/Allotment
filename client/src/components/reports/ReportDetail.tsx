@@ -5,6 +5,7 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { Check, ChevronDown, Download, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { Checkbox } from '../ui/Checkbox';
 import { StatCard as StatTile, StatGrid } from '../ui/StatCard';
 import {
   MAX_TREND_CATEGORIES,
@@ -670,23 +671,17 @@ function TrendCategoryPicker({
                 const checked = value.includes(c.id);
                 const full = !checked && value.length >= MAX_TREND_CATEGORIES;
                 return (
-                  <label
+                  <Checkbox
                     key={c.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-sm ${
-                      full
-                        ? 'text-text-disabled cursor-not-allowed'
-                        : 'text-text-secondary hover:bg-hover cursor-pointer'
-                    }`}
+                    checked={checked}
+                    disabled={full}
+                    onCheckedChange={() => toggle(c.id)}
+                    className={`w-full px-3 py-1.5 ${full ? '' : 'hover:bg-hover'}`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={full}
-                      onChange={() => toggle(c.id)}
-                      className="accent-brand-600"
-                    />
-                    {categoryLabel(c, showIcons)}
-                  </label>
+                    <span className={full ? undefined : 'text-text-secondary'}>
+                      {categoryLabel(c, showIcons)}
+                    </span>
+                  </Checkbox>
                 );
               })}
             </div>

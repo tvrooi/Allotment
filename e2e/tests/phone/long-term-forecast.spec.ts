@@ -116,7 +116,8 @@ test('the long-term forecast fits a phone screen', async ({ page, api }, testInf
   await open(page, '/forecast');
   await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
   await check('long-term');
-  await page.getByLabel('Year', { exact: true }).selectOption({ index: 3 });
+  // The shared Select is a native select on phones (D-04), named by its visible label
+  await page.getByLabel('See what made up a year').selectOption({ index: 3 });
   await expect(page.getByText('The parts add up to the change, to the cent')).toBeVisible();
   await check('long-term-year');
   for (const tab of ['Assumptions', 'Accounts', 'Savings']) {
@@ -124,7 +125,13 @@ test('the long-term forecast fits a phone screen', async ({ page, api }, testInf
     await check(`long-term-${tab.toLowerCase()}`);
   }
   await page.getByRole('tab', { name: 'Compare' }).click();
-  await page.getByLabel('Compare with').selectOption({ label: 'Retire later' });
+  // Compare with is the shared Combobox, the same at every width (D-06)
+  await page.getByRole('combobox', { name: 'Compare with' }).fill('');
+  await page.getByRole('combobox', { name: 'Compare with' }).fill('Retire later');
+  await page
+    .getByRole('listbox')
+    .getByRole('option', { name: 'Retire later', exact: true })
+    .click();
   await expect(page.getByRole('region', { name: 'Comparison' })).toBeVisible();
   await check('long-term-compare');
   await page.getByRole('tab', { name: 'Simulation' }).click();

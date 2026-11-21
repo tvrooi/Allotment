@@ -7,18 +7,20 @@ UI sessions start at [docs/ui/README.md](docs/ui/README.md) instead.
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 12 November 2026 (design re-review waves on `redesign`; see `docs/ui/WAVES.md`).
+Last updated: 21 November 2026 (Wave G3 of the design re-review waves on `redesign`; see `docs/ui/WAVES.md`).
 
 ## State
 
 - **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
 - **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
-- **Unreleased on `redesign`:** up.154 to up.176 are prepared (versions and CHANGELOG entries) but not tagged.
+- **Unreleased on `redesign`:** up.154 to up.177 are prepared (versions and CHANGELOG entries) but not tagged.
   The owner has not yet decided how `redesign` is released; do not tag or publish until they do.
 - Design re-review waves (issues #222 to #245) are in progress on `redesign`: status, open PRs and
   the routine are in `docs/ui/WAVES.md`.
-- Wave G2 (#267, up.176): the everyday money screens on the shared controls are in PR #278 into
-  `redesign`, open for the owner's review and merge; G3 starts after it merges (`docs/ui/HANDOVER-UI.md`).
+- Wave G2 (#267, up.176, PR #278) is merged into `redesign`. Wave G3 (#267, up.177): Goals, Forecast,
+  Investments, Reports, Files and the import dialogs on the shared controls are in PR #279 from
+  `feat/wave-g3-screens` into `redesign`, open for the owner's review and merge; Phase 4 (Settings,
+  bank connections, the shelved pages, the lint rule) starts after it merges (`docs/ui/HANDOVER-UI.md`).
 - `redesign` holds the design passes: Budget (up.154), Dashboard (up.154, made the Dashboard in up.166).
 - Also on `redesign`: Transactions money clarity and iPhone web-app hardening (up.155), Review (up.156 to up.160).
 - Also on `redesign`: Accounts (up.161 to up.163), day-first dates and Household (up.164), Forecast (up.165), Goals, Investments.

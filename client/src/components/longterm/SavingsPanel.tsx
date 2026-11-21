@@ -1,11 +1,17 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import type { Plan, PlanResult, Split, StartingPoint } from '../../api/longTerm';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
+import { Select } from '../ui/Select';
 import { formatCurrency } from '../../utils/currency';
 import { CLASS_LABEL, worked } from '../../utils/longTerm';
-import { Field, MoneyField, RateField } from './fields';
+import { MoneyField, RateField } from './fields';
+
+const SPLIT_MODES = [
+  { value: 'percent', label: 'A percent of what is left' },
+  { value: 'fixed', label: 'Up to a dollar amount' },
+];
 
 const move = <T,>(list: T[], from: number, to: number) => {
   const next = [...list];
@@ -31,6 +37,12 @@ export function SavingsPanel({
   result: PlanResult | undefined;
 }) {
   const [example, setExample] = useState(1_000_000);
+  // How many accounts were added here: the add field's key, and the cue to put focus back on it
+  const [added, setAdded] = useState(0);
+  const addRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (added > 0) addRef.current?.querySelector('input')?.focus();
+  }, [added]);
   const eligible = (point?.accounts ?? []).filter((a) => {
     const c = plan.accounts.find((x) => x.accountId === a.id);
     const cls = c?.cls ?? a.cls;
@@ -89,26 +101,23 @@ export function SavingsPanel({
             >
               <span className="text-sm font-medium w-6">{i + 1}.</span>
               <span className="text-sm min-w-32 flex-1">{nameOf(s.accountId)}</span>
-              <Field label="Takes">
-                <Select
-                  aria-label={`${nameOf(s.accountId)}: takes`}
-                  value={s.mode}
-                  onChange={(e) =>
-                    setSplits((all) =>
-                      all.map((x, j) =>
-                        j === i
-                          ? e.target.value === 'percent'
-                            ? { accountId: x.accountId, mode: 'percent', bps: 5000 }
-                            : { accountId: x.accountId, mode: 'fixed', amount: 100_000 }
-                          : x,
-                      ),
-                    )
-                  }
-                >
-                  <option value="percent">A percent of what is left</option>
-                  <option value="fixed">Up to a dollar amount</option>
-                </Select>
-              </Field>
+              <Select
+                label={`${nameOf(s.accountId)}: takes`}
+                value={s.mode}
+                onChange={(mode) =>
+                  setSplits((all) =>
+                    all.map((x, j) =>
+                      j === i
+                        ? mode === 'percent'
+                          ? { accountId: x.accountId, mode: 'percent', bps: 5000 }
+                          : { accountId: x.accountId, mode: 'fixed', amount: 100_000 }
+                        : x,
+                    ),
+                  )
+                }
+                options={SPLIT_MODES}
+                className="w-auto"
+              />
               {s.mode === 'percent' ? (
                 <RateField
                   label={`${nameOf(s.accountId)}: percent`}
@@ -164,27 +173,22 @@ export function SavingsPanel({
           </li>
         </ol>
         {unused.length > 0 && (
-          <div className="flex gap-2 items-end">
-            <Field label="Add an account">
-              <Select
-                aria-label="Add an account to the savings order"
-                value=""
-                onChange={(e) =>
-                  e.target.value &&
-                  setSplits((all) => [
-                    ...all,
-                    { accountId: e.target.value, mode: 'percent', bps: 5000 },
-                  ])
-                }
-              >
-                <option value="">Choose an account</option>
-                {unused.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+          <div ref={addRef} className="flex gap-2 items-end">
+            {/* Picking adds the account. The field never holds a choice, so it is drawn afresh
+                (empty and closed) after each one, and the keyboard stays on it */}
+            <Combobox
+              key={added}
+              label="Add an account to the savings order"
+              placeholder="Choose an account"
+              items={unused.map((a) => ({ value: a.id, label: a.name }))}
+              value=""
+              onChange={(accountId) => {
+                if (!accountId) return;
+                setSplits((all) => [...all, { accountId, mode: 'percent', bps: 5000 }]);
+                setAdded((n) => n + 1);
+              }}
+              className="w-auto min-w-64"
+            />
             <Plus size={16} className="mb-3 text-text-tertiary" aria-hidden />
           </div>
         )}

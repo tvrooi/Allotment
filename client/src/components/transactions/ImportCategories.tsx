@@ -3,6 +3,8 @@ import { fileCategoryKey, type FileCategory } from '../../utils/csv';
 import { matchCategory } from '../../utils/categoryMatch';
 import type { ImportRow } from '../../api/transactions';
 import type { CategoryGroup } from '../../types';
+import { Combobox } from '../ui/Combobox';
+import { CategorySelectButton } from './CategorySelectButton';
 
 /** What to do with one category of an imported file */
 export type CategoryChoice =
@@ -97,7 +99,9 @@ export function describeChoice(choice: CategoryChoice | undefined, groups: Categ
   return 'New category';
 }
 
-const selectClass = 'w-full text-xs border border-border rounded px-1.5 py-1 bg-surface text-text';
+/** The mapping's "Create … as new" item: the category is made only when the import runs */
+const NEW_CATEGORY = '__new';
+const newGroupLabel = (name: string) => `New group “${name}”`;
 
 interface Props {
   uses: FileCategoryUse[];
@@ -111,17 +115,17 @@ export function ImportCategories({ uses, groups, choices, onChange }: Props) {
   const expenseGroups = groups;
   const set = (key: string, choice: CategoryChoice) => onChange({ ...choices, [key]: choice });
   return (
-    <div className="overflow-x-auto max-h-72 overflow-y-auto border border-border rounded-lg">
-      <table className="w-full text-sm border-collapse">
-        <thead className="sticky top-0 bg-surface-alt">
+    // No scroll box of its own: the category list opens inside the table, and the dialog scrolls
+    <div className="border border-border rounded-lg">
+      <table className="w-full table-fixed text-sm border-collapse">
+        <thead>
           <tr>
-            <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
+            <th className="w-1/3 rounded-tl-lg bg-surface-alt px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
               In your file
             </th>
-            <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
+            <th className="rounded-tr-lg bg-surface-alt px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">
               In Allotment
             </th>
-            <th className="px-2 py-1.5 text-left text-xs font-medium text-text-tertiary">Group</th>
           </tr>
         </thead>
         <tbody>
@@ -135,25 +139,25 @@ export function ImportCategories({ uses, groups, choices, onChange }: Props) {
             );
             return (
               <tr key={use.key} className="border-t border-border-light align-top">
-                <td className="px-2 py-1.5 text-xs text-text">
+                {/* A third of a fixed table: a long one-word name wraps instead of running on */}
+                <td className="px-2 py-1.5 text-xs text-text [overflow-wrap:anywhere]">
                   {label}
                   <span className="text-text-tertiary"> · {use.count}</span>
                 </td>
-                <td className="px-2 py-1.5">
-                  <select
-                    aria-label={`Category for ${label}`}
-                    className={selectClass}
+                <td className="px-2 py-1.5 space-y-1">
+                  <CategorySelectButton
+                    label={`Category for ${label}`}
+                    groups={groups}
                     value={
                       choice.kind === 'existing'
                         ? choice.categoryId
                         : choice.kind === 'new'
-                          ? '__new'
-                          : ''
+                          ? NEW_CATEGORY
+                          : null
                     }
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === '') set(use.key, { kind: 'none' });
-                      else if (v === '__new')
+                    onChange={(v) => {
+                      if (v === null) set(use.key, { kind: 'none' });
+                      else if (v === NEW_CATEGORY)
                         set(use.key, {
                           kind: 'new',
                           group:
@@ -163,45 +167,44 @@ export function ImportCategories({ uses, groups, choices, onChange }: Props) {
                         });
                       else set(use.key, { kind: 'existing', categoryId: v });
                     }}
-                  >
-                    <option value="">Uncategorised</option>
-                    <option value="__new">Create “{use.name}” as new</option>
-                    {groups.map((g) => (
-                      <optgroup key={g.id} label={g.name}>
-                        {g.categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-2 py-1.5">
-                  {choice.kind === 'new' ? (
-                    <select
-                      aria-label={`Group for ${label}`}
-                      className={selectClass}
-                      value={choice.group}
-                      onChange={(e) => set(use.key, { kind: 'new', group: e.target.value })}
-                    >
-                      {expenseGroups.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name}
-                        </option>
-                      ))}
-                      {newGroups.map((name) => (
-                        <option key={name} value={newGroup(name)}>
-                          New group “{name}”
-                        </option>
-                      ))}
-                      {choice.group.startsWith('new:') &&
-                        !newGroups.includes(choice.group.slice(4)) && (
-                          <option value={choice.group}>New group “{choice.group.slice(4)}”</option>
-                        )}
-                    </select>
-                  ) : (
-                    <span className="text-xs text-text-tertiary">—</span>
+                    allowNone
+                    noneLabel="Uncategorised"
+                    extraItem={{ value: NEW_CATEGORY, label: `Create “${use.name}” as new` }}
+                    // Nothing is created before the import runs: no create form in the list
+                    allowCreate={false}
+                    // Every category was offered before, hidden ones too, for older history
+                    includeHidden
+                  />
+                  {/* A new category's group, under it: three columns do not fit a phone */}
+                  {choice.kind === 'new' && (
+                    <div className="flex items-center gap-2">
+                      <span aria-hidden="true" className="shrink-0 text-xs text-text-tertiary">
+                        in
+                      </span>
+                      <Combobox
+                        aria-label={`Group for ${label}`}
+                        fieldSize="sm"
+                        className="min-w-0 flex-1"
+                        // A click shows the list, as the select it replaces did
+                        menuTrigger="focus"
+                        value={choice.group}
+                        onChange={(v) => {
+                          // Emptying the text is not a choice: the group stays as it was
+                          if (v) set(use.key, { kind: 'new', group: v });
+                        }}
+                        items={[
+                          ...expenseGroups.map((g) => ({ value: g.id, label: g.name })),
+                          ...newGroups.map((name) => ({
+                            value: newGroup(name),
+                            label: newGroupLabel(name),
+                          })),
+                          ...(choice.group.startsWith('new:') &&
+                          !newGroups.includes(choice.group.slice(4))
+                            ? [{ value: choice.group, label: newGroupLabel(choice.group.slice(4)) }]
+                            : []),
+                        ]}
+                      />
+                    </div>
                   )}
                 </td>
               </tr>

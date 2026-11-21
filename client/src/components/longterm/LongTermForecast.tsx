@@ -9,8 +9,11 @@ import { usePlanEditor } from '../../hooks/usePlanEditor';
 import { Button, ButtonLink } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
-import { Input, Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { Select } from '../ui/Select';
 import RowMenu from '../ui/RowMenu';
 import { StatCardRow, type StatCard } from '../reports/ChartHelpers';
 import { formatExampleMoney, formatCurrency, formatWholeCurrency } from '../../utils/currency';
@@ -20,7 +23,7 @@ import { AssumptionsPanel } from './AssumptionsPanel';
 import { ComparePanel } from './ComparePanel';
 import { EventEditor } from './EventEditor';
 import { EventList } from './EventList';
-import { Field, WholeNumberField } from './fields';
+import { WholeNumberField } from './fields';
 import { NetWorthChart } from './NetWorthChart';
 import { SavingsPanel } from './SavingsPanel';
 import { SimulationPanel } from './SimulationPanel';
@@ -38,6 +41,9 @@ const remember = (key: string, value?: string): string | null => {
     return value ?? null;
   }
 };
+
+/** The Compare with list's "No comparison" choice; a plan id is a 21-character nanoid, never this */
+const NO_COMPARISON = '__none';
 
 type Panel = 'events' | 'assumptions' | 'accounts' | 'savings' | 'compare' | 'simulation';
 const PANELS: { id: Panel; label: string }[] = [
@@ -102,12 +108,7 @@ function NewPlanForm({
         </p>
       )}
       <Field label="Plan name">
-        <Input
-          aria-label="Plan name"
-          value={name}
-          maxLength={100}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <Input value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />
       </Field>
       <AmountFields report={report}>
         <WholeNumberField
@@ -501,22 +502,19 @@ function Editor({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Plan" className="min-w-48 max-md:flex-1">
-          <Select
-            aria-label="Plan"
-            value={saved.id}
-            onChange={(e) => {
-              const id = e.target.value;
-              guard(() => onSelect(id));
-            }}
-          >
-            {plans.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.id === saved.id ? working.name : p.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <Combobox
+          label="Plan"
+          items={plans.map((p) => ({
+            value: p.id,
+            label: p.id === saved.id ? working.name : p.name,
+          }))}
+          value={saved.id}
+          // Emptying the text to search keeps the plan shown until another is picked
+          onChange={(id) => {
+            if (id && id !== saved.id) guard(() => onSelect(id));
+          }}
+          className="min-w-48 max-md:flex-1"
+        />
         <RowMenu
           label="Plan actions"
           items={[
@@ -646,20 +644,17 @@ function Editor({
             onSelect={setYear}
           />
           <div className="flex flex-wrap items-end gap-3">
-            <Field label="See what made up a year">
-              <Select
-                aria-label="Year"
-                value={yearIndex ?? ''}
-                onChange={(e) => setYear(e.target.value === '' ? null : Number(e.target.value))}
-              >
-                <option value="">Choose a year</option>
-                {years.slice(1).map((y) => (
-                  <option key={y.index} value={y.index}>
-                    {y.calendarYear} (age {y.age} to {y.age + 1})
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <Select
+              label="See what made up a year"
+              placeholder="Choose a year"
+              value={yearIndex === null ? '' : String(yearIndex)}
+              onChange={(v) => setYear(v === '' ? null : Number(v))}
+              options={years.slice(1).map((y) => ({
+                value: String(y.index),
+                label: `${y.calendarYear} (age ${y.age} to ${y.age + 1})`,
+              }))}
+              className="w-auto min-w-56"
+            />
             <p className="text-xs text-text-tertiary pb-3 max-w-prose">
               A projection, not a promise.{' '}
               {mode === 'today'
@@ -782,20 +777,19 @@ function Editor({
               </p>
             ) : (
               <>
-                <Field label="Compare with" className="max-w-xs">
-                  <Select
-                    aria-label="Compare with"
-                    value={refSummary ? reference : ''}
-                    onChange={(e) => setReference(e.target.value)}
-                  >
-                    <option value="">No comparison</option>
-                    {others.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                <Combobox
+                  label="Compare with"
+                  items={[
+                    { value: NO_COMPARISON, label: 'No comparison' },
+                    ...others.map((p) => ({ value: p.id, label: p.name })),
+                  ]}
+                  value={refSummary ? reference : NO_COMPARISON}
+                  // Emptying the text to search keeps the comparison until another is picked
+                  onChange={(id) => {
+                    if (id) setReference(id === NO_COMPARISON ? '' : id);
+                  }}
+                  className="max-w-xs"
+                />
                 {comparison.error && (
                   <p role="alert" className="text-sm text-negative">
                     {(comparison.error as Error).message}
@@ -845,12 +839,7 @@ function Editor({
           }}
         >
           <Field label="Plan name">
-            <Input
-              aria-label="Plan name"
-              value={text}
-              maxLength={100}
-              onChange={(e) => setText(e.target.value)}
-            />
+            <Input value={text} maxLength={100} onChange={(e) => setText(e.target.value)} />
           </Field>
           {modal === 'rename' && conflictBox}
           {planError && (

@@ -87,9 +87,8 @@ test('a From after To moves To up, and To cannot start before From', async ({ pa
   );
   for (const name of ['June 2026', 'November 2026'])
     await expect(to.getByRole('button', { name, exact: true })).toBeDisabled();
-  // After max, nothing can be chosen
-  await to.getByRole('button', { name: 'Next year' }).click();
-  await expect(to.getByRole('button', { name: 'January 2027', exact: true })).toBeDisabled();
+  // After max, nothing can be chosen, so the grid does not step into max's next year (IN-03)
+  await expect(to.getByRole('button', { name: 'Next year' })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Done' }).click();
   await expect(shown(page, 'Default')).toHaveText('2026-12 to 2026-12');
   await expect(trigger(page, 'Default')).toHaveText('Dec 2026');

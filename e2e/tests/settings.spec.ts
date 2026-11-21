@@ -435,9 +435,11 @@ test.describe('goals', () => {
     await dialog.getByRole('textbox', { name: 'Name' }).fill('Emergency Fund');
     await dialog.getByRole('textbox', { name: 'Target', exact: true }).fill('10000');
     await dialog.getByRole('textbox', { name: 'Saved so far' }).fill('2500');
-    await dialog
-      .getByRole('combobox', { name: 'Linked account' })
-      .selectOption({ label: 'Savings' });
+    // The shared Combobox (G3): typing opens its filtered list, then the row is picked
+    const linked = dialog.getByRole('combobox', { name: 'Linked account' });
+    await linked.fill('Sav');
+    await page.getByRole('option', { name: 'Savings', exact: true }).click();
+    await expect(linked).toHaveValue('Savings');
     await dialog.getByRole('button', { name: 'Life Buoy' }).click();
     await expect(dialog.getByRole('button', { name: 'Life Buoy' })).toHaveAttribute(
       'aria-pressed',

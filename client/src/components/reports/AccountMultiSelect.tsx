@@ -1,4 +1,5 @@
 import { useAccounts } from '../../hooks/useAccounts';
+import { Checkbox } from '../ui/Checkbox';
 
 interface Props {
   selected: string[];
@@ -34,15 +35,14 @@ export default function AccountMultiSelect({ selected, onChange }: Props) {
       {open.map((a) => {
         const checked = allSelected || selected.includes(a.id);
         return (
-          <label key={a.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={() => toggle(a.id)}
-              className="rounded border-border text-brand-600 focus:ring-brand-600"
-            />
-            <span className="text-sm text-text-secondary truncate">{a.name}</span>
-          </label>
+          <Checkbox
+            key={a.id}
+            checked={checked}
+            onCheckedChange={() => toggle(a.id)}
+            className="w-full min-w-0 py-0.5"
+          >
+            <span className="block truncate text-text-secondary">{a.name}</span>
+          </Checkbox>
         );
       })}
     </div>

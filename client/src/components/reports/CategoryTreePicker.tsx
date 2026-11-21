@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CategoryIcon } from '../ui/CategoryIcon';
+import { Checkbox } from '../ui/Checkbox';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -96,31 +97,24 @@ export default function CategoryTreePicker({
                 <ChevronRight className="w-3 h-3" />
               )}
             </button>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isGroupChecked(g.id)}
-                onChange={() => toggleGroup(g.id)}
-                className="rounded border-border text-brand-600 focus:ring-brand-600"
-              />
-              <span className="text-sm font-medium text-text-secondary">{g.name}</span>
-            </label>
+            <Checkbox checked={isGroupChecked(g.id)} onCheckedChange={() => toggleGroup(g.id)}>
+              <span className="font-medium text-text-secondary">{g.name}</span>
+            </Checkbox>
           </div>
           {expanded.has(g.id) && (
             <div className="ml-6 space-y-0.5">
               {g.categories.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 py-0.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isCatChecked(c.id)}
-                    onChange={() => toggleCategory(c.id)}
-                    className="rounded border-border text-brand-600 focus:ring-brand-600"
-                  />
-                  <span className="text-sm text-text-secondary inline-flex items-center gap-1.5">
+                <Checkbox
+                  key={c.id}
+                  checked={isCatChecked(c.id)}
+                  onCheckedChange={() => toggleCategory(c.id)}
+                  className="py-0.5"
+                >
+                  <span className="text-text-secondary inline-flex items-center gap-1.5">
                     {showCategoryIcons && <CategoryIcon icon={c.icon} size={14} />}
                     {c.name}
                   </span>
-                </label>
+                </Checkbox>
               ))}
             </div>
           )}

@@ -4,6 +4,9 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Label } from '../ui/Label';
+import { Radio, RadioGroup } from '../ui/RadioGroup';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { GuideLink } from '../guide/GuideLink';
 import { FilesSection } from '../files/FilesSection';
@@ -168,16 +171,15 @@ export function SellModal({
           </GuideLink>
         </p>
         <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-          <Field label="Sold on" htmlFor="sale-date" hint="The trade date, not settlement.">
-            <Input
-              id="sale-date"
-              type="date"
-              value={date}
-              max={today()}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </Field>
+          <DatePicker
+            label="Sold on"
+            id="sale-date"
+            value={date}
+            onChange={setDate}
+            maxValue={today()}
+            isRequired
+            description="The trade date, not settlement."
+          />
           <Field
             label="Units sold"
             htmlFor="sale-units"
@@ -210,29 +212,28 @@ export function SellModal({
           </Field>
         </div>
 
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-text-secondary mb-1">Parcels sold</legend>
-          <label className="flex items-center gap-2 text-sm text-text">
-            <input type="radio" name="parcels" checked={!picks} onChange={() => setPicks(null)} />
-            Oldest purchases first (first in, first out)
-          </label>
-          <label className="flex items-center gap-2 text-sm text-text">
-            <input type="radio" name="parcels" checked={!!picks} onChange={choose} />
-            Choose parcels
-          </label>
+        <div className="space-y-2">
+          <RadioGroup
+            label="Parcels sold"
+            value={picks ? 'choose' : 'fifo'}
+            onChange={(v) => (v === 'fifo' ? setPicks(null) : choose())}
+          >
+            <Radio value="fifo">Oldest purchases first (first in, first out)</Radio>
+            <Radio value="choose">Choose parcels</Radio>
+          </RadioGroup>
           {picks && (
             <ul className="divide-y divide-border-light border-y border-border-light">
               {available.map((lot) => (
                 <li key={lot.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <label htmlFor={`pick-${lot.id}`} className="text-text-secondary min-w-0">
+                  <Label htmlFor={`pick-${lot.id}`} className="min-w-0">
                     Bought {formatDay(lot.acquiredOn)}
-                    <span className="block text-xs text-text-tertiary">
+                    <span className="block text-xs font-normal text-text-tertiary">
                       {formatUnits(lot.remaining)} left
                       {lot.costBasis === null
                         ? ' · cost unknown'
                         : ` · cost ${formatMoney(lot.costBasis, currency)} for ${formatUnits(lot.quantity)}`}
                     </span>
-                  </label>
+                  </Label>
                   <div className="w-32 shrink-0">
                     <Input
                       id={`pick-${lot.id}`}
@@ -240,7 +241,7 @@ export function SellModal({
                       value={picks[lot.id] ?? ''}
                       placeholder="0"
                       onChange={(e) => setPicks({ ...picks, [lot.id]: e.target.value })}
-                      aria-invalid={!!picks[lot.id]?.trim() && parseUnits(picks[lot.id]) === null}
+                      isInvalid={!!picks[lot.id]?.trim() && parseUnits(picks[lot.id]) === null}
                     />
                   </div>
                 </li>
@@ -252,7 +253,7 @@ export function SellModal({
               )}
             </ul>
           )}
-        </fieldset>
+        </div>
 
         <section aria-label="Gain on this sale" aria-live="polite" className="space-y-2">
           {preview.error ? (

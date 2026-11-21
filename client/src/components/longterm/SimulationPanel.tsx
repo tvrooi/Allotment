@@ -11,14 +11,17 @@ import { LegendKey } from '../charts/ChartLegend';
 import { smooth, valueScale } from '../charts/kit';
 import * as api from '../../api/longTerm';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { chartColors } from '../../utils/chartColors';
 import { formatCurrency } from '../../utils/currency';
 import { CLASS_LABEL, chanceLabel, inDollars, type Dollars } from '../../utils/longTerm';
-import { Field, WholeNumberField } from './fields';
+import { WholeNumberField } from './fields';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 
-const PATHS = [500, 1000, 2000];
+const PATH_OPTIONS = [500, 1000, 2000].map((p) => ({
+  value: String(p),
+  label: p.toLocaleString(),
+}));
 
 /**
  * Monte Carlo: the saved plan run many times with random yearly returns. It answers "how often
@@ -172,19 +175,13 @@ export function SimulationPanel({
         }}
       >
         <AmountFields report={report}>
-          <Field label="Simulated paths">
-            <Select
-              aria-label="Simulated paths"
-              value={paths}
-              onChange={(e) => setPaths(Number(e.target.value))}
-            >
-              {PATHS.map((p) => (
-                <option key={p} value={p}>
-                  {p.toLocaleString()}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <Select
+            label="Simulated paths"
+            value={String(paths)}
+            onChange={(p) => setPaths(Number(p))}
+            options={PATH_OPTIONS}
+            className="w-auto min-w-32"
+          />
           <WholeNumberField
             label="Random seed"
             value={seed}

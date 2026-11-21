@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { EventKind, Plan, PlanEvent } from '../../api/longTerm';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { EVENT_KINDS, eventYear, kindLabel } from '../../utils/longTerm';
 import { MARKER_GLYPH } from './NetWorthChart';
@@ -85,16 +86,14 @@ export function EventList({
                     {e.enabled ? '' : ' · left out'}
                   </p>
                 </div>
-                <label className="relative flex items-center gap-1 text-xs text-text-secondary max-md:min-h-11">
-                  <input
-                    type="checkbox"
-                    aria-label={`Include ${e.name}`}
-                    checked={e.enabled}
-                    disabled={busy}
-                    onChange={() => onToggle(e)}
-                  />
-                  <span className="max-sm:sr-only">Include</span>
-                </label>
+                <Checkbox
+                  aria-label={`Include ${e.name}`}
+                  checked={e.enabled}
+                  disabled={busy}
+                  onCheckedChange={() => onToggle(e)}
+                >
+                  <span className="text-xs text-text-secondary max-sm:sr-only">Include</span>
+                </Checkbox>
                 <Button
                   size="sm"
                   variant="ghost"

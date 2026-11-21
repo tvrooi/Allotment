@@ -43,19 +43,34 @@ test('imports the categories in a YNAB-style CSV and shows what came in', async 
   const account = await api.createAccount('Old CBA', 0);
   await open(page, `/accounts/${account.id}`);
   const dialog = await importFile(page, ynabStyleCsv());
-  await expect(dialog.getByRole('combobox', { name: 'Column Category' })).toHaveValue('category');
+  // The column role is the shared Select: a button showing the chosen role (03-22)
+  await expect(dialog.getByRole('button', { name: 'Column Category' })).toHaveText('Category');
   await dialog.getByRole('button', { name: 'Preview' }).click();
 
   // What the file's categories become, before anything is created
   await expect(dialog).toContainText('Your file has 2 categories');
-  const groceries = dialog.getByRole('combobox', { name: 'Category for Food & Dining: Groceries' });
+  // Each target is CategorySelectButton: a button showing the chosen category (03-25)
+  const groceries = dialog.getByRole('button', { name: 'Category for Food & Dining: Groceries' });
   const groceryId = (await api.category('Groceries')).id;
-  await expect(groceries).toHaveValue(groceryId); // matched by name, ignoring the group
-  const rent = dialog.getByRole('combobox', { name: 'Category for Bills: Landlord Fees' });
-  await expect(rent).toHaveValue('__new');
-  await expect(
-    dialog.getByRole('combobox', { name: 'Group for Bills: Landlord Fees' }),
-  ).toContainText('New group “Bills”');
+  await expect(groceries).toHaveText('Groceries'); // matched by name, ignoring the group
+  const rent = dialog.getByRole('button', { name: 'Category for Bills: Landlord Fees' });
+  await expect(rent).toHaveText('Create “Landlord Fees” as new');
+  // The group is the shared Combobox: its input shows the chosen group's text
+  const rentGroup = dialog.getByRole('combobox', { name: 'Group for Bills: Landlord Fees' });
+  await expect(rentGroup).toHaveValue('New group “Bills”');
+  // Emptying the group's text is not a choice: on leaving the field its group is back
+  await rentGroup.fill('');
+  await rentGroup.blur();
+  await expect(rentGroup).toHaveValue('New group “Bills”');
+  // Choosing in the list changes only the plan: the new category waits for the import
+  await rent.click();
+  await dialog.getByRole('option', { name: 'Uncategorised' }).click();
+  await expect(rent).toHaveText('Uncategorised');
+  await expect(rentGroup).toHaveCount(0);
+  await rent.click();
+  await dialog.getByRole('option', { name: 'Create “Landlord Fees” as new' }).click();
+  await expect(rent).toHaveText('Create “Landlord Fees” as new');
+  await expect(rentGroup).toHaveValue('New group “Bills”');
   expect((await api.categoryGroups()).some((g) => g.name === 'Bills')).toBe(false);
   await dialog.getByRole('button', { name: 'Preview' }).click();
 
@@ -139,11 +154,17 @@ test('imports a YNAB register with several accounts, from the welcome page', asy
     .getByLabel('YNAB register file')
     .setInputFiles({ name: 'Register.csv', mimeType: 'text/csv', buffer: Buffer.from(file) });
   await expect(dialog).toContainText('6 transactions in 2 accounts');
-  await expect(dialog.getByRole('combobox', { name: 'Date format' })).toHaveValue('dmy');
+  // The formats are the shared Select: a button showing the chosen format's label (03-25)
+  await expect(dialog.getByRole('button', { name: 'Date format' })).toHaveText('DD/MM/YYYY');
+  await expect(dialog.getByRole('button', { name: 'Amount format' })).toHaveText('1,234.56');
+  // Each account's target is the shared Combobox; its input shows the chosen item's text
+  await expect(
+    dialog.getByRole('combobox', { name: 'Allotment account for Everyday' }),
+  ).toHaveValue('Create a new account');
   await expect(dialog.getByRole('textbox', { name: 'Name for Everyday' })).toHaveValue('Everyday');
   // "Fuel" is offered as the existing "Gas / Fuel", not as a near-duplicate
-  await expect(dialog.getByRole('combobox', { name: 'Category for Transport: Fuel' })).toHaveValue(
-    (await api.category('Gas / Fuel')).id,
+  await expect(dialog.getByRole('button', { name: 'Category for Transport: Fuel' })).toHaveText(
+    'Gas / Fuel',
   );
   await dialog.getByRole('button', { name: 'Import 6 transactions' }).click();
   await expect(dialog).toContainText('Everyday: 4 imported');
@@ -171,6 +192,56 @@ test('imports a YNAB register with several accounts, from the welcome page', asy
   );
   // Income filed under Ready to Assign is not a category to budget
   expect(txs.find((t) => t.payeeName === 'Employer')!.categoryId).toBeNull();
+});
+
+test('a YNAB account can be added to an existing account instead of a new one', async ({
+  page,
+  api,
+}) => {
+  const old = await api.createAccount('Old Everyday', 0);
+  await open(page, '/settings?tab=data');
+  await page.getByRole('button', { name: 'From YNAB…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import from YNAB' });
+  const header =
+    'Account,Flag,Date,Payee,Category Group/Category,Category Group,Category,Memo,Outflow,Inflow,Cleared\n';
+  // Days after the 12th, so the file reads only as day/month
+  let start = -40;
+  while (!/-(1[3-9]|2[0-7])$/.test(isoDay(start))) start--;
+  const d1 = dmy(isoDay(start));
+  const file =
+    header +
+    `Everyday,,${d1},Coles,Food & Dining: Groceries,Food & Dining,Groceries,,$12.00,$0.00,Cleared\n` +
+    `Everyday,,${d1},Shell,Transport: Fuel,Transport,Fuel,,$30.00,$0.00,Cleared\n` +
+    `Savings,,${d1},Interest,Income: Interest,Income,Interest,,$0.00,$1.25,Cleared\n`;
+  await dialog
+    .getByLabel('YNAB register file')
+    .setInputFiles({ name: 'Register.csv', mimeType: 'text/csv', buffer: Buffer.from(file) });
+  await expect(dialog).toContainText('3 transactions in 2 accounts');
+
+  const everyday = dialog.getByRole('combobox', { name: 'Allotment account for Everyday' });
+  await expect(everyday).toHaveValue('Create a new account');
+  // Emptying the text is not a choice: on leaving the field the account is back
+  await everyday.fill('');
+  await everyday.blur();
+  await expect(everyday).toHaveValue('Create a new account');
+  // The list opens on typing; "Add to …" puts the file's account into an existing one
+  // (its list is a popover outside the dialog)
+  await everyday.fill('Old');
+  await page.getByRole('option', { name: 'Add to Old Everyday' }).click();
+  await expect(everyday).toHaveValue('Add to Old Everyday');
+  await expect(dialog.getByRole('textbox', { name: 'Name for Everyday' })).toHaveCount(0);
+  await expect(dialog.getByRole('textbox', { name: 'Name for Savings' })).toHaveValue('Savings');
+
+  await dialog.getByRole('button', { name: 'Import 3 transactions' }).click();
+  await expect(dialog).toContainText('Everyday: 2 imported');
+  await expect(dialog).toContainText('Savings: 1 imported');
+
+  // No new "Everyday": its rows are in the existing account, and Savings is a new one
+  const accounts = await api.accounts();
+  expect(accounts.map((a) => a.name).sort()).toEqual(['Old Everyday', 'Savings']);
+  const rows = await api.transactions(`?account_id=${old.id}&from=2000-01-01`);
+  expect(rows.map((t) => t.payeeName).sort()).toEqual(['Coles', 'Shell']);
+  expect(await api.balance(old.id)).toBe(-4_200);
 });
 
 test('links Up to an account that already has history, from a cut-over date', async ({

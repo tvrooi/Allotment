@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, Link2, ReceiptText, ScanText, Star, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -22,8 +22,12 @@ import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
-import { Input, Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
+import { DatePicker } from '../ui/DatePicker';
+import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { Textarea } from '../ui/Textarea';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { useAssets } from '../../hooks/useAssets';
 import { Private } from '../ui/Private';
 import { FilePreview, formatBytes } from './FileParts';
@@ -41,6 +45,8 @@ const KIND_NOUNS: Record<LinkKind, string> = {
 };
 /** Linked from their own dialogs on Investments, not chosen here */
 const PICKED_ELSEWHERE = new Set<LinkKind>(['investmentSale', 'investmentIncome']);
+/** "Choose a goal", "Choose an account": the article follows the noun's first sound */
+const choosePrompt = (noun: string) => `Choose ${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
 /** Where a link goes in the app */
 function linkTarget(link: FileLink) {
@@ -87,12 +93,34 @@ function AddLink({ doc, onDone }: { doc: StoredDocument; onDone: () => void }) {
     queryFn: () => getTransactions({ search: q, limit: 20 }),
     enabled: kind === 'transaction' && q.length >= 2,
   });
+  // The non-category target being linked; back to none once the link is made or fails
+  const [target, setTarget] = useState('');
   const linked = new Set(doc.links.map((l) => `${l.kind}:${l.id}`));
   const add = async (targetId: string) => {
     if (!targetId) return;
     await link.mutateAsync({ id: doc.id, kind, targetId });
     onDone();
   };
+  const pick = async (targetId: string) => {
+    setTarget(targetId);
+    try {
+      await add(targetId);
+    } finally {
+      setTarget('');
+    }
+  };
+  // Accounts, goals and assets grow with the budget, so they are searched (D-06); a target
+  // already linked stays listed but cannot be chosen again
+  const entities =
+    kind === 'goal' ? goals : kind === 'account' ? accounts : kind === 'asset' ? assets : [];
+  const targets = entities.map((e) => ({
+    value: e.id,
+    label: e.name,
+    isDisabled: linked.has(`${kind}:${e.id}`),
+  }));
+  const categoryIds = groups.flatMap((g) =>
+    g.categories.filter((c) => !linked.has(`category:${c.id}`)).map((c) => c.id),
+  );
   return (
     <div className="space-y-2 rounded-md border border-border-light p-3">
       <div className="flex gap-1 flex-wrap" role="group" aria-label="Link to">
@@ -151,43 +179,30 @@ function AddLink({ doc, onDone }: { doc: StoredDocument; onDone: () => void }) {
             </ul>
           )}
         </>
+      ) : kind === 'category' ? (
+        // The picker every category choice uses; categories already linked are left out of it
+        <CategorySelectButton
+          label="Category"
+          placeholder="Choose a category…"
+          value={null}
+          onChange={(id) => id && void add(id)}
+          groups={groups}
+          categoryIds={categoryIds}
+          // A link needs a category: an "Uncategorised" row would do nothing
+          allowNone={false}
+          allowCreate={false}
+          includeHidden
+        />
       ) : (
-        <Select
-          aria-label={`Choose a ${KIND_NOUNS[kind].toLowerCase()}`}
-          defaultValue=""
-          onChange={(e) => add(e.target.value)}
-          disabled={link.isPending}
-        >
-          <option value="">Choose…</option>
-          {kind === 'category' &&
-            groups.map((g) => (
-              <optgroup key={g.id} label={g.name}>
-                {g.categories.map((c) => (
-                  <option key={c.id} value={c.id} disabled={linked.has(`category:${c.id}`)}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          {kind === 'goal' &&
-            goals.map((g) => (
-              <option key={g.id} value={g.id} disabled={linked.has(`goal:${g.id}`)}>
-                {g.name}
-              </option>
-            ))}
-          {kind === 'account' &&
-            accounts.map((a) => (
-              <option key={a.id} value={a.id} disabled={linked.has(`account:${a.id}`)}>
-                {a.name}
-              </option>
-            ))}
-          {kind === 'asset' &&
-            assets.map((a) => (
-              <option key={a.id} value={a.id} disabled={linked.has(`asset:${a.id}`)}>
-                {a.name}
-              </option>
-            ))}
-        </Select>
+        <Combobox
+          key={kind}
+          aria-label={choosePrompt(KIND_NOUNS[kind].toLowerCase())}
+          placeholder="Choose…"
+          items={targets}
+          value={target}
+          onChange={(value) => value && void pick(value)}
+          isDisabled={link.isPending}
+        />
       )}
       {link.error && (
         <p role="alert" className="text-xs text-negative">
@@ -254,6 +269,7 @@ function Labels({ doc }: { doc: StoredDocument }) {
 
 function Details({ doc }: { doc: StoredDocument }) {
   const update = useUpdateFile();
+  const fieldId = useId();
   const [fileName, setFileName] = useState(doc.fileName);
   const [description, setDescription] = useState(doc.description ?? '');
   const [date, setDate] = useState(doc.documentDate ?? '');
@@ -275,20 +291,22 @@ function Details({ doc }: { doc: StoredDocument }) {
           onBlur={() => fileName.trim() && fileName !== doc.fileName && save({ fileName })}
         />
       </label>
-      <label className="text-xs text-text-secondary space-y-1">
-        <span>Date</span>
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => {
-            setDate(e.target.value);
-            save({ documentDate: e.target.value || null });
-          }}
-        />
-      </label>
-      <label className="text-xs text-text-secondary space-y-1 sm:col-span-2">
-        <span>Description</span>
-        <textarea
+      <DatePicker
+        label="Date"
+        optional
+        value={date}
+        onChange={(value) => {
+          setDate(value);
+          save({ documentDate: value || null });
+        }}
+      />
+      <div className="text-xs text-text-secondary space-y-1 sm:col-span-2">
+        {/* Tied by id: the lint rule knows a wrapping label joins Input, not Textarea */}
+        <label htmlFor={`${fieldId}-description`} className="block">
+          Description
+        </label>
+        <Textarea
+          id={`${fieldId}-description`}
           value={description}
           maxLength={2000}
           rows={2}
@@ -296,9 +314,8 @@ function Details({ doc }: { doc: StoredDocument }) {
           onBlur={() =>
             description !== (doc.description ?? '') && save({ description: description || null })
           }
-          className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text"
         />
-      </label>
+      </div>
       {update.error && (
         <p role="alert" className="text-xs text-negative sm:col-span-2">
           {(update.error as Error).message}
