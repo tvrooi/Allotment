@@ -9,7 +9,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## Done this session
 
-- UAT 03 fixes (#267; up.178, branch `feat/uat-03-selection-and-phone-pickers`, one PR into
+- UAT 03 fixes (#267; up.178, branch `feat/uat-03-selection-and-phone-pickers`, PR #280 into
   `redesign`, not merged): the owner's UAT of 21 November 2026 found two gaps, both closed in code.
   The register has one selection: **Select** puts a checkbox on every row and phone card, **Select
   all _N_** selects the whole list, and `utils/registerSelection.ts` is its pure model (toggle,

@@ -18,7 +18,7 @@ Last updated: 22 November 2026 (the UAT 03 fixes on top of Wave G3, design re-re
 - Design re-review waves (issues #222 to #245) are in progress on `redesign`: status, open PRs and
   the routine are in `docs/ui/WAVES.md`.
 - Waves G2 (#267, up.176, PR #278) and G3 (up.177, PR #279) are merged into `redesign`. The UAT 03
-  fixes (up.178, branch `feat/uat-03-selection-and-phone-pickers`, one PR into `redesign`, open for
+  fixes (up.178, branch `feat/uat-03-selection-and-phone-pickers`, PR #280 into `redesign`, open for
   the owner's review and merge): the register selects transactions one by one or all at once and
   edits them from the right-click menu with Undo (the Edit dialog and the unused
   `POST /api/transactions/review` route are gone), and Add transaction's phone category list opens
