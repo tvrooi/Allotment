@@ -35,6 +35,12 @@ interface Props {
   allowCreate?: boolean;
   /** Forwarded to CategoryPicker (default false). Set true to keep hidden categories selectable. */
   includeHidden?: boolean;
+  /**
+   * Forwarded to CategoryPicker (default false): on a phone the list opens as a calm drawer, flush
+   * with the button and with its search left for a tap (owner, 21 November 2026, UAT G-03-1; the
+   * Add transaction Category field is the one caller)
+   */
+  phoneDrawer?: boolean;
   /** For a visible <label htmlFor> beside the button */
   id?: string;
 }
@@ -85,6 +91,7 @@ export function CategorySelectButton({
   categoryIds,
   allowCreate,
   includeHidden,
+  phoneDrawer,
   id,
 }: Props) {
   const showCategoryIcons = usePreferencesStore((s) => s.showCategoryIcons);
@@ -163,6 +170,7 @@ export function CategorySelectButton({
           onClose={() => setOpen(false)}
           position={position}
           fullWidth
+          phoneDrawer={phoneDrawer}
         />
       )}
     </div>

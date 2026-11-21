@@ -1,15 +1,12 @@
 import { useCanSave } from '../../hooks/useConnection';
 import { useCanAddTransaction } from '../../hooks/useOffline';
+import { SAVING_PAUSED } from './savingPaused';
 
 /** Explains a disabled save button while Allotment can't reach its server. */
 export function SavingPausedHint({ className = '' }: { className?: string }) {
   const canSave = useCanSave();
   if (canSave) return null;
-  return (
-    <p className={`text-xs text-caution ${className}`}>
-      Saving is paused until Allotment reconnects.
-    </p>
-  );
+  return <p className={`text-xs text-caution ${className}`}>{SAVING_PAUSED}</p>;
 }
 
 /** Next to "add transaction" buttons: offline, a new transaction waits on this device. */

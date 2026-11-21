@@ -12,6 +12,7 @@ import {
   setToggle,
   type Api,
 } from './fixtures';
+import { startDesktopServer, stopDesktopServer } from './serverControl';
 
 // Entering and editing transactions in an account register, checking both what the
 // page shows and what the server stored.
@@ -1599,53 +1600,793 @@ test.describe('the Split transaction dialog', () => {
   });
 });
 
-test('bulk edit sets the category, notes, payee and report visibility on the whole list', async ({
+test.describe('Select all makes the whole list the selection', () => {
+  const bar = (page: Page) => page.getByRole('region', { name: 'Selected transactions' });
+
+  /** Mock one, two and three on checking; the list opened */
+  async function threeRows(api: Api, page: Page, path = '') {
+    const { checking } = await setup(api);
+    for (const [payeeName, amount] of [
+      ['Mock one', -100],
+      ['Mock two', -200],
+      ['Mock three', -300],
+    ] as const)
+      await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+    await open(page, `/accounts/${checking.id}${path}`);
+    return checking;
+  }
+
+  test('Select all, then the selection menu sets the category, notes, payee and report visibility on the whole list', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    for (const [payeeName, amount] of [
+      ['Corner Grocery', -2_500],
+      ['Big Box Store', -7_000],
+    ] as const) {
+      await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+    }
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Select all 2' }).click();
+
+    // Every row is ticked and the bar says so; right-click either row for the selection's menu
+    await expect(bar(page)).toContainText('All 2 selected');
+    await expect(page.getByRole('checkbox', { name: /^Select / })).toHaveCount(2);
+    for (const box of await page.getByRole('checkbox', { name: /^Select / }).all())
+      await expect(box).toBeChecked();
+    const menu = page.getByRole('menu', { name: 'Actions for 2 selected transactions' });
+    const openMenu = async () => {
+      await page.getByTestId('transaction-row').first().click({ button: 'right' });
+      await expect(menu).toBeVisible();
+      return menu;
+    };
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Category…' }).click();
+    await categoryOption(page, 'Groceries', { exact: true }).click();
+    await expect(page.getByTestId('undo-toast')).toContainText('Changed 2 of 2 transactions.');
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Payee…' }).click();
+    await page.getByRole('textbox', { name: 'New payee' }).fill('Corner Shop');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Payee for 2 transactions' })).toBeHidden();
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Replace notes…' }).click();
+    await page.getByRole('textbox', { name: 'New notes' }).fill('weekly shop');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Notes for 2 transactions' })).toBeHidden();
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Reports' }).hover();
+    await page
+      .getByRole('menu', { name: 'Reports' })
+      .getByRole('menuitem', { name: 'Hide from reports' })
+      .click();
+
+    const groceries = await api.category('Groceries');
+    await expect
+      .poll(async () =>
+        (await api.transactions(`?account_id=${checking.id}`)).map((tx) => ({
+          categoryId: tx.categoryId,
+          payeeName: tx.payeeName,
+          notes: tx.notes,
+          hiddenFromReports: tx.hiddenFromReports,
+        })),
+      )
+      .toEqual(
+        Array(2).fill({
+          categoryId: groceries.id,
+          payeeName: 'Corner Shop',
+          notes: 'weekly shop',
+          hiddenFromReports: 1,
+        }),
+      );
+    // Each edit refetched the list; the same filters keep the whole-list selection
+    await expect(bar(page)).toContainText('All 2 selected');
+  });
+
+  test('a row unticked after Select all is left out of a review, and the bar says 2 selected', async ({
+    page,
+    api,
+  }) => {
+    const checking = await threeRows(api, page);
+    const reviewed = async () =>
+      Object.fromEntries(
+        (await api.transactions(`?account_id=${checking.id}`)).map((t) => [
+          t.payeeName,
+          Boolean(t.reviewedAt),
+        ]),
+      );
+    await page.getByRole('button', { name: 'Select all 3' }).click();
+    await expect(bar(page)).toContainText('All 3 selected');
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }), false);
+    await expect(bar(page)).toContainText('2 selected');
+    await expect(bar(page)).not.toContainText('All 3 selected');
+
+    await bar(page).getByRole('button', { name: 'More actions' }).click();
+    await page
+      .getByRole('menu', { name: 'Actions for 2 selected transactions' })
+      .getByRole('menuitem', { name: 'Review' })
+      .hover();
+    await page
+      .getByRole('menu', { name: 'Review' })
+      .getByRole('menuitem', { name: 'Mark reviewed' })
+      .click();
+    await expect(page.getByTestId('undo-toast')).toContainText('Marked 2 reviewed.');
+    await expect
+      .poll(reviewed)
+      .toEqual({ 'Mock one': true, 'Mock two': false, 'Mock three': true });
+  });
+
+  test('a row unticked after Select all is not deleted', async ({ page, api }) => {
+    const checking = await threeRows(api, page);
+    await page.getByRole('button', { name: 'Select all 3' }).click();
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }), false);
+    await bar(page).getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Delete 2' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Delete 2 transactions' });
+    await dialog.getByLabel('Type delete to confirm').fill('delete');
+    await dialog.getByRole('button', { name: 'Delete 2', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Deleted' })
+      .getByRole('button', { name: 'Done' })
+      .click();
+    expect((await api.transactions(`?account_id=${checking.id}`)).map((t) => t.payeeName)).toEqual([
+      'Mock two',
+    ]);
+  });
+
+  test('changing the date range ends a whole-list selection', async ({ page, api }) => {
+    const { checking } = await setup(api);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -1_000,
+      payeeName: 'Coffee Corner',
+    });
+    await api.createTransaction({
+      accountId: checking.id,
+      date: '2020-06-15',
+      amount: -2_000,
+      payeeName: 'Old Bookshop',
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Select all 1' }).click();
+    await expect(bar(page)).toContainText('All 1 selected');
+
+    // The whole-list selection does not carry over to a list the owner has not chosen
+    await page.getByRole('button', { name: 'All time' }).click();
+    await expect(page.getByText('2 transactions')).toBeVisible();
+    await expect(bar(page)).toContainText('0 selected');
+    await expect(bar(page)).not.toContainText('All');
+    await expect(page.getByRole('checkbox', { name: /^Select / })).toHaveCount(2);
+    for (const box of await page.getByRole('checkbox', { name: /^Select / }).all())
+      await expect(box).not.toBeChecked();
+  });
+
+  test('a one-row list reads All 1 selected, and reviewing the whole list ends selecting', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await setup(api);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -100,
+      payeeName: 'Mock one',
+    });
+    await open(page, '/transactions?range=this-month&reviewed=0');
+    await page.getByRole('button', { name: 'Select all 1' }).click();
+    await expect(bar(page)).toContainText('All 1 selected');
+    await row(page, 'Mock one').click({ button: 'right' });
+    await expect(
+      page.getByRole('menu', { name: 'Actions for 1 selected transaction' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await bar(page).getByRole('button', { name: 'More actions' }).click();
+    await page
+      .getByRole('menu', { name: 'Actions for 1 selected transaction' })
+      .getByRole('menuitem', { name: 'Review' })
+      .hover();
+    await page
+      .getByRole('menu', { name: 'Review' })
+      .getByRole('menuitem', { name: 'Mark reviewed' })
+      .click();
+    // The list is empty now, and there is nothing left to select
+    await expect(page.getByText('No transactions found')).toBeVisible();
+    await expect(bar(page)).toHaveCount(0);
+  });
+});
+
+test('ticked transactions are marked reviewed from the right-click menu, the rest untouched', async ({
   page,
   api,
 }) => {
   const { checking } = await setup(api);
   for (const [payeeName, amount] of [
-    ['Corner Grocery', -2_500],
-    ['Big Box Store', -7_000],
-  ] as const) {
+    ['Mock one', -100],
+    ['Mock two', -200],
+    ['Mock three', -300],
+  ] as const)
     await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
-  }
+  const reviewed = async () =>
+    Object.fromEntries(
+      (await api.transactions(`?account_id=${checking.id}`)).map((t) => [
+        t.payeeName,
+        Boolean(t.reviewedAt),
+      ]),
+    );
+
   await open(page, `/accounts/${checking.id}`);
-  await page.getByRole('button', { name: 'Select all 2' }).click();
-  await page.getByRole('button', { name: 'Edit 2' }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toHaveAccessibleName('Edit 2 transactions');
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+  await expect(page.getByRole('region', { name: 'Selected transactions' })).toContainText(
+    '2 selected',
+  );
 
-  await chooseOption(dialog.getByRole('button', { name: /Category change$/ }), 'Set to');
-  await dialog.getByRole('button', { name: 'New category: Choose a category…' }).click();
-  await categoryOption(dialog, 'Groceries').click();
-  await dialog.getByRole('textbox', { name: 'Payee' }).fill('Corner Shop');
-  await chooseOption(dialog.getByRole('button', { name: /Notes change$/ }), 'Replace with');
-  await dialog.getByRole('textbox', { name: 'New notes' }).fill('weekly shop');
-  await chooseOption(dialog.getByRole('button', { name: /Reports$/ }), 'Hide from reports');
-  await dialog.getByRole('button', { name: 'Review changes' }).click();
+  await row(page, 'Mock one').click({ button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Actions for 2 selected transactions' });
+  await expect(menu).toBeVisible();
+  await menu.getByRole('menuitem', { name: 'Review' }).hover();
+  await page
+    .getByRole('menu', { name: 'Review' })
+    .getByRole('menuitem', { name: 'Mark reviewed' })
+    .click();
+  const toast = page.getByTestId('undo-toast');
+  await expect(toast).toContainText('Marked 2 reviewed.');
+  await expect.poll(reviewed).toEqual({ 'Mock one': true, 'Mock two': true, 'Mock three': false });
 
-  await expect(dialog).toHaveAccessibleName('Does this look right?');
-  for (const line of [
-    'Category → Groceries',
-    'Payee → Corner Shop',
-    'Notes → weekly shop',
-    'Hide from reports',
-  ]) {
-    await expect(dialog.getByRole('listitem').filter({ hasText: line })).toHaveCount(1);
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect
+    .poll(reviewed)
+    .toEqual({ 'Mock one': false, 'Mock two': false, 'Mock three': false });
+
+  // From the keyboard: Shift+F10 and the Menu key on a focused selected row
+  const first = row(page, 'Mock one');
+  await first.focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(first).toBeFocused();
+  await page.keyboard.press('ContextMenu');
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+});
+
+test('ticked transactions take a new payee from the right-click menu', async ({ page, api }) => {
+  const { checking } = await setup(api);
+  for (const [payeeName, amount] of [
+    ['Mock one', -100],
+    ['Mock two', -200],
+    ['Mock three', -300],
+  ] as const)
+    await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+  const payees = async () =>
+    Object.fromEntries(
+      (await api.transactions(`?account_id=${checking.id}`)).map((t) => [t.amount, t.payeeName]),
+    );
+
+  await open(page, `/accounts/${checking.id}`);
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+
+  await row(page, 'Mock one').click({ button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Actions for 2 selected transactions' });
+  await menu.getByRole('menuitem', { name: 'Payee…' }).click();
+
+  // The prompt takes the menu's place: a dialog named for the change, no native select anywhere
+  const prompt = page.getByRole('dialog', { name: 'Payee for 2 transactions' });
+  const field = prompt.getByRole('textbox', { name: 'New payee' });
+  const apply = prompt.getByRole('button', { name: 'Apply' });
+  await expect(field).toBeFocused();
+  await expect(apply).toBeDisabled();
+  await expect(page.locator('select')).toHaveCount(0);
+  await field.fill('   ');
+  await expect(apply).toBeDisabled();
+
+  // Tab stays inside the prompt: field, Apply, Back, then round again
+  await field.fill('Corner Shop');
+  await page.keyboard.press('Tab');
+  await expect(apply).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(prompt.getByRole('button', { name: 'Back' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(field).toBeFocused();
+
+  // Escape goes back to the menu and changes nothing
+  await page.keyboard.press('Escape');
+  await expect(prompt).toBeHidden();
+  await expect(menu).toBeVisible();
+  expect(await payees()).toEqual({ '-100': 'Mock one', '-200': 'Mock two', '-300': 'Mock three' });
+
+  // Back does the same
+  await menu.getByRole('menuitem', { name: 'Payee…' }).click();
+  await prompt.getByRole('button', { name: 'Back' }).click();
+  await expect(menu).toBeVisible();
+
+  await menu.getByRole('menuitem', { name: 'Payee…' }).click();
+  await field.fill('Corner Shop');
+  await page.keyboard.press('Enter');
+  await expect(prompt).toBeHidden();
+  const toast = page.getByTestId('undo-toast');
+  await expect(toast).toContainText('Changed 2 of 2 transactions.');
+  await expect
+    .poll(payees)
+    .toEqual({ '-100': 'Corner Shop', '-200': 'Corner Shop', '-300': 'Mock three' });
+
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect
+    .poll(payees)
+    .toEqual({ '-100': 'Mock one', '-200': 'Mock two', '-300': 'Mock three' });
+});
+
+test.describe('deleting ticked transactions from the selection menu', () => {
+  async function threeRows(api: Api) {
+    const { checking } = await setup(api);
+    const ids: string[] = [];
+    for (const [payeeName, amount] of [
+      ['Mock one', -100],
+      ['Mock two', -200],
+      ['Mock three', -300],
+    ] as const)
+      ids.push(
+        (await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName }))
+          .id,
+      );
+    return { checking, ids };
   }
-  await dialog.getByRole('button', { name: 'Apply to 2' }).click();
-  await expect(dialog).toBeHidden();
+  const payees = async (api: Api, accountId: string) =>
+    (await api.transactions(`?account_id=${accountId}`)).map((t) => t.payeeName).sort();
 
-  const groceries = await api.category('Groceries');
-  const rows = await api.transactions(`?account_id=${checking.id}`);
-  expect(rows).toHaveLength(2);
-  for (const tx of rows) {
-    expect(tx).toMatchObject({
-      categoryId: groceries.id,
-      payeeName: 'Corner Shop',
-      notes: 'weekly shop',
-      hiddenFromReports: 1,
+  test('ticked transactions are deleted from the right-click menu after typing delete', async ({
+    page,
+    api,
+  }) => {
+    const { checking } = await threeRows(api);
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+
+    await row(page, 'Mock one').click({ button: 'right' });
+    await page
+      .getByRole('menu', { name: 'Actions for 2 selected transactions' })
+      .getByRole('menuitem', { name: 'Delete 2' })
+      .click();
+
+    // Nothing is deleted until the word is typed
+    const dialog = page.getByRole('dialog', { name: 'Delete 2 transactions' });
+    const confirm = dialog.getByRole('button', { name: 'Delete 2', exact: true });
+    await expect(confirm).toBeDisabled();
+    await dialog.getByLabel('Type delete to confirm').fill('delete');
+    await confirm.click();
+    const finished = page.getByRole('dialog', { name: 'Deleted' });
+    await expect(finished.getByRole('status')).toContainText('Deleted 2 transactions.');
+    await finished.getByRole('button', { name: 'Done' }).click();
+
+    expect(await payees(api, checking.id)).toEqual(['Mock three']);
+    await expect(page.getByRole('region', { name: 'Selected transactions' })).toContainText(
+      '0 selected',
+    );
+  });
+
+  test('a ticked reconciled transaction is kept, and the dialog says so', async ({ page, api }) => {
+    const { checking, ids } = await threeRows(api);
+    await api.call('PUT', `/accounts/${checking.id}/reconcile`, { transactionIds: [ids[2]] });
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock three/ }));
+
+    await row(page, 'Mock one').click({ button: 'right' });
+    await page
+      .getByRole('menu', { name: 'Actions for 2 selected transactions' })
+      .getByRole('menuitem', { name: 'Delete 2' })
+      .click();
+    const dialog = page.getByRole('dialog', { name: 'Delete 1 transactions' });
+    await expect(dialog).toContainText('1 reconciled (unlock them to delete)');
+    await dialog.getByLabel('Type delete to confirm').fill('delete');
+    await dialog.getByRole('button', { name: 'Delete 1', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Deleted' })
+      .getByRole('button', { name: 'Done' })
+      .click();
+    expect(await payees(api, checking.id)).toEqual(['Mock three', 'Mock two']);
+  });
+});
+
+test.describe('the selection menu makes the changes the Edit dialog did', () => {
+  /** Mock one, two and three on checking; the first two ticked, their menu open for Mock one */
+  async function pickTwo(api: Api, page: Page) {
+    const { checking, savings } = await setup(api);
+    for (const [payeeName, amount] of [
+      ['Mock one', -100],
+      ['Mock two', -200],
+      ['Mock three', -300],
+    ] as const)
+      await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+    /** One field of every register row, by payee */
+    const field = async (name: string) =>
+      Object.fromEntries(
+        (await api.transactions(`?account_id=${checking.id}`)).map((t) => [t.payeeName, t[name]]),
+      );
+    const menu = page.getByRole('menu', { name: 'Actions for 2 selected transactions' });
+    const openMenu = async () => {
+      await row(page, 'Mock one').click({ button: 'right' });
+      await expect(menu).toBeVisible();
+      await expect(page.locator('select')).toHaveCount(0);
+      return menu;
+    };
+    return { checking, savings, field, menu, openMenu };
+  }
+
+  test('Category… sets the category of the ticked rows, and Uncategorised clears it', async ({
+    page,
+    api,
+  }) => {
+    const { field, openMenu } = await pickTwo(api, page);
+    const groceries = (await api.category('Groceries')).id;
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Category…' }).click();
+    await categoryOption(page, 'Groceries', { exact: true }).click();
+    await expect
+      .poll(() => field('categoryId'))
+      .toMatchObject({ 'Mock one': groceries, 'Mock two': groceries, 'Mock three': null });
+    await expect(page.getByTestId('undo-toast')).toContainText('Changed 2 of 2 transactions.');
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Category…' }).click();
+    await categoryOption(page, 'Uncategorised', { exact: true }).click();
+    await expect
+      .poll(() => field('categoryId'))
+      .toMatchObject({ 'Mock one': null, 'Mock two': null, 'Mock three': null });
+  });
+
+  test('Replace notes… and Remove notes change the notes of the ticked rows only', async ({
+    page,
+    api,
+  }) => {
+    const { field, openMenu } = await pickTwo(api, page);
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Replace notes…' }).click();
+    const prompt = page.getByRole('dialog', { name: 'Notes for 2 transactions' });
+    await prompt.getByRole('textbox', { name: 'New notes' }).fill('weekly shop');
+    await prompt.getByRole('button', { name: 'Apply' }).click();
+    await expect
+      .poll(() => field('notes'))
+      .toMatchObject({ 'Mock one': 'weekly shop', 'Mock two': 'weekly shop', 'Mock three': null });
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Remove notes' }).click();
+    await expect
+      .poll(() => field('notes'))
+      .toMatchObject({ 'Mock one': null, 'Mock two': null, 'Mock three': null });
+  });
+
+  test('Add tag, Remove tag and Reports change the ticked rows only', async ({ page, api }) => {
+    const holiday = await api.call<{ id: string }>('POST', '/tags', { name: 'Holiday' });
+    const { field, openMenu } = await pickTwo(api, page);
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Add tag' }).hover();
+    await page
+      .getByRole('menu', { name: 'Add tag' })
+      .getByRole('menuitem', { name: 'Holiday' })
+      .click();
+    await expect
+      .poll(() => field('tagIds'))
+      .toEqual({ 'Mock one': [holiday.id], 'Mock two': [holiday.id], 'Mock three': [] });
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Remove tag' }).hover();
+    await page
+      .getByRole('menu', { name: 'Remove tag' })
+      .getByRole('menuitem', { name: 'Holiday' })
+      .click();
+    await expect
+      .poll(() => field('tagIds'))
+      .toEqual({ 'Mock one': [], 'Mock two': [], 'Mock three': [] });
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Reports' }).hover();
+    await page
+      .getByRole('menu', { name: 'Reports' })
+      .getByRole('menuitem', { name: 'Hide from reports' })
+      .click();
+    await expect
+      .poll(() => field('hiddenFromReports'))
+      .toEqual({ 'Mock one': 1, 'Mock two': 1, 'Mock three': 0 });
+
+    await (await openMenu()).getByRole('menuitem', { name: 'Reports' }).hover();
+    await page
+      .getByRole('menu', { name: 'Reports' })
+      .getByRole('menuitem', { name: 'Show in reports' })
+      .click();
+    await expect
+      .poll(() => field('hiddenFromReports'))
+      .toEqual({ 'Mock one': 0, 'Mock two': 0, 'Mock three': 0 });
+  });
+
+  test('with no tags there are no tag items, and one row reads "1 transaction"', async ({
+    page,
+    api,
+  }) => {
+    const { openMenu, menu } = await pickTwo(api, page);
+    await openMenu();
+    await expect(menu.getByRole('menuitem', { name: 'Category…' })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: /tag$/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }), false);
+    await row(page, 'Mock one').click({ button: 'right' });
+    await page
+      .getByRole('menu', { name: 'Actions for 1 selected transaction' })
+      .getByRole('menuitem', { name: 'Payee…' })
+      .click();
+    await expect(page.getByRole('dialog', { name: 'Payee for 1 transaction' })).toBeVisible();
+  });
+
+  test('a ticked transfer keeps its category and the toast says it was left alone', async ({
+    page,
+    api,
+  }) => {
+    const { checking, savings } = await setup(api);
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -100,
+      payeeName: 'Mock one',
     });
+    await api.call('POST', '/transactions/transfer', {
+      fromAccountId: checking.id,
+      toAccountId: savings.id,
+      date: isoDay(),
+      amount: 700,
+    });
+    await open(page, `/accounts/${checking.id}`);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
+    await setToggle(page.getByRole('checkbox', { name: /^Select Transfer: / }));
+
+    await row(page, 'Mock one').click({ button: 'right' });
+    await page
+      .getByRole('menu', { name: 'Actions for 2 selected transactions' })
+      .getByRole('menuitem', { name: 'Category…' })
+      .click();
+    await categoryOption(page, 'Groceries', { exact: true }).click();
+
+    const groceries = (await api.category('Groceries')).id;
+    const toast = page.getByTestId('undo-toast');
+    await expect(toast).toContainText('Changed 1 of 2 transactions.');
+    await expect(toast).toContainText('1 transfer');
+    const rows = await api.transactions(`?account_id=${checking.id}`);
+    expect(rows.find((t) => t.payeeName === 'Mock one').categoryId).toBe(groceries);
+    expect(rows.find((t) => t.transferTransactionId).categoryId).toBeNull();
+  });
+
+  test('a ticked row removed before the edit applies is refused, and the selection catches up', async ({
+    page,
+    api,
+  }) => {
+    const { checking, field, openMenu } = await pickTwo(api, page);
+    const two = (await api.transactions(`?account_id=${checking.id}`)).find(
+      (t) => t.payeeName === 'Mock two',
+    );
+    await api.call('DELETE', `/transactions/${two.id}`);
+
+    const menu = await openMenu();
+    await menu.getByRole('menuitem', { name: 'Review' }).hover();
+    await page
+      .getByRole('menu', { name: 'Review' })
+      .getByRole('menuitem', { name: 'Mark reviewed' })
+      .click();
+    await expect(page.getByTestId('undo-toast')).toContainText(
+      'The selection now has 1 transactions, not 2.',
+    );
+    expect(await field('reviewedAt')).toMatchObject({ 'Mock one': null });
+    await expect(page.getByRole('region', { name: 'Selected transactions' })).toContainText(
+      '1 selected',
+    );
+  });
+});
+
+test('while saving is paused the selection menu offers no change, then offers them again', async ({
+  page,
+  api,
+}) => {
+  const { checking } = await setup(api);
+  for (const [payeeName, amount] of [
+    ['Mock one', -100],
+    ['Mock two', -200],
+    ['Mock three', -300],
+  ] as const)
+    await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+  // A household, so Share shows; a tag, so Add tag does
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+  await api.call('POST', '/tags', { name: 'Holiday' });
+  await open(page, `/accounts/${checking.id}`);
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+
+  const menu = page.getByRole('menu', { name: 'Actions for 2 selected transactions' });
+  const hint = 'Saving is paused until Allotment reconnects.';
+  const writing = [/^Payee…/, /^Review/, /^Add tag/, /^Share 2 selected with/, /^Delete 2/];
+  const openMenu = async () => {
+    await row(page, 'Mock one').click({ button: 'right' });
+    await expect(menu).toBeVisible();
+  };
+
+  // An unselected row keeps its own menu, whose Share with writes too
+  const rowMenu = page.getByRole('menu', { name: 'Actions for Mock three' });
+  const openRowMenu = async () => {
+    await row(page, 'Mock three').click({ button: 'right' });
+    await expect(rowMenu).toBeVisible();
+  };
+
+  // Allowed: every writing item is enabled and nothing says saving is paused
+  await openMenu();
+  for (const name of writing) await expect(menu.getByRole('menuitem', { name })).toBeEnabled();
+  await expect(menu).not.toContainText(hint);
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await openRowMenu();
+  await expect(rowMenu.getByRole('menuitem', { name: /^Share with/ })).toBeEnabled();
+  await expect(rowMenu).not.toContainText(hint);
+  await page.keyboard.press('Escape');
+  await expect(rowMenu).toBeHidden();
+
+  // Paused: the same items are disabled, each says why, and Clear selection still works
+  await stopDesktopServer();
+  try {
+    // The next request finds the server gone: a change chosen now fails, and the app says so
+    await openMenu();
+    await menu.getByRole('menuitem', { name: 'Review' }).hover();
+    await page
+      .getByRole('menu', { name: 'Review' })
+      .getByRole('menuitem', { name: 'Mark reviewed' })
+      .click();
+    await expect(page.getByRole('status', { name: 'Connection' })).toContainText(
+      "Can't reach Allotment",
+    );
+    await openMenu();
+    for (const name of writing) await expect(menu.getByRole('menuitem', { name })).toBeDisabled();
+    await expect(menu).toContainText(hint);
+    await expect(menu.getByRole('menuitem', { name: 'Clear selection' })).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    // The row's own menu waits the same way; opening its details still works
+    await openRowMenu();
+    await expect(rowMenu.getByRole('menuitem', { name: /^Share with/ })).toBeDisabled();
+    await expect(rowMenu).toContainText(hint);
+    await expect(rowMenu.getByRole('menuitem', { name: 'Open details' })).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await expect(rowMenu).toBeHidden();
+  } finally {
+    await startDesktopServer();
   }
+
+  // Back: they are enabled again and the hint is gone
+  await page
+    .getByRole('status', { name: 'Connection' })
+    .getByRole('button', { name: 'Retry now' })
+    .click({ timeout: 2_000 })
+    .catch(() => {});
+  await expect(page.getByRole('button', { name: /^Server status: Online/ })).toBeVisible();
+  await openMenu();
+  for (const name of writing) await expect(menu.getByRole('menuitem', { name })).toBeEnabled();
+  await expect(menu).not.toContainText(hint);
+});
+
+test.describe('selecting transactions in the register', () => {
+  const names = ['Mock alpha', 'Mock bravo', 'Mock charlie', 'Mock delta', 'Mock echo'];
+  const bar = (page: Page) => page.getByRole('region', { name: 'Selected transactions' });
+  const boxes = (page: Page) => page.getByRole('checkbox', { name: /^Select / });
+
+  async function fiveRows(api: Api, page: Page) {
+    const { checking } = await setup(api);
+    for (const [i, payeeName] of names.entries())
+      await api.createTransaction({
+        accountId: checking.id,
+        date: isoDay(),
+        amount: -(i + 1) * 100,
+        payeeName,
+      });
+    await open(page, `/accounts/${checking.id}`);
+    return page.getByTestId('transaction-row');
+  }
+
+  test('Cmd or Ctrl+click and Shift+click select rows without opening details', async ({
+    page,
+    api,
+  }) => {
+    const rows = await fiveRows(api, page);
+    await rows.nth(0).click({ modifiers: ['ControlOrMeta'] });
+    await rows.nth(3).click({ modifiers: ['Shift'] });
+    await expect(bar(page)).toContainText('4 selected');
+    for (const i of [0, 1, 2, 3]) await expect(boxes(page).nth(i)).toBeChecked();
+    await expect(boxes(page).nth(4)).not.toBeChecked();
+    await expect(page.getByRole('complementary', { name: 'Transaction details' })).toHaveCount(0);
+
+    // A plain click (on the payee, not a button in the row) still opens the row's details, and
+    // the selection stays
+    await rows.nth(4).click({ position: { x: 80, y: 12 } });
+    await expect(page.getByRole('complementary', { name: 'Transaction details' })).toBeVisible();
+    await expect(bar(page)).toContainText('4 selected');
+  });
+
+  test('Shift+click on the anchor row selects exactly that row, and a range goes either way', async ({
+    page,
+    api,
+  }) => {
+    const rows = await fiveRows(api, page);
+    await rows.nth(1).click({ modifiers: ['ControlOrMeta'] });
+    await rows.nth(1).click({ modifiers: ['Shift'] });
+    await expect(bar(page)).toContainText('1 selected');
+
+    // Two rows below the anchor: those three rows and no others
+    await rows.nth(1).click({ modifiers: ['Shift'] });
+    await rows.nth(3).click({ modifiers: ['Shift'] });
+    await expect(bar(page)).toContainText('3 selected');
+    await expect(boxes(page).nth(0)).not.toBeChecked();
+    await expect(boxes(page).nth(4)).not.toBeChecked();
+
+    // Clicked from the lower end first, the range is the same rows
+    await page.getByRole('button', { name: 'Clear selection' }).click();
+    await rows.nth(3).click({ modifiers: ['ControlOrMeta'] });
+    await rows.nth(1).click({ modifiers: ['Shift'] });
+    await expect(bar(page)).toContainText('3 selected');
+    for (const i of [1, 2, 3]) await expect(boxes(page).nth(i)).toBeChecked();
+  });
+
+  test('a search keeps the selected rows still listed and drops the rest', async ({
+    page,
+    api,
+  }) => {
+    await fiveRows(api, page);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock alpha/ }));
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock bravo/ }));
+    await expect(bar(page)).toContainText('2 selected');
+
+    await page.getByPlaceholder('Search payee or notes…').fill('alpha');
+    await expect(page.getByTestId('transaction-row')).toHaveCount(1);
+    await expect(bar(page)).toContainText('1 selected');
+
+    // The dropped row does not come back with the search cleared
+    await page.getByPlaceholder('Search payee or notes…').fill('');
+    await expect(page.getByTestId('transaction-row')).toHaveCount(5);
+    await expect(bar(page)).toContainText('1 selected');
+    await expect(page.getByRole('checkbox', { name: /^Select Mock bravo/ })).not.toBeChecked();
+  });
+
+  test('with nothing selected, More actions is off and a row keeps its own menu', async ({
+    page,
+    api,
+  }) => {
+    const rows = await fiveRows(api, page);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await expect(bar(page)).toContainText('0 selected');
+    await expect(bar(page).getByRole('button', { name: 'More actions' })).toBeDisabled();
+
+    await rows.filter({ hasText: 'Mock alpha' }).click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: 'Actions for Mock alpha' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // One selected row: the selection's menu, for that row only
+    await setToggle(page.getByRole('checkbox', { name: /^Select Mock alpha/ }));
+    await rows.filter({ hasText: 'Mock alpha' }).click({ button: 'right' });
+    await expect(
+      page.getByRole('menu', { name: 'Actions for 1 selected transaction' }),
+    ).toBeVisible();
+  });
 });

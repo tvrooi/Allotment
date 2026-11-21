@@ -1,12 +1,11 @@
 import { listedAmount } from './RoundUp';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Receipt, SearchX, Upload, Link2, ListChecks } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getHouseholds } from '../../api/households';
+import { Plus, Receipt, SearchX, Upload, Link2, MoreHorizontal } from 'lucide-react';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { MenuTarget, type MenuPoint } from '../ui/ContextMenu';
-import { TransactionContextMenu } from './TransactionContextMenu';
+import { TransactionContextMenu, whyNotShareable } from './TransactionContextMenu';
+import { SelectionMenu } from './SelectionMenu';
 import { useTransactions } from '../../hooks/useTransactions';
 import { SelectionSummary } from './SelectionSummary';
 import { SaveViewModal } from './SavedViews';
@@ -46,6 +45,17 @@ import { transferTargets } from '../../utils/addTransaction';
 import type { CreateTransactionData } from '../../api/transactions';
 import { formatDay, formatDayLong } from '../../utils/dates';
 import { connectedBanksLink } from '../../utils/movedSections';
+import {
+  emptySelection,
+  selectAll,
+  isSelected,
+  prune,
+  selectedIds,
+  selectionTarget,
+  selectRange,
+  toggle,
+  type RegisterSelection,
+} from '../../utils/registerSelection';
 
 /** Rows drawn at a time: every match is loaded, but drawing thousands at once is slow */
 const ROWS_PER_PAGE = 300;
@@ -128,11 +138,12 @@ export function TransactionTable({
   // Back and Forward return to where the list was (#245)
   const scrollMemory = useScrollMemory('register');
   const [showImport, setShowImport] = useState(false);
-  // Picking payments to share with a household: null when not picking
-  const [picked, setPicked] = useState<Set<string> | null>(null);
+  // The rows ticked to act on together: null when not selecting
+  const [selected, setSelected] = useState<RegisterSelection | null>(null);
   // The right-click (long-press, Shift+F10, ⋯) menu: which transaction, and where
   const [menu, setMenu] = useState<{ tx: Transaction; at: MenuPoint } | null>(null);
-  const { data: households = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
+  // The same gestures on a selected row (and the bar's More actions) open the selection's menu
+  const [selectionMenu, setSelectionMenu] = useState<{ at: MenuPoint } | null>(null);
 
   const showAccountCol = !accountId;
 
@@ -175,7 +186,7 @@ export function TransactionTable({
       month,
     ],
   );
-  const { data: transactions = [], isLoading } = useTransactions(params);
+  const { data: transactions = [], isLoading, isSuccess } = useTransactions(params);
   // Whether there are any transactions at all here, to tell "nothing yet" from "filtered out"
   const scoped = Boolean(
     categoryId ||
@@ -337,33 +348,74 @@ export function TransactionTable({
     setDetailId(null);
     if (id) rowElement(id)?.focus();
   };
-  // What sharing accepts: money out that isn't a transfer or a split's parent
-  const shareable = (t: (typeof transactions)[number]) =>
-    t.amount < 0 && !t.isParent && !t.transferTransactionId;
-  const togglePick = (id: string) =>
-    setPicked((p) => {
-      const next = new Set(p);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  const pickedIds = picked ? transactions.filter((t) => picked.has(t.id)).map((t) => t.id) : [];
-  const withPick = (tx: (typeof transactions)[number], row: React.ReactNode) =>
-    picked ? (
-      <div key={tx.id} className="flex items-stretch">
-        <div className="flex items-center pl-3 border-b border-border-light bg-surface">
-          <Checkbox
-            aria-label={`Pick ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`}
-            disabled={!shareable(tx)}
-            checked={picked.has(tx.id)}
-            onCheckedChange={() => togglePick(tx.id)}
-          />
-        </div>
-        <div className="flex-1 min-w-0">{row}</div>
-      </div>
-    ) : (
-      row
+  // What sharing accepts, as the row's own menu decides (whyNotShareable), and not already
+  // linked to a household entry (the server leaves those alone)
+  const shareable = (t: (typeof transactions)[number]) => !whyNotShareable(t) && !t.household;
+  // The listed rows' ids, in the register's order: what a selection is read against
+  const listedIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
+  // A filter, a refresh or an edit that moves rows out of the list drops them from the selection,
+  // so a row that isn't listed is never acted on (prune hands back the same selection if nothing
+  // went, so this settles). Not while the list is still loading: it is empty then.
+  useEffect(() => {
+    if (!isSuccess) return;
+    // Nothing is listed, so nothing can be selected: selecting ends
+    setSelected((p) => (p && listedIds.length > 0 ? prune(p, listedIds) : null));
+  }, [listedIds, isSuccess]);
+  // A whole-list selection is of the list as filtered when it was made: another list is chosen by
+  // another Select all, so a whole-list action never carries over to rows the owner has not
+  // seen. By value (a JSON key), so a re-render with equal params keeps it. Hand-picked rows stay,
+  // pruned to what is still listed.
+  const paramsKey = JSON.stringify(params);
+  useEffect(() => {
+    setSelected((p) => (p?.kind === 'all' ? emptySelection : p));
+  }, [paramsKey]);
+  // The selected rows, in the list's order (the order the bulk request carries them in)
+  const ticked = selected ? selectedIds(selected, listedIds) : [];
+  // Select all, with no row unticked since: the bar says so and shares the list by its filters
+  const wholeList = selected?.kind === 'all' && selected.except.size === 0;
+  const shareableTicked = selected
+    ? transactions.filter((t) => isSelected(selected, t.id) && shareable(t)).map((t) => t.id)
+    : [];
+  // A selected row opens the selection's menu; any other row opens its own
+  const openMenu = (tx: Transaction, at: MenuPoint) =>
+    selected && isSelected(selected, tx.id) ? setSelectionMenu({ at }) : setMenu({ tx, at });
+  // Cmd or Ctrl+click toggles a row, Shift+click selects the range from the last one toggled;
+  // neither opens the details (a plain click does). Captured, so the row and card stay as they are.
+  const modifierClick = (e: React.MouseEvent, id: string) => {
+    if (!e.shiftKey && !e.metaKey && !e.ctrlKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const range = e.shiftKey;
+    setSelected((p) =>
+      range ? selectRange(p ?? emptySelection, listedIds, id) : toggle(p ?? emptySelection, id),
     );
+  };
+  // On a phone, a tap on a card while selecting ticks it (the desktop row keeps opening details)
+  const tapToggle = (id: string) => setSelected((p) => toggle(p ?? emptySelection, id));
+  const withSelect = (tx: (typeof transactions)[number], row: React.ReactNode) => (
+    <div
+      key={tx.id}
+      className="contents"
+      // A Shift press would also select text between the two rows
+      onMouseDownCapture={(e) => e.shiftKey && e.preventDefault()}
+      onClickCapture={(e) => modifierClick(e, tx.id)}
+    >
+      {selected ? (
+        <div className="flex items-stretch">
+          <div className="flex items-center pl-3 border-b border-border-light bg-surface">
+            <Checkbox
+              aria-label={`Select ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`}
+              checked={isSelected(selected, tx.id)}
+              onCheckedChange={() => setSelected((p) => toggle(p ?? emptySelection, tx.id))}
+            />
+          </div>
+          <div className="flex-1 min-w-0">{row}</div>
+        </div>
+      ) : (
+        row
+      )}
+    </div>
+  );
 
   function handleCreate(data: CreateTransactionData) {
     if (data.categoryId?.startsWith('transfer:') && target) {
@@ -407,12 +459,10 @@ export function TransactionTable({
           params={params}
           loadedCount={transactions.length}
           fixedAccount={Boolean(accountId)}
+          onSelect={selected ? undefined : () => setSelected(emptySelection)}
+          onSelectAll={() => setSelected(selectAll())}
+          selectingAll={wholeList}
         />
-        {households.length > 0 && transactions.length > 0 && !picked && (
-          <Button variant="secondary" size="sm" onClick={() => setPicked(new Set())}>
-            <ListChecks size={13} /> Pick to share
-          </Button>
-        )}
         {accountId && (
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
@@ -425,41 +475,59 @@ export function TransactionTable({
         )}
       </div>
 
-      {picked && (
+      {selected && (
         <div
           role="region"
-          aria-label="Picked payments"
+          aria-label="Selected transactions"
           className="px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
         >
           <span className="text-text-secondary">
-            Tick the payments you share, then share them all at once.
+            {isPhone
+              ? 'Tap transactions to select them, then use More actions or ⋯.'
+              : 'Tick transactions, then right-click one of them to change them all. Shift+click to select a range.'}
           </span>
-          <span className="font-medium text-text">{pickedIds.length.toLocaleString()} picked</span>
+          <span className="font-medium text-text">
+            {wholeList ? 'All ' : ''}
+            {ticked.length.toLocaleString()} selected
+          </span>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() =>
-              setPicked(
-                new Set(visibleGroups.flatMap((g) => g.txs.filter(shareable).map((t) => t.id))),
-              )
-            }
+            aria-label="More actions"
+            aria-haspopup="menu"
+            disabled={ticked.length === 0}
+            className="w-8 px-0 max-md:w-11"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setSelectionMenu({ at: { x: r.right - 240, y: r.bottom } });
+            }}
           >
-            Pick all shown
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
-            Clear
+            <MoreHorizontal size={16} />
           </Button>
           <div className="flex-1" />
-          <ShareWithHousehold
-            transactionIds={pickedIds}
-            variant="compact"
-            onShared={(sent) => {
-              // What was sent is done; anything a failed batch didn't reach stays picked
-              const done = new Set(sent);
-              setPicked((p) => new Set([...(p ?? [])].filter((id) => !done.has(id))));
-            }}
-          />
-          <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
+          {wholeList ? (
+            <ShareWithHousehold params={params} variant="link" />
+          ) : (
+            <ShareWithHousehold
+              transactionIds={shareableTicked}
+              variant="compact"
+              onShared={(sent) => {
+                // What was sent is done; anything a failed batch didn't reach stays selected
+                setSelected(
+                  (p) => p && sent.reduce((s, id) => (isSelected(s, id) ? toggle(s, id) : s), p),
+                );
+              }}
+            />
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Clear selection"
+            onClick={() => setSelected(emptySelection)}
+          >
+            Clear
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
             Done
           </Button>
         </div>
@@ -590,8 +658,8 @@ export function TransactionTable({
                   </div>
 
                   {group.txs.map((tx) => (
-                    <MenuTarget key={tx.id} onOpen={(at) => setMenu({ tx, at })}>
-                      {withPick(
+                    <MenuTarget key={tx.id} onOpen={(at) => openMenu(tx, at)}>
+                      {withSelect(
                         tx,
                         isPhone ? (
                           <TransactionCard
@@ -605,8 +673,9 @@ export function TransactionTable({
                               showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
                             }
                             isSelected={detailId === tx.id}
-                            onOpenDetail={setDetailId}
-                            onMenu={(at) => setMenu({ tx, at })}
+                            // Selecting: a tap ticks the card. Otherwise it opens the details
+                            onOpenDetail={selected ? tapToggle : setDetailId}
+                            onMenu={(at) => openMenu(tx, at)}
                           />
                         ) : (
                           <TransactionRow
@@ -684,9 +753,16 @@ export function TransactionTable({
 
       <TransactionContextMenu
         menu={menu}
-        pickedIds={pickedIds}
         onOpenDetail={setDetailId}
         onClose={() => setMenu(null)}
+      />
+      <SelectionMenu
+        menu={selectionMenu}
+        target={selected ? selectionTarget(selected, params, listedIds) : null}
+        count={ticked.length}
+        shareableIds={shareableTicked}
+        onClose={() => setSelectionMenu(null)}
+        onClearSelection={() => setSelected(emptySelection)}
       />
 
       {/* Phones: the entry form in a sheet (splits and transfers included) */}

@@ -473,16 +473,16 @@ test('right-clicking one of several picked payments shares all of them', async (
     selfIndex: 0,
   });
   await open(page, `/accounts/${account.id}`);
-  await page.getByRole('button', { name: 'Pick to share' }).click();
-  await setToggle(page.getByRole('checkbox', { name: /^Pick Mock Fuel/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Pick Mock Dinner/ }));
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Fuel/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Dinner/ }));
   await page
     .getByTestId('transaction-row')
     .filter({ hasText: 'Mock Fuel' })
     .click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Share 2 picked with' }).hover();
+  await page.getByRole('menuitem', { name: 'Share 2 selected with' }).hover();
   await page
-    .getByRole('menu', { name: 'Share 2 picked with' })
+    .getByRole('menu', { name: 'Share 2 selected with' })
     .getByRole('menuitem', { name: /^Flat/ })
     .click();
   await expect(page.getByTestId('undo-toast')).toContainText('Shared 2 with Flat.');
@@ -490,6 +490,46 @@ test('right-clicking one of several picked payments shares all of them', async (
   expect(state.events.map((e: { transactionId: string }) => e.transactionId).sort()).toEqual(
     [ids[0], ids[1]].sort(),
   );
+});
+
+test('a selected payment already shared is not offered for sharing again', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 20000);
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -6000,
+    payeeName: 'Mock Fuel',
+  });
+  const dinner = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -8000,
+    payeeName: 'Mock Dinner',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/share`, { transactionIds: [dinner.id] });
+  await open(page, `/accounts/${account.id}`);
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Fuel/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Dinner/ }));
+  const bar = page.getByRole('region', { name: 'Selected transactions' });
+  await expect(bar).toContainText('2 selected');
+  // Only the payment not yet shared counts, in the bar and in the selection's menu
+  await expect(bar.getByRole('button', { name: 'Share 1 selected with household' })).toBeVisible();
+  await page
+    .getByTestId('transaction-row')
+    .filter({ hasText: 'Mock Fuel' })
+    .click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: /^Share 1 selected with/ })).toBeVisible();
 });
 
 test('picks payments in the register and shares just those, split equally', async ({
@@ -524,18 +564,18 @@ test('picks payments in the register and shares just those, split equally', asyn
   });
 
   await open(page, `/accounts/${account.id}`);
-  await page.getByRole('button', { name: 'Pick to share' }).click();
-  const bar = page.getByRole('region', { name: 'Picked payments' });
-  await setToggle(page.getByRole('checkbox', { name: /^Pick Dinner for two/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Pick Road trip fuel/ }));
-  await expect(bar).toContainText('2 picked');
-  await bar.getByRole('button', { name: 'Share 2 picked with household' }).click();
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  const bar = page.getByRole('region', { name: 'Selected transactions' });
+  await setToggle(page.getByRole('checkbox', { name: /^Select Dinner for two/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Select Road trip fuel/ }));
+  await expect(bar).toContainText('2 selected');
+  await bar.getByRole('button', { name: 'Share 2 selected with household' }).click();
   const dialog = page.getByRole('dialog', { name: 'Share with household' });
   await expect(dialog).toContainText('split equally');
   await dialog.getByRole('button', { name: 'Share', exact: true }).click();
   await expect(dialog.getByRole('status')).toHaveText('Shared 2.');
   await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
-  await expect(bar).toContainText('0 picked');
+  await expect(bar).toContainText('0 selected');
 
   const state = await api.call('GET', `/households/${group.group.id}`);
   const shared = state.events.map((e: { transactionId: string }) => e.transactionId).sort();

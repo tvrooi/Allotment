@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import * as tagsApi from '../api/tags';
 import * as txApi from '../api/transactions';
-import { useUndoStore } from '../store/undoStore';
-import type { TransactionQueryParams } from '../types';
 
 // Phase 9: tags, saved views, review and report visibility
 
@@ -64,47 +62,6 @@ export function useSetTransactionFlags() {
       hiddenFromReports?: boolean;
     }) => txApi.setTransactionFlags(id, flags),
     onSuccess: () => refreshAfterMark(qc),
-  });
-}
-
-/** Mark the selection reviewed, with an undo that puts each row's previous state back */
-export function useReviewSelection() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      params,
-      reviewed,
-      expectedCount,
-    }: {
-      params: TransactionQueryParams;
-      reviewed: boolean;
-      expectedCount: number;
-    }) => txApi.reviewSelection(params, reviewed, expectedCount),
-    onSuccess: (result, { reviewed }) => {
-      refreshAfterMark(qc);
-      if (!result.changes.length) return;
-      useUndoStore.getState().push(
-        {
-          description: `Mark ${result.changes.length} ${reviewed ? 'reviewed' : 'not reviewed'}`,
-          undo: async () => {
-            await txApi.restoreReview(result.changes);
-            refreshAfterMark(qc);
-          },
-          redo: async () => {
-            await txApi.restoreReview(
-              result.changes.map((c) => ({
-                id: c.id,
-                previous: reviewed ? new Date().toISOString() : null,
-              })),
-            );
-            refreshAfterMark(qc);
-          },
-        },
-        {
-          message: `Marked ${result.changes.length.toLocaleString()} ${reviewed ? 'reviewed' : 'not reviewed'}.`,
-        },
-      );
-    },
   });
 }
 

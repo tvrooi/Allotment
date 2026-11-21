@@ -260,33 +260,6 @@ export const setTransactionTags = (id: string, tagIds: string[]) =>
     body: JSON.stringify({ tagIds }),
   });
 
-export interface ReviewChange {
-  id: string;
-  previous: string | null;
-}
-
-/** Mark the selection reviewed; refused (409) if it no longer has `expectedCount` rows */
-export const reviewSelection = (
-  params: TransactionQueryParams,
-  reviewed: boolean,
-  expectedCount: number,
-) =>
-  apiFetch<{ matched: number; changes: ReviewChange[] }>('/transactions/review', {
-    method: 'POST',
-    body: JSON.stringify({
-      selection: Object.fromEntries(transactionQuery(params)),
-      reviewed,
-      expectedCount,
-    }),
-  });
-
-/** Undo a review: put these rows' previous states back */
-export const restoreReview = (changes: ReviewChange[]) =>
-  apiFetch<{ restored: number }>('/transactions/review', {
-    method: 'POST',
-    body: JSON.stringify({ restore: changes }),
-  });
-
 // ─── Splitting after the fact and editing many at once ────────────────────────
 
 export interface SplitPartInput {
@@ -334,15 +307,18 @@ export interface BulkResult {
   restore: BulkRestore[];
 }
 
-interface BulkTarget {
+export interface BulkTarget {
   params: TransactionQueryParams;
   /** Hand-picked rows (only these, if they are in the selection) */
   ids?: string[];
+  /** Rows of the selection left out (Select all, then untick some) */
+  excludeIds?: string[];
 }
 
-const bulkBody = ({ params, ids }: BulkTarget) => ({
+const bulkBody = ({ params, ids, excludeIds }: BulkTarget) => ({
   selection: Object.fromEntries(transactionQuery(params)),
   ...(ids ? { ids } : {}),
+  ...(excludeIds ? { excludeIds } : {}),
 });
 
 /** What a bulk edit would change, without changing anything */

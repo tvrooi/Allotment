@@ -84,3 +84,24 @@ for (const [width, height] of [
     await page.screenshot({ path: testInfo.outputPath('phone-iphone-transactions.png') });
   });
 }
+
+// UAT G-03-1: on the owner's iPhone the Date field ran past the sheet's right edge, level with
+// nothing. iOS sizes a native date input by its value, which a flex column does not shrink. This
+// runs in the phone (Chromium) and iphone-webkit (WebKit) projects; neither draws iOS Safari's
+// native date control, so it guards the geometry rather than proving the iOS-only overflow.
+test('Add transaction keeps its Date field inside the sheet', async ({ page, api }) => {
+  await api.createAccount('Everyday', 100_000);
+  await open(page, '/transactions');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+  // The native date input, named by its label
+  const date = dialog.getByRole('textbox', { name: 'Date', exact: true });
+  const amount = dialog.getByRole('textbox', { name: 'Amount' });
+  await expect(date).toBeVisible();
+  const d = (await date.boundingBox())!;
+  const a = (await amount.boundingBox())!;
+  // Ends no further right (and starts no further left) than the Amount field above it
+  expect(d.x + d.width, 'Date ends past Amount').toBeLessThanOrEqual(a.x + a.width + 1);
+  expect(d.x, 'Date starts before Amount').toBeGreaterThanOrEqual(a.x - 1);
+  expect(await sidewaysOverflow(page)).toEqual([]);
+});

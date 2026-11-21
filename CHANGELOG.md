@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.178
+
+- **Select transactions and change them from the right-click menu.** In the register, Select puts a checkbox on every transaction (and phone card). Tick them one by one, Shift+click a range, or choose Select all to take the whole list, then right-click one of the selected rows (or use More actions, or ⋯ on a phone card) to mark them reviewed, set a category or payee, replace or remove notes, add or remove a tag, show or hide them in reports, share them with a household or delete them. The Edit dialog is gone. A change applies at once and the toast offers Undo, and it says how many rows were changed and which it left alone (a transfer, a split, a household entry). Delete still waits for you to type delete. While saving is paused every change in the menu waits too. The household sharing button that used to be called Pick to share is now Select, and the button that picked every shown row is gone: Select all does that.
+- **Marking the whole list reviewed has no confirm step.** It applies at once and Undo puts every row back. The server route that only the old Mark reviewed button used, `POST /api/transactions/review`, is removed; marking a list reviewed is `POST /api/transactions/bulk` with `changes.reviewed`, as the selection menu already did, and keeps its expected-count check and exact undo.
+- **A calmer category list on phones.** In Add transaction, the Category list opens like the Account list: directly against its field, without the keyboard. Tap the search box to type. Other category lists keep their focused search.
+- **Phone date fields fit the screen.** The Date field in Add transaction, and every other date and month field on a phone, can no longer run past the edge of its sheet on an iPhone.
+
 ## 0.2.0-up.177
 
 - **Planning, reports, files and import screens on the shared controls.** Goals (the goal form, and pausing or replacing a goal), Investments (income, purchases, prices, sales and splits), Forecast's cash runway, the long-term forecast (plans, life events, the savings order, assumptions, accounts and simulations), Reports and the report builder, Files (the filters and a file's details) and the CSV, CAMT and YNAB imports with their category mapping now use the shared fields, lists, checkboxes and date pickers. Labels, placeholders, choices and saved values are unchanged, and an import creates the same transactions, accounts and categories as before (#267).
