@@ -2201,6 +2201,7 @@ test('while saving is paused the selection menu offers no change, then offers th
   for (const [payeeName, amount] of [
     ['Mock one', -100],
     ['Mock two', -200],
+    ['Mock three', -300],
   ] as const)
     await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
   // A household, so Share shows; a tag, so Add tag does
@@ -2225,12 +2226,24 @@ test('while saving is paused the selection menu offers no change, then offers th
     await expect(menu).toBeVisible();
   };
 
+  // An unselected row keeps its own menu, whose Share with writes too
+  const rowMenu = page.getByRole('menu', { name: 'Actions for Mock three' });
+  const openRowMenu = async () => {
+    await row(page, 'Mock three').click({ button: 'right' });
+    await expect(rowMenu).toBeVisible();
+  };
+
   // Allowed: every writing item is enabled and nothing says saving is paused
   await openMenu();
   for (const name of writing) await expect(menu.getByRole('menuitem', { name })).toBeEnabled();
   await expect(menu).not.toContainText(hint);
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
+  await openRowMenu();
+  await expect(rowMenu.getByRole('menuitem', { name: /^Share with/ })).toBeEnabled();
+  await expect(rowMenu).not.toContainText(hint);
+  await page.keyboard.press('Escape');
+  await expect(rowMenu).toBeHidden();
 
   // Paused: the same items are disabled, each says why, and Clear selection still works
   await stopDesktopServer();
@@ -2251,6 +2264,13 @@ test('while saving is paused the selection menu offers no change, then offers th
     await expect(menu.getByRole('menuitem', { name: 'Clear selection' })).toBeEnabled();
     await page.keyboard.press('Escape');
     await expect(menu).toBeHidden();
+    // The row's own menu waits the same way; opening its details still works
+    await openRowMenu();
+    await expect(rowMenu.getByRole('menuitem', { name: /^Share with/ })).toBeDisabled();
+    await expect(rowMenu).toContainText(hint);
+    await expect(rowMenu.getByRole('menuitem', { name: 'Open details' })).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await expect(rowMenu).toBeHidden();
   } finally {
     await startDesktopServer();
   }

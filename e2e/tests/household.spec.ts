@@ -492,6 +492,46 @@ test('right-clicking one of several picked payments shares all of them', async (
   );
 });
 
+test('a selected payment already shared is not offered for sharing again', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 20000);
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -6000,
+    payeeName: 'Mock Fuel',
+  });
+  const dinner = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -8000,
+    payeeName: 'Mock Dinner',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/share`, { transactionIds: [dinner.id] });
+  await open(page, `/accounts/${account.id}`);
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Fuel/ }));
+  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Dinner/ }));
+  const bar = page.getByRole('region', { name: 'Selected transactions' });
+  await expect(bar).toContainText('2 selected');
+  // Only the payment not yet shared counts, in the bar and in the selection's menu
+  await expect(bar.getByRole('button', { name: 'Share 1 selected with household' })).toBeVisible();
+  await page
+    .getByTestId('transaction-row')
+    .filter({ hasText: 'Mock Fuel' })
+    .click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: /^Share 1 selected with/ })).toBeVisible();
+});
+
 test('picks payments in the register and shares just those, split equally', async ({
   page,
   api,

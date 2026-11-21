@@ -16,6 +16,8 @@ import {
   type HouseholdSummary,
 } from '../../api/households';
 import { useHouseholds } from '../../hooks/useHouseholds';
+import { useCanSave } from '../../hooks/useConnection';
+import { SAVING_PAUSED } from '../connection/savingPaused';
 import { useUndoStore } from '../../store/undoStore';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
@@ -57,6 +59,7 @@ export function TransactionContextMenu({ menu, onOpenDetail, onClose }: Props) {
   const share = useShareWithHousehold();
   const payAhead = usePayAhead();
   const announce = useUndoStore((s) => s.announce);
+  const canSave = useCanSave();
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['households'] });
@@ -226,5 +229,16 @@ export function TransactionContextMenu({ menu, onOpenDetail, onClose }: Props) {
       onSelect: () => navigate('/household'),
     });
 
-  return <ContextMenu items={items} at={at} onClose={onClose} label={`Actions for ${name}`} />;
+  // While saving is paused, every item that writes waits with the hint (as SelectionMenu does);
+  // opening details or a household page still works
+  const writes = new Set(['share', 'stop', 'ahead']);
+  const shown = canSave
+    ? items
+    : items.map((item) =>
+        writes.has(item.key)
+          ? { ...item, disabled: true, hint: SAVING_PAUSED, submenu: undefined }
+          : item,
+      );
+
+  return <ContextMenu items={shown} at={at} onClose={onClose} label={`Actions for ${name}`} />;
 }

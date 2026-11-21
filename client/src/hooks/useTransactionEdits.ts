@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import * as txApi from '../api/transactions';
 import { useUndoStore } from '../store/undoStore';
-import type { Transaction, TransactionQueryParams } from '../types';
+import type { Transaction } from '../types';
 
 // Splitting a transaction after it arrives, and editing many at once
 
@@ -57,22 +57,12 @@ export function useSplitTransaction() {
 export type { BulkChanges, BulkResult, BulkSkipReason } from '../api/transactions';
 
 /** The rows an edit or delete reaches: the register's list, or hand-picked rows within it */
-export type EditTarget = Pick<txApi.BulkTarget, 'ids' | 'excludeIds'> & {
-  params: TransactionQueryParams;
-};
-type Target = EditTarget;
-
-/** Only what the server's target takes, so an unset field is never sent as undefined */
-const targetOf = ({ params, ids, excludeIds }: Target): txApi.BulkTarget => ({
-  params,
-  ...(ids ? { ids } : {}),
-  ...(excludeIds ? { excludeIds } : {}),
-});
+export type EditTarget = txApi.BulkTarget;
 
 export function usePreviewBulkEdit() {
   return useMutation({
-    mutationFn: ({ changes, ...target }: Target & { changes: txApi.BulkChanges }) =>
-      txApi.previewBulkEdit(targetOf(target), changes),
+    mutationFn: ({ changes, ...target }: EditTarget & { changes: txApi.BulkChanges }) =>
+      txApi.previewBulkEdit(target, changes),
   });
 }
 
@@ -84,12 +74,12 @@ export function useBulkEdit() {
       changes,
       expectedCount,
       ...target
-    }: Target & {
+    }: EditTarget & {
       changes: txApi.BulkChanges;
       expectedCount: number;
       /** What the toast says, from how many changed (it offers Undo only when one was recorded) */
       message?: (changed: number, result: txApi.BulkResult) => string;
-    }) => txApi.bulkEditTransactions(targetOf(target), changes, expectedCount),
+    }) => txApi.bulkEditTransactions(target, changes, expectedCount),
     onSuccess: (result, { changes, message }) => {
       refreshAfterEdit(qc);
       // Nothing restorable means nothing was recorded to undo
@@ -118,7 +108,7 @@ export function useBulkEdit() {
 
 export function usePreviewBulkDelete() {
   return useMutation({
-    mutationFn: (target: Target) => txApi.previewBulkDelete(targetOf(target)),
+    mutationFn: (target: EditTarget) => txApi.previewBulkDelete(target),
   });
 }
 
@@ -126,8 +116,8 @@ export function usePreviewBulkDelete() {
 export function useBulkDelete() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ expectedCount, ...target }: Target & { expectedCount: number }) =>
-      txApi.bulkDeleteTransactions(targetOf(target), expectedCount),
+    mutationFn: ({ expectedCount, ...target }: EditTarget & { expectedCount: number }) =>
+      txApi.bulkDeleteTransactions(target, expectedCount),
     onSuccess: () => refreshAfterEdit(qc),
   });
 }

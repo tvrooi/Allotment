@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Plus, Receipt, SearchX, Upload, Link2, MoreHorizontal } from 'lucide-react';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { MenuTarget, type MenuPoint } from '../ui/ContextMenu';
-import { TransactionContextMenu } from './TransactionContextMenu';
+import { TransactionContextMenu, whyNotShareable } from './TransactionContextMenu';
 import { SelectionMenu } from './SelectionMenu';
 import { useTransactions } from '../../hooks/useTransactions';
 import { SelectionSummary } from './SelectionSummary';
@@ -348,9 +348,9 @@ export function TransactionTable({
     setDetailId(null);
     if (id) rowElement(id)?.focus();
   };
-  // What sharing accepts: money out that isn't a transfer or a split's parent
-  const shareable = (t: (typeof transactions)[number]) =>
-    t.amount < 0 && !t.isParent && !t.transferTransactionId;
+  // What sharing accepts, as the row's own menu decides (whyNotShareable), and not already
+  // linked to a household entry (the server leaves those alone)
+  const shareable = (t: (typeof transactions)[number]) => !whyNotShareable(t) && !t.household;
   // The listed rows' ids, in the register's order: what a selection is read against
   const listedIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
   // A filter, a refresh or an edit that moves rows out of the list drops them from the selection,
@@ -758,7 +758,7 @@ export function TransactionTable({
       />
       <SelectionMenu
         menu={selectionMenu}
-        target={selected ? selectionTarget(selected, params, listedIds) : { params }}
+        target={selected ? selectionTarget(selected, params, listedIds) : null}
         count={ticked.length}
         shareableIds={shareableTicked}
         onClose={() => setSelectionMenu(null)}

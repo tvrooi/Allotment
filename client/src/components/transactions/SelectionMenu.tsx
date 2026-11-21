@@ -27,7 +27,7 @@ import {
   type EditTarget,
 } from '../../hooks/useTransactionEdits';
 import { useUndoStore } from '../../store/undoStore';
-import { SAVING_PAUSED } from '../connection/SavingPausedHint';
+import { SAVING_PAUSED } from '../connection/savingPaused';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
 import { ContextMenu, type MenuItem, type MenuPoint } from '../ui/ContextMenu';
@@ -44,8 +44,9 @@ import { CategoryPicker } from './CategoryPicker';
 interface Props {
   /** The open menu: where it opens (null = closed) */
   menu: { at: MenuPoint } | null;
-  /** The selected rows as the bulk route takes them: the register's params plus their ids */
-  target: EditTarget;
+  /** The selected rows as the bulk route takes them: the register's params plus their ids (null =
+   *  nothing is selected, so nothing here can write) */
+  target: EditTarget | null;
   /** How many rows are selected: the count the server checks the edit against */
   count: number;
   /** The selected rows sharing with a household accepts */
@@ -103,13 +104,16 @@ export function SelectionMenu({
   // The category list opens where the menu was, once the menu has closed
   const [picker, setPicker] = useState<MenuPoint | null>(null);
   const [pickerAnchor, setPickerAnchor] = useState<HTMLDivElement | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  // Delete keeps the selection it was opened for: a selection that changes or ends behind its
+  // dialog never widens what the dialog deletes
+  const [deleting, setDeleting] = useState<EditTarget | null>(null);
 
   /** The one way an edit from this menu is applied: all selected rows, then Undo in the toast */
   const apply = (
     changes: BulkChanges,
     message: (changed: number, result: BulkResult) => string = changedMessage,
   ) =>
+    target &&
     edit.mutate(
       { ...target, changes, expectedCount: count, message },
       {
@@ -276,7 +280,7 @@ export function SelectionMenu({
     icon: <Trash2 size={14} />,
     danger: true,
     separatorBefore: true,
-    onSelect: () => setDeleting(true),
+    onSelect: () => setDeleting(target),
   };
 
   // The items that write: one list, and one rule for all of them while saving is paused (every
@@ -343,13 +347,15 @@ export function SelectionMenu({
           )}
         </>
       )}
-      <BulkDeleteModal
-        params={target.params}
-        ids={target.ids}
-        excludeIds={target.excludeIds}
-        isOpen={deleting}
-        onClose={() => setDeleting(false)}
-      />
+      {deleting && (
+        <BulkDeleteModal
+          params={deleting.params}
+          ids={deleting.ids}
+          excludeIds={deleting.excludeIds}
+          isOpen
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </>
   );
 }
