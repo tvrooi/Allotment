@@ -419,7 +419,10 @@ export function NativePicker({
           required={isRequired}
           aria-invalid={isInvalid || present(error) || undefined}
           aria-describedby={describedByIds(lineId, description, error)}
-          className={`${fieldBase} ${fieldStates} w-full min-h-11 text-base`}
+          // iOS Safari sizes a native date input by its value and centres it, so in this flex
+          // column it would outgrow its container: it may shrink (min-w-0), drops the native
+          // look and keeps its value on the left like any field (UAT G-03-1)
+          className={`${fieldBase} ${fieldStates} w-full min-w-0 min-h-11 appearance-none text-base [&::-webkit-date-and-time-value]:text-left`}
         />
       </label>
       <FieldLines id={lineId} description={description} error={error} />

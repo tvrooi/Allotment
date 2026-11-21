@@ -161,6 +161,17 @@ describe('DatePicker on phones', () => {
     expect(input(html)).toMatch(/class="[^"]*text-base[^"]*"/);
   });
 
+  // iOS Safari sizes a native date input by its value and centres it, so in a flex column it
+  // outgrows the sheet unless it may shrink (min-w-0), drops its own appearance and left-aligns
+  // the value (UAT G-03-1: the Add transaction Date ran past the sheet's right edge)
+  it('the native input cannot outgrow its container (iOS sizes a date input by its value)', () => {
+    const tag = input(phone());
+    expect(tag).toMatch(/class="[^"]*\bmin-w-0\b[^"]*"/);
+    expect(tag).toMatch(/class="[^"]*\bappearance-none\b[^"]*"/);
+    // The server markup writes the variant's `&` as `&amp;`
+    expect(tag).toMatch(/class="[^"]*webkit-date-and-time-value\]:text-left[^"]*"/);
+  });
+
   it('carries min, max, disabled and readOnly', () => {
     const tag = input(phone({ minValue: '2026-11-01', maxValue: '2026-11-30' }));
     expect(tag).toMatch(/ min="2026-11-01"/);

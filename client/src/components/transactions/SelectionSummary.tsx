@@ -1,18 +1,4 @@
-import { useEffect, useState } from 'react';
-import {
-  CheckCheck,
-  Download,
-  ListChecks,
-  MoreHorizontal,
-  PencilLine,
-  Trash2,
-  X,
-} from 'lucide-react';
-import { useReviewSelection } from '../../hooks/useTags';
-import { ConfirmModal } from '../ui/ConfirmModal';
-import { BulkEditModal } from './BulkEditModal';
-import { BulkDeleteModal } from './BulkDeleteModal';
-import { ShareWithHousehold } from '../household/ShareWithHousehold';
+import { Download, ListChecks } from 'lucide-react';
 import { useTransactionSummary } from '../../hooks/useTransactions';
 import { useBudgetCurrency } from '../../hooks/useCurrency';
 import { transactionsCsvPath } from '../../api/transactions';
@@ -28,34 +14,33 @@ interface Props {
   /** Rows in the register, shown until the summary arrives */
   loadedCount: number;
   fixedAccount?: boolean;
+  /** Starts selecting with nothing ticked; not given while the register is already selecting */
+  onSelect?: () => void;
+  /** Starts the register's whole-list selection (every listed row) */
+  onSelectAll: () => void;
+  /** The whole list is selected already, so the button is not offered */
+  selectingAll: boolean;
 }
 
 /**
- * Count, money in/out and date span of the register's selection, with its CSV export.
+ * Count, money in/out and date span of the register's list, with its CSV export, Select and
+ * Select all, which starts the register's whole-list selection (the bar and menu act on it; a filter change
+ * ends it, TransactionTable, so a whole-list action always follows an explicit Select all).
  * Money in and out describe bank movement (a refund is money in), not income and spending
  * (docs/MONARCH-DEVELOPMENT-PHASE.md). A filtered split counts only its matching parts.
  */
-export function SelectionSummary({ params, loadedCount }: Props) {
+export function SelectionSummary({
+  params,
+  loadedCount,
+  onSelect,
+  onSelectAll,
+  selectingAll,
+}: Props) {
   const { data } = useTransactionSummary(params);
   const budgetCurrency = useBudgetCurrency();
   const decimalComma = decimalSeparator(useAmountStyle().format) === ',';
   const count = data?.count ?? loadedCount;
   const inBudget = budgetCurrency ? `In ${budgetCurrency}, at each day's rate` : undefined;
-  const review = useReviewSelection();
-  const [confirming, setConfirming] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  // Bulk actions on the whole list wait for an explicit "Select all": a destructive one is
-  // never a single click away from just looking at a filtered list
-  const [acting, setActing] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const paramsKey = JSON.stringify(params);
-  useEffect(() => {
-    setActing(false);
-    setMoreOpen(false);
-  }, [paramsKey]);
-  // The register's own rows: what the server's review matches, and what is on screen
-  const reviewCount = loadedCount;
 
   function exportCsv() {
     const url = `${API_BASE}${transactionsCsvPath(params, decimalComma)}`;
@@ -103,108 +88,26 @@ export function SelectionSummary({ params, loadedCount }: Props) {
           </span>
         )}
         {data && <MissingRateNote count={data.missingRateCount} />}
-        {reviewCount > 0 && !acting && (
+        {loadedCount > 0 && onSelect && (
           <button
             type="button"
-            onClick={() => setActing(true)}
+            onClick={onSelect}
+            className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
+            title="Tick transactions to change them together"
+          >
+            <ListChecks size={12} /> Select
+          </button>
+        )}
+        {loadedCount > 0 && !selectingAll && (
+          <button
+            type="button"
+            onClick={onSelectAll}
             className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
             title="Choose an action for every transaction in this list"
           >
-            <ListChecks size={12} /> Select all {reviewCount.toLocaleString()}
+            <ListChecks size={12} /> Select all {loadedCount.toLocaleString()}
           </button>
         )}
-        {reviewCount > 0 && acting && (
-          <span
-            role="group"
-            aria-label={`Actions for ${reviewCount.toLocaleString()} transactions`}
-            className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full bg-brand-50 px-3 py-0.5"
-          >
-            <span className="font-medium text-text">{reviewCount.toLocaleString()} selected</span>
-            <button
-              type="button"
-              onClick={() => setConfirming(true)}
-              disabled={review.isPending}
-              className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-              title="Mark every transaction in this list reviewed (you can undo it)"
-            >
-              <CheckCheck size={12} /> Mark reviewed
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-              title="Change category, payee, notes, tags or visibility on every transaction in this list"
-            >
-              <PencilLine size={12} /> Edit {reviewCount.toLocaleString()}
-            </button>
-            <ShareWithHousehold params={params} variant="link" />
-            <span className="relative">
-              <button
-                type="button"
-                aria-label="More actions"
-                aria-expanded={moreOpen}
-                onClick={() => setMoreOpen((o) => !o)}
-                className="inline-flex items-center text-text-secondary hover:text-text max-md:min-h-11 max-md:min-w-11 justify-center"
-              >
-                <MoreHorizontal size={14} />
-              </button>
-              {moreOpen && (
-                <span
-                  role="menu"
-                  className="absolute left-0 top-full z-20 mt-1 block min-w-[11rem] rounded-md border border-border bg-surface py-1 shadow-hover"
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      setDeleting(true);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-negative hover:bg-hover max-md:min-h-11"
-                    title="Delete every transaction in this list (reconciled ones are kept)"
-                  >
-                    <Trash2 size={12} /> Delete {reviewCount.toLocaleString()}
-                  </button>
-                </span>
-              )}
-            </span>
-            <button
-              type="button"
-              aria-label="Clear selection"
-              onClick={() => {
-                setActing(false);
-                setMoreOpen(false);
-              }}
-              className="inline-flex items-center text-text-tertiary hover:text-text max-md:min-h-11 max-md:min-w-11 justify-center"
-            >
-              <X size={12} />
-            </button>
-          </span>
-        )}
-        <BulkEditModal
-          params={params}
-          count={reviewCount}
-          isOpen={editing}
-          onClose={() => setEditing(false)}
-        />
-        <BulkDeleteModal params={params} isOpen={deleting} onClose={() => setDeleting(false)} />
-        {review.error && (
-          <span role="alert" className="text-negative">
-            {review.error.message}
-          </span>
-        )}
-        <ConfirmModal
-          isOpen={confirming}
-          onClose={() => setConfirming(false)}
-          onConfirm={() => {
-            setConfirming(false);
-            // The undo toast says what changed and offers Undo (its push announces it)
-            review.mutate({ params, reviewed: true, expectedCount: reviewCount });
-          }}
-          title="Mark reviewed"
-          message={`Mark ${reviewCount.toLocaleString()} transaction${reviewCount === 1 ? '' : 's'} reviewed? This only records that you have looked at them; amounts and reconciliation are unchanged. You can undo it.`}
-          confirmLabel={`Mark ${reviewCount.toLocaleString()} reviewed`}
-        />
         {count > 0 && (
           <button
             type="button"

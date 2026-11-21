@@ -61,11 +61,13 @@ be removed while no household entry links one of their transactions.
 
 The **default split** (equal, percentages in basis points, or weights) is what quick sharing
 uses. **Share with household** records a payment as an expense with that split: paid by you
-when it left a personal account, or by the household account when it left a pool account. From the register it shares every payment in the current
-list, each checked on its own, so one refusal doesn't stop the rest; **Undo** removes the
-entries it made. **Pick to share** in the register puts a checkbox on each payment
-(money out that isn't a transfer); tick the ones you share, or **Pick all shown**, then
-**Share _N_ picked with household**. Without a default split, sharing splits equally, so a
+when it left a personal account, or by the household account when it left a pool account. From the
+register it shares each selected payment, each checked on its own, so one refusal doesn't stop the
+rest; **Undo** removes the entries it made. **Select** in the register puts a checkbox on every
+transaction and card; tick the ones you want, or use **Select all _N_** for the whole list, then
+**Share _N_ selected with household** (only money out that isn't a transfer can be shared; the
+others are left out and counted in the button's hint). Right-clicking a selected payment opens the
+selection's menu, which also has **Share _N_ selected with ▸**. Without a default split, sharing splits equally, so a
 two-person household is 50/50. A rule action, **Share with household**, does the same for matching payments
 as they import (or when the rule is applied to existing transactions), and never fails an
 import: a payment the household checks refuse is left unshared.
@@ -92,8 +94,9 @@ press it, or tap ⋯ on a phone card) for its menu (`components/ui/ContextMenu.t
 
 - **Share with ▸** lists each household with its picture and split; choosing one shares the
   payment at once with that household's default split, and the toast offers **Undo**.
-  **Custom split…** opens the Household page's form for it. While payments are picked, right-
-  clicking one of them shares all of the picked ones (**Share _N_ picked with ▸**).
+  **Custom split…** opens the Household page's form for it. While transactions are selected,
+  right-clicking one of them opens the selection's menu instead (`SelectionMenu.tsx`), where
+  **Share _N_ selected with ▸** shares all of the selected payments.
 - A payment that can't be shared (money in, a transfer, a split as a whole, a balance
   correction) shows the item greyed out with the reason. With no household yet, the item opens
   the Household page.

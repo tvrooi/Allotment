@@ -40,8 +40,6 @@ import {
 } from '../services/transactionSelection.js';
 import {
   MarkError,
-  restoreReview,
-  reviewSelection,
   setFlags,
   setTransactionTags,
   tagsByTransaction,
@@ -241,32 +239,6 @@ function sendMarkError(res: Response, error: unknown) {
   if (error instanceof MarkError) return res.status(error.status).json({ error: error.message });
   throw error;
 }
-
-const reviewChangeSchema = z.object({ id, previous: z.string().max(40).nullable() });
-const reviewSchema = z.union([
-  z.object({
-    // The register's selection, as its query parameters
-    selection: z.record(z.string(), z.string().max(20_000)),
-    reviewed: z.boolean(),
-    expectedCount: z.number().int().min(0).max(1_000_000),
-  }),
-  // Undo: put these rows' previous states back
-  z.object({ restore: z.array(reviewChangeSchema).max(1_000_000) }),
-]);
-
-// POST /transactions/review — mark the selection reviewed, guarded by the confirmed count
-transactionsRouter.post('/review', (req, res) => {
-  const parsed = reviewSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  if ('restore' in parsed.data) return res.json(restoreReview(parsed.data.restore));
-  const selection = parseSelection(parsed.data.selection);
-  if (!selection.success) return res.status(400).json({ error: selection.error.flatten() });
-  try {
-    res.json(reviewSelection(selection.data, parsed.data.reviewed, parsed.data.expectedCount));
-  } catch (error) {
-    sendMarkError(res, error);
-  }
-});
 
 // ─── Splitting after the fact and editing many at once ────────────────────────
 

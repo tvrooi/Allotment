@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { createCategory as createCategoryRequest } from '../../api/categories';
 import { useCreateCategory } from '../../hooks/useCategories';
 import { useCanSave } from '../../hooks/useConnection';
+import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import type { BudgetType, CategoryGroup } from '../../types';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
@@ -109,6 +110,14 @@ interface Props {
   allowCreate?: boolean;
   /** Keep hidden categories selectable even when not currently chosen (default false). */
   includeHidden?: boolean;
+  /**
+   * On a phone, open as a calm drawer under (or, with no room, over) the field: flush with it,
+   * in the plain popover card, and with the search left for a tap so the keyboard does not open
+   * by itself (owner, 21 November 2026, UAT G-03-1; the Add transaction Category field is the one
+   * caller). Needs the field's own relative wrapper as the picker's parent, and does nothing
+   * with `anchor`. Every other width and every other caller keeps the focused search.
+   */
+  phoneDrawer?: boolean;
   /**
    * Creates the category in place of the app's POST /api/categories, resolving to its id: for the
    * dev gallery, which has no server and fetches nothing (T-02-10)
@@ -370,6 +379,7 @@ const ANCHORED_WIDTH = 'w-[max(var(--trigger-width),16rem)]';
  * below. Without one it opens in the caller's relative wrapper, below or above per `position`:
  * a zero-height box there is the list's trigger and holds its portal, so the list stays in the
  * caller's dialog, row or form, 16rem wide, or the wrapper's width on phones with `fullWidth`.
+ * With `phoneDrawer` on a phone it is placed against the wrapper itself instead (see the prop).
  */
 export function CategoryPicker({
   value,
@@ -386,17 +396,24 @@ export function CategoryPicker({
   hint,
   allowCreate = true,
   includeHidden = false,
+  phoneDrawer = false,
   onCreate,
 }: Props) {
   const [query, setQuery] = useState('');
   const [spot, setSpot] = useState<HTMLDivElement | null>(null);
   const anchorRef = useMemo(() => ({ current: anchor }), [anchor]);
   const spotRef = useMemo(() => ({ current: spot }), [spot]);
+  // The drawer's trigger is the whole field: the spot's parent, the caller's relative wrapper
+  const fieldRef = useMemo(() => ({ current: spot?.parentElement ?? null }), [spot]);
   const showIcons = usePreferencesStore((s) => s.showCategoryIcons);
+  const isPhone = useIsPhone();
+  const drawer = phoneDrawer && isPhone && !anchor;
 
   const list = {
-    // The raised card the picker has always had, over the list popover's lighter one
-    className: 'shadow-lg!',
+    // The raised card the picker has always had, over the list popover's lighter one; the phone
+    // drawer wears the plain card the Account list does
+    className: drawer ? '' : 'shadow-lg!',
+    focusSearchOnOpen: !drawer,
     searchLabel: 'Search categories',
     searchPlaceholder: 'Search categories...',
     query,
@@ -422,6 +439,24 @@ export function CategoryPicker({
   };
 
   if (anchor) return <SearchList {...list} triggerRef={anchorRef} width={ANCHORED_WIDTH} />;
+  if (drawer)
+    return (
+      // A zero-height box at the field's top edge holds the portal; the list is placed against the
+      // field itself, below it or, with no room, above it. No container padding, or React Aria
+      // pushes the list 12 px in from the box's left edge.
+      <div ref={setSpot} className="absolute left-0 top-0 h-0 w-full">
+        {spot && (
+          <SearchList
+            {...list}
+            triggerRef={fieldRef}
+            portalContainer={spot}
+            placement="bottom start"
+            containerPadding={0}
+            width="w-[var(--trigger-width)]"
+          />
+        )}
+      </div>
+    );
   return (
     <div
       ref={setSpot}

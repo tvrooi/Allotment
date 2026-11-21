@@ -1,14 +1,37 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Wave G3 entry written 21 November 2026
-(PR #279 from `feat/wave-g3-screens`, up.177, not merged); Wave G2 entry 20 November 2026 (PR #278,
+Overwritten at the end of each UI session, never appended. UAT 03 fixes entry written 22 November 2026
+(branch `feat/uat-03-selection-and-phone-pickers`, up.178, not merged); Wave G3 entry written 21 November 2026
+(PR #279 from `feat/wave-g3-screens`, up.177, merged into `redesign`); Wave G2 entry 20 November 2026 (PR #278,
 up.176, merged into `redesign`). Wave F entry rewritten 15 November 2026
 for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
-- Wave G3 (#267, WAVG-06; up.177, PR #279 from `feat/wave-g3-screens`, not merged): the planning,
+- UAT 03 fixes (#267; up.178, branch `feat/uat-03-selection-and-phone-pickers`, one PR into
+  `redesign`, not merged): the owner's UAT of 21 November 2026 found two gaps, both closed in code.
+  The register has one selection: **Select** puts a checkbox on every row and phone card, **Select
+  all _N_** selects the whole list, and `utils/registerSelection.ts` is its pure model (toggle,
+  Cmd/Ctrl and Shift clicks, prune, `selectionTarget`). Right-click, Shift+F10, the Menu key, long
+  press, the bar's More actions or a card's ⋯ on a selected row opens `SelectionMenu`: Review, Category…,
+  Payee…, Replace notes…, Remove notes, Add tag, Remove tag, Reports, Share _N_ selected with ▸ and
+  Delete _N_. Every edit goes through `useBulkEdit` and `POST /api/transactions/bulk` at once, with
+  Undo in the toast and the server's expected-count check; the old Edit dialog
+  and the list's action group are gone. Delete is still behind `BulkDeleteModal`'s preview and
+  typed word. `ContextMenu` gained `MenuItem.prompt`, a one-field form in place of the menu (Escape
+  or Back returns). Every writing item is disabled with `SAVING_PAUSED` (`SavingPausedHint.tsx`,
+  the one copy of the wording) while saving is paused. `POST /api/transactions/review` was removed
+  (only the old Mark reviewed button called it): `phase9.test.ts` proves the same guarantees on
+  the bulk route. Add transaction's Category field on a phone opens like the account list, flush
+  with the field and without the keyboard: `phoneDrawer` on `CategorySelectButton` and
+  `CategoryPicker`, `focusSearchOnOpen` and `containerPadding` on `SearchList`. `NativePicker`
+  (every phone date and month field) gained `min-w-0 appearance-none` and a left-aligned WebKit
+  value so the Date field cannot outgrow its sheet on iOS; no engine here reproduces that, so the
+  owner's iPhone check closes it. Docs: `docs/HOUSEHOLDS.md` (sharing selected payments),
+  `docs/PHASE-9-DEVELOPMENT-PHASE.md` (review on the bulk route). `FORM-CONTROLS-AUDIT.md` is the
+  G0 snapshot and keeps its old lines by design.
+- Wave G3 (#267, WAVG-06; up.177, PR #279 from `feat/wave-g3-screens`, merged into `redesign`): the planning,
   reports, files and import screens use only the shared controls. Goals (`GoalFormModal`,
   `GoalStatusModal`), Investments (`IncomeModals`, `InvestmentModals`, `SaleModals`,
   `SplitModals`), Forecast (`CashRunway`), the long-term forecast (`fields.tsx`, `EventEditor`,
@@ -28,8 +51,8 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   Every behaviour change and changed selector is in the body of PR #279 and `CHANGELOG.md`.
 - Wave G2 (#267, WAVG-05; up.176, PR #278 from `feat/wave-g2-screens`, merged into `redesign`): the everyday money
   screens use only the shared controls. Transactions (`TransactionFormRow`, `TransactionDetailPanel`,
-  `AddTransactionModal`, `BulkEditModal`, `BulkDeleteModal`, `SplitTransactionModal`,
-  `TransferSuggestions`, the register's pick-to-share boxes, `TransactionFilters`,
+  `AddTransactionModal`, `BulkDeleteModal`, `SplitTransactionModal`, `TransferSuggestions`,
+  the register's share-picking boxes, `TransactionFilters`,
   `TransactionMarks`), Accounts (`AccountTypeSelect`, add, edit and delete dialogs,
   `ReconcilePage`), Budget (the table's amount cell, `BudgetAmountSheet`, `CardPayments`,
   `MoneyMoves`, `TargetCard`, `PaydayPlan`, `AutoAssign`, `FundingRows`, `NoteField`,
@@ -49,7 +72,8 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   button is named `<label>: <shown>`. `MonthRangePicker` shows short months (Nov 2026) on phones
   (owner, 19 November 2026). Stays native (D-17): the three file inputs (account logo, payee logo,
   receipt scan photo) and `IconPickerPopover`. Every behaviour change and changed selector is in the
-  body of PR #278 and `CHANGELOG.md`.
+  body of PR #278 and `CHANGELOG.md`. Its bulk edit dialog was replaced by the register selection
+  (UAT 03 fixes, above).
 - Wave F settings split and good moments (up.174, branch `wave-f`, PR #273 revised to the owner's
   14 November decisions): #244 Connected banks is its own page, `/accounts/connections`
   (`pages/AccountConnections.tsx` around `components/accounts/ConnectedBanks.tsx`), opened from
@@ -142,7 +166,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.177 are prepared, not tagged.
+- None committed half-done. `redesign` is ahead of `main`; up.154 to up.178 are prepared, not tagged.
 - Wave G shared form controls (#267): G0, the audit, is
   [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md) (PR #275): every field and selector in
   `client/src` with its file and line, what it becomes and the phase that moves it.
@@ -165,7 +189,8 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   on MonthPicker's `MonthGrid` inside React Aria's dialog, with two native month inputs (From and
   To) on phones and its props unchanged. Its three users are `reports/DateRangeControl.tsx`,
   `reports/ReportBuilderSidebar.tsx` and `pages/CashFlow.tsx`.
-- What has not moved yet: Phase 4 is next, after the owner merges G3. G4 moves Settings
+- What has not moved yet: Phase 4 is next, after the owner merges the UAT 03 fixes and re-runs UAT
+  tests 1 and 2 (G3 is merged). G4 moves Settings
   (with `settings/DataExport.tsx`), the bank connection sections (`ConnectedBanks`) and the shelved
   and split-candidate pages (Review, Cash flow, Household, Tax); G5 adds the lint rule and removes
   the native `Select` in `ui/Input.tsx` and `CategorySelect.tsx` (it stays until Payment plans
@@ -200,6 +225,13 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   the user grows uses `Combobox`; phones get native select, date and month controls. A bounded
   number uses `NumberField`, money `CurrencyInput` (D-14). The G2 and G3 screens are on this; the
   rest move in Phase 4, and until a screen moves it keeps the native `Select` in `ui/Input.tsx`.
+- The register's selection (owner, 21 November 2026, UAT tests 1 and 2): transactions are selected
+  one by one or all at once and changed from the right-click menu, with no edit dialog. Owner
+  decision A, given during planning on 21 November 2026: the calm phone category list (no
+  keyboard, flush with the field) is Add transaction's Category field only, and the date fix is
+  shared. Owner decision B, also given during planning on 21 November 2026: edits apply at once
+  with Undo and no preview or confirm, Mark reviewed on the whole list loses its confirm dialog,
+  the share-picking button is renamed Select, and its button for every shown row is removed.
 - Gutter: page title rows and the content under them use `PAGE_GUTTER`
   (`components/ui/pageGutter.ts`): 16 px on phones, 24 px from `md`; `e2e/tests/phone/page-gutter.spec.ts`
   checks every route (#240).
@@ -218,6 +250,17 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - `docs/ui/WAVES.md` is kept until Wave G merges (owner, 15 November 2026); update its Status and
   Open PRs when a wave PR opens, merges or is sent back.
 
+- The register has one selection (`utils/registerSelection.ts`): never add a second. A selected row
+  opens `SelectionMenu`, any other row `TransactionContextMenu`. A whole-list selection (Select
+  all) ends when the filters or range change by value (a JSON key of the params), hand-picked rows
+  are pruned to what is still listed once the list query succeeds, and `expectedCount` must be the
+  matched count or the server refuses. A new writing menu item goes in `SelectionMenu`'s `writing`
+  list so the paused rule covers it.
+- Only a caller that sets `phoneDrawer` gets the calm phone category list; every other category
+  picker focuses its search when it opens (owner decision A). A new caller decides on purpose.
+  The 12 px `containerPadding` shift React Aria applies to a list drawn into a portal container
+  still affects the Account `Combobox` in Add transaction and other non-anchored category lists on
+  phones; `containerPadding={0}` fixes it where wanted.
 - Scroll memory is keyed by the router's history key: a hand-typed hash URL gets the key
   `default`, like the first page load. A page-level scroll container must use `useScrollMemory`
   or Back loses its place. The page moves by itself only on Back and Forward (a replace only

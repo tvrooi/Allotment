@@ -64,13 +64,16 @@ holdings and long-term forecasting stay as proposals.
 ### Review
 
 - `reviewed_at` is set or cleared only by an explicit user action: the detail-panel
-  toggle, or **Mark reviewed** on the current selection. Imports, sync, rules, bank-source
+  toggle, or **Mark reviewed** in the selection menu. Imports, sync, rules, bank-source
   corrections, restores of pre-phase-9 backups and edits never set it.
-- Bulk review: `POST /api/transactions/review` with the phase 8 selection, `reviewed`
-  (true/false) and `expectedCount`, the number the user confirmed. If the selection
-  now matches a different number of register rows, nothing is written and the
-  response is 409. The response returns the changed IDs so the change can be undone
-  exactly (`POST /api/transactions/review` with `ids`).
+- Bulk review: `POST /api/transactions/bulk` with the phase 8 selection (and optionally
+  `ids` or `excludeIds`), `changes: { reviewed }` (true/false) and `expectedCount`, the
+  number the user selected. If the selection now matches a different number of register
+  rows, nothing is written and the response is 409. A row already in the requested state
+  keeps its review time. The response returns each changed row's previous values in
+  `restore`, so the change can be undone exactly (`POST /api/transactions/bulk` with
+  `restore`). The separate review route was removed because only the old Mark reviewed
+  button used it.
 - Selection filter `reviewed=0|1`.
 
 ### Tags

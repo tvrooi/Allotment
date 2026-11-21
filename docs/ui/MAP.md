@@ -49,10 +49,13 @@ or a picker wrapper, and the leftover gate in 03-15-PLAN.md prints 0 over their 
   `DatePicker` (sm), `PayeeCombobox`, `CategorySelectButton`, `CurrencyInput`, `Input`; details panel
   `DatePicker` (a pick saves at once), `Textarea`; filters `Input`, `Checkbox`, `CurrencyInput`
   (`nullable`), `DatePicker` (sm, Clear); marks `Input`, `Checkbox`; Add transaction `Combobox`
-  (account), `DatePicker`, `CurrencyInput`, `Input`; bulk edit `Select`, `CategorySelectButton`,
-  `Input`; bulk delete `Input`; split `CategorySelectButton`, `CurrencyInput`, `Input`; transfer
-  suggestions and pick-to-share `Checkbox`; receipts `DatePicker`, `CategorySelectButton`,
-  `Combobox`, `Checkbox`, `Select`.
+  (account; its Category field is the one caller that sets `phoneDrawer`), `DatePicker`,
+  `CurrencyInput`, `Input`; the register selection (Select, `utils/registerSelection.ts`) with its
+  right-click menu `SelectionMenu` (`ContextMenu` with a prompt item over `Input` and `Button`,
+  and `CategoryPicker`; no edit dialog); bulk delete `Input`; split `CategorySelectButton`,
+  `CurrencyInput`, `Input`; transfer suggestions and the selection's row `Checkbox`; receipts
+  `DatePicker`, `CategorySelectButton`, `Combobox`, `Checkbox`, `Select`. Specs for the selection:
+  transactions, household, phase9 and phone/register-selection-phone.
 - `/accounts`: `Select` (account type, `CurrencySelect`), `Field` and `Input`, `Checkbox`,
   `CurrencyInput`; delete confirmation `Input`. `/accounts/:id/reconcile`: `Checkbox`.
 - `/budget`: amount cell and search `Input`, row `Checkbox`; phone sheet `CurrencyInput`
@@ -158,7 +161,7 @@ unsaved-drafts, phone/phone, phone/polish-phone, phone/iphone-webapp, phone/amou
 - `Checkbox.tsx`: `Checkbox`, the shared checkbox on React Aria, with help text and an error line.
 - `Combobox.tsx`: `Combobox`, a searchable list the user can add to (custom values, Clear, empty state, footer); `SearchList` and its parts, the searchable list under `CategoryPicker`.
 - `ConfirmModal.tsx`: `ConfirmModal`, confirm or cancel a destructive action.
-- `ContextMenu.tsx`: `ContextMenu`, `useMenuTrigger`; right-click / Shift+F10 menu with flyouts.
+- `ContextMenu.tsx`: `ContextMenu`, `useMenuTrigger`; right-click / Shift+F10 menu with flyouts and `MenuItem.prompt`, a one-field form shown in place of the menu.
 - `CurrencyInput.tsx`: `CurrencyInput`, the only money input (`type="text" inputMode="decimal"`), formatted when left; options `fieldSize`, `expression` (sums), `onTextChange`, `commitOnBlur`, `nullable` (empty is null, a typed 0 is 0) and a forwarded ref; `readMoneyText`.
 - `dateSegments.ts`: `segmentLocale`, `dateExample`; the DatePicker's segment order from the Date format preference.
 - `DatePicker.tsx`: `DatePicker`, typed day, month and year segments, a calendar and a Today shortcut; native date input on phones. Options `fieldSize` (sm for rows), `hideLabel` and `optionalHint`.
