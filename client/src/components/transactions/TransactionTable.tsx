@@ -7,7 +7,7 @@ import { MenuTarget, type MenuPoint } from '../ui/ContextMenu';
 import { TransactionContextMenu, whyNotShareable } from './TransactionContextMenu';
 import { SelectionMenu } from './SelectionMenu';
 import { useTransactions } from '../../hooks/useTransactions';
-import { SelectionSummary } from './SelectionSummary';
+import { SelectionSummary, selectAllLabel } from './SelectionSummary';
 import { SaveViewModal } from './SavedViews';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
@@ -22,7 +22,7 @@ import {
 } from '../../utils/transactionFilters';
 import { TransactionFormRow } from './TransactionFormRow';
 import { BankFedNotice } from './BankFedNotice';
-import { TransactionRow } from './TransactionRow';
+import { TransactionRow, type RowSelection } from './TransactionRow';
 import { TransactionCard } from './TransactionCard';
 import { WaitingTransactions } from './WaitingTransactions';
 import { TransferSuggestions } from './TransferSuggestions';
@@ -31,7 +31,6 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { TransactionDetailPanel } from './TransactionDetailPanel';
 import { ImportModal } from './ImportModal';
 import { Button, ButtonLink } from '../ui/Button';
-import { Checkbox } from '../ui/Checkbox';
 import { EmptyState } from '../ui/EmptyState';
 import { useOpenFromLink } from '../../hooks/useOpenFromLink';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
@@ -138,8 +137,19 @@ export function TransactionTable({
   // Back and Forward return to where the list was (#245)
   const scrollMemory = useScrollMemory('register');
   const [showImport, setShowImport] = useState(false);
-  // The rows ticked to act on together: null when not selecting
+  // The rows selected to act on together: null when not selecting
   const [selected, setSelected] = useState<RegisterSelection | null>(null);
+  const selectionBarRef = useRef<HTMLDivElement>(null);
+  const focusBarOnSelect = useRef(false);
+  const startSelecting = (next: RegisterSelection) => {
+    focusBarOnSelect.current = true;
+    setSelected(next);
+  };
+  useEffect(() => {
+    if (!focusBarOnSelect.current) return;
+    focusBarOnSelect.current = false;
+    if (selected) selectionBarRef.current?.focus();
+  }, [selected]);
   // The right-click (long-press, Shift+F10, ⋯) menu: which transaction, and where
   const [menu, setMenu] = useState<{ tx: Transaction; at: MenuPoint } | null>(null);
   // The same gestures on a selected row (and the bar's More actions) open the selection's menu
@@ -380,7 +390,8 @@ export function TransactionTable({
   const openMenu = (tx: Transaction, at: MenuPoint) =>
     selected && isSelected(selected, tx.id) ? setSelectionMenu({ at }) : setMenu({ tx, at });
   // Cmd or Ctrl+click toggles a row, Shift+click selects the range from the last one toggled;
-  // neither opens the details (a plain click does). Captured, so the row and card stay as they are.
+  // neither opens the details (a plain click does outside select mode). Captured, so modifier
+  // gestures work before the row or card handles a click.
   const modifierClick = (e: React.MouseEvent, id: string) => {
     if (!e.shiftKey && !e.metaKey && !e.ctrlKey) return;
     e.preventDefault();
@@ -390,9 +401,19 @@ export function TransactionTable({
       range ? selectRange(p ?? emptySelection, listedIds, id) : toggle(p ?? emptySelection, id),
     );
   };
-  // On a phone, a tap on a card while selecting ticks it (the desktop row keeps opening details)
+  const selectLabel = (tx: Transaction) =>
+    `Select ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`;
+  const rowSelection = (tx: Transaction): RowSelection | undefined =>
+    selected
+      ? {
+          selected: isSelected(selected, tx.id),
+          label: selectLabel(tx),
+          onToggle: () => setSelected((p) => toggle(p ?? emptySelection, tx.id)),
+        }
+      : undefined;
+  // On a phone, a tap on a card while selecting ticks it (the desktop row uses rowSelection)
   const tapToggle = (id: string) => setSelected((p) => toggle(p ?? emptySelection, id));
-  const withSelect = (tx: (typeof transactions)[number], row: React.ReactNode) => (
+  const withSelectGestures = (tx: (typeof transactions)[number], row: React.ReactNode) => (
     <div
       key={tx.id}
       className="contents"
@@ -400,20 +421,7 @@ export function TransactionTable({
       onMouseDownCapture={(e) => e.shiftKey && e.preventDefault()}
       onClickCapture={(e) => modifierClick(e, tx.id)}
     >
-      {selected ? (
-        <div className="flex items-stretch">
-          <div className="flex items-center pl-3 border-b border-border-light bg-surface">
-            <Checkbox
-              aria-label={`Select ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`}
-              checked={isSelected(selected, tx.id)}
-              onCheckedChange={() => setSelected((p) => toggle(p ?? emptySelection, tx.id))}
-            />
-          </div>
-          <div className="flex-1 min-w-0">{row}</div>
-        </div>
-      ) : (
-        row
-      )}
+      {row}
     </div>
   );
 
@@ -454,84 +462,104 @@ export function TransactionTable({
         externalRange={from && to ? `${formatDay(from)} – ${formatDay(to)}` : undefined}
       />
       {savingView && <SaveViewModal filters={filters} onClose={() => setSavingView(false)} />}
-      <div className="px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border-light bg-page flex flex-wrap gap-2 justify-between items-center">
-        <SelectionSummary
-          params={params}
-          loadedCount={transactions.length}
-          fixedAccount={Boolean(accountId)}
-          onSelect={selected ? undefined : () => setSelected(emptySelection)}
-          onSelectAll={() => setSelected(selectAll())}
-          selectingAll={wholeList}
-        />
-        {accountId && (
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
-              <Upload size={13} /> Import CSV
+      <div className="relative">
+        <div
+          inert={Boolean(selected)}
+          className={`px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border-light bg-page flex flex-wrap gap-2 justify-between items-center ${selected ? 'invisible' : ''}`}
+        >
+          <SelectionSummary
+            params={params}
+            loadedCount={transactions.length}
+            fixedAccount={Boolean(accountId)}
+            onSelect={() => startSelecting(emptySelection)}
+            onSelectAll={() => startSelecting(selectAll())}
+          />
+          {accountId && (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
+                <Upload size={13} /> Import CSV
+              </Button>
+              <Button size="sm" disabled={!newTx.allowed} title={newTx.hint} onClick={startAdd}>
+                <Plus size={13} /> Add Transaction
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {selected && (
+          <div
+            ref={selectionBarRef}
+            tabIndex={-1}
+            role="region"
+            aria-label="Selected transactions"
+            className="absolute inset-x-0 top-0 min-h-full z-10 content-center px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
+          >
+            <span className="text-text-secondary max-md:w-full max-md:text-xs">
+              {isPhone
+                ? 'Tap transactions to select them.'
+                : 'Click transactions to select them, then right-click one of them to change them all. Shift+click to select a range.'}
+            </span>
+            <span className="font-medium text-text">
+              {wholeList ? 'All ' : ''}
+              {ticked.length.toLocaleString()} selected
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="More actions"
+              aria-haspopup="menu"
+              disabled={ticked.length === 0}
+              className="w-8 px-0 max-md:w-11"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setSelectionMenu({ at: { x: r.right - 240, y: r.bottom } });
+              }}
+            >
+              <MoreHorizontal size={16} />
             </Button>
-            <Button size="sm" disabled={!newTx.allowed} title={newTx.hint} onClick={startAdd}>
-              <Plus size={13} /> Add Transaction
+            <div className="flex-1" />
+            {!wholeList && (
+              <Button
+                variant="ghost"
+                size="sm"
+                title="Choose an action for every transaction in this list"
+                onClick={() => startSelecting(selectAll())}
+              >
+                {selectAllLabel(transactions.length)}
+              </Button>
+            )}
+            <span className="max-md:order-last empty:hidden">
+              {wholeList ? (
+                <ShareWithHousehold params={params} variant="link" />
+              ) : (
+                <ShareWithHousehold
+                  transactionIds={shareableTicked}
+                  variant="compact"
+                  onShared={(sent) => {
+                    // What was sent is done; anything a failed batch didn't reach stays selected
+                    setSelected(
+                      (p) =>
+                        p && sent.reduce((s, id) => (isSelected(s, id) ? toggle(s, id) : s), p),
+                    );
+                  }}
+                />
+              )}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Clear selection"
+              className="max-md:order-last"
+              onClick={() => setSelected(emptySelection)}
+            >
+              Clear
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
+              Done
             </Button>
           </div>
         )}
       </div>
-
-      {selected && (
-        <div
-          role="region"
-          aria-label="Selected transactions"
-          className="px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
-        >
-          <span className="text-text-secondary">
-            {isPhone
-              ? 'Tap transactions to select them, then use More actions or ⋯.'
-              : 'Tick transactions, then right-click one of them to change them all. Shift+click to select a range.'}
-          </span>
-          <span className="font-medium text-text">
-            {wholeList ? 'All ' : ''}
-            {ticked.length.toLocaleString()} selected
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label="More actions"
-            aria-haspopup="menu"
-            disabled={ticked.length === 0}
-            className="w-8 px-0 max-md:w-11"
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setSelectionMenu({ at: { x: r.right - 240, y: r.bottom } });
-            }}
-          >
-            <MoreHorizontal size={16} />
-          </Button>
-          <div className="flex-1" />
-          {wholeList ? (
-            <ShareWithHousehold params={params} variant="link" />
-          ) : (
-            <ShareWithHousehold
-              transactionIds={shareableTicked}
-              variant="compact"
-              onShared={(sent) => {
-                // What was sent is done; anything a failed batch didn't reach stays selected
-                setSelected(
-                  (p) => p && sent.reduce((s, id) => (isSelected(s, id) ? toggle(s, id) : s), p),
-                );
-              }}
-            />
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label="Clear selection"
-            onClick={() => setSelected(emptySelection)}
-          >
-            Clear
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
-            Done
-          </Button>
-        </div>
-      )}
       {/* Short Safari viewports can scroll the surrounding page instead of collapsing the ledger. */}
       <div className="flex-1 flex overflow-hidden min-h-40">
         <div ref={scrollMemory} className="flex-1 overflow-y-auto">
@@ -659,7 +687,7 @@ export function TransactionTable({
 
                   {group.txs.map((tx) => (
                     <MenuTarget key={tx.id} onOpen={(at) => openMenu(tx, at)}>
-                      {withSelect(
+                      {withSelectGestures(
                         tx,
                         isPhone ? (
                           <TransactionCard
@@ -698,6 +726,7 @@ export function TransactionTable({
                             }
                             showAccountCol={showAccountCol}
                             isSelected={detailId === tx.id}
+                            selection={rowSelection(tx)}
                             onOpenDetail={setDetailId}
                             transferAccounts={transferAccounts}
                           />
