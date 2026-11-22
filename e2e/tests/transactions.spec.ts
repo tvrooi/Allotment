@@ -2397,6 +2397,11 @@ test.describe('selecting transactions in the register', () => {
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const rows = await fiveRows(api, page);
+    await expect(rows).toHaveCount(5);
+    const firstRowText = await rows.nth(0).innerText();
+    const firstPayee = names.find((name) => firstRowText.includes(name));
+    expect(firstPayee).toBeDefined();
+    const firstAmount = `-$${names.indexOf(firstPayee!) + 1}`;
     const brand100 = await tokenColour(page, '--color-brand-100');
     const brand600 = await tokenColour(page, '--color-brand-600');
     const surface = await tokenColour(page, '--color-surface');
@@ -2405,8 +2410,8 @@ test.describe('selecting transactions in the register', () => {
     const layout = async () => {
       const first = (await rows.nth(0).boundingBox())!;
       const fifth = (await rows.nth(4).boundingBox())!;
-      const payee = (await rows.nth(0).getByText('Mock echo', { exact: true }).boundingBox())!;
-      const amount = (await rows.nth(0).getByText('-$5', { exact: true }).boundingBox())!;
+      const payee = (await rows.nth(0).getByText(firstPayee!, { exact: true }).boundingBox())!;
+      const amount = (await rows.nth(0).getByText(firstAmount, { exact: true }).boundingBox())!;
       return {
         firstTop: first.y,
         firstLeft: first.x,
@@ -2479,7 +2484,7 @@ test.describe('selecting transactions in the register', () => {
     await same(before);
     await expect(selectBtn).toBeVisible();
     await expect(
-      rows.nth(0).getByRole('button', { name: /^Category for Mock echo/ }),
+      rows.nth(0).getByRole('button', { name: new RegExp(`^Category for ${firstPayee!}:`) }),
     ).toBeVisible();
 
     // (6) Toolbar Select all 5: bar overlays toolbar, hides its own Select all 5
