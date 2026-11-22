@@ -13,7 +13,7 @@ Last updated: 22 November 2026 (the UAT 03 fixes on top of Wave G3, design re-re
 
 - **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
 - **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
-- **Unreleased on `redesign`:** up.154 to up.178 are prepared (versions and CHANGELOG entries) but not tagged.
+- **Unreleased on `redesign`:** up.154 to up.179 are prepared (versions and CHANGELOG entries) but not tagged.
   The owner has not yet decided how `redesign` is released; do not tag or publish until they do.
 - Design re-review waves (issues #222 to #245) are in progress on `redesign`: status, open PRs and
   the routine are in `docs/ui/WAVES.md`.
@@ -24,6 +24,9 @@ Last updated: 22 November 2026 (the UAT 03 fixes on top of Wave G3, design re-re
   `POST /api/transactions/review` route are gone), and Add transaction's phone category list opens
   without the keyboard. After the owner merges it and re-runs UAT tests 1 and 2, Phase 4 (Settings,
   bank connections, the shelved pages, the lint rule) starts (`docs/ui/HANDOVER-UI.md`).
+- The demo has sample records on every tab (up.179, branch `feat/demo-every-tab`): a household,
+  receipts and files that open and can be edited in the tab (`server/src/demo/demoFiles.ts`), tax
+  claims, a depreciating asset, a lodged year, pay later, a long-term plan and loan terms.
 - `redesign` holds the design passes: Budget (up.154), Dashboard (up.154, made the Dashboard in up.166).
 - Also on `redesign`: Transactions money clarity and iPhone web-app hardening (up.155), Review (up.156 to up.160).
 - Also on `redesign`: Accounts (up.161 to up.163), day-first dates and Household (up.164), Forecast (up.165), Goals, Investments.

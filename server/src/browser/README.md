@@ -19,12 +19,24 @@ visitor gets a private copy that disappears when they close the tab, and nothing
   - `db/index.ts` → `db.ts`: the same exports, backed by sql.js through Drizzle's sql.js driver
     (synchronous, like better-sqlite3's, so every query runs as is).
   - `db/secretCrypto.ts` → `secretCrypto.ts`: no encryption (the demo never stores credentials).
-  - `path` → `path.ts`: throws if used (only restore's safety copy of the database file needs it).
-  - `crypto` → `crypto.ts`: throws if used (only sign-in, bank, receipt and file code needs it).
-    Every name a server file imports from `crypto` must be exported there, or the demo build fails.
+  - `path`/`node:path` → `path.ts`: throws if used (restore's safety copy of the database file and
+    files kept on disk need it).
+  - `crypto` → `crypto.ts`: a synchronous `createHash('sha256')`, which names stored files by
+    their bytes; everything else (sign-in, bank code) throws. Every name a server file imports
+    from `crypto` must be exported there, or the demo build fails.
+  - `node:fs`, `node:os`, `node:zlib` → `fs.ts`, `os.ts`, `zlib.ts`: throw if used. Only files kept
+    on disk (videos), Download all and finding text in Office files need them, which the demo
+    refuses.
+- `buffer.ts` (imported first by `worker.ts`) gives the worker the part of Node's `Buffer` that
+  stored files need: Drizzle reads BLOB columns back with `Buffer.from`, and file-type checks use
+  `toString('latin1')` and `readUInt32LE`.
 - `app.ts` mounts the budget routers like `index.ts` does and answers `/health`, `/auth/status` and
   `/server/info` itself. Bank connections (`/plaid`, `/simplefin`) and sign-in are refused, and the
-  app shows "needs the Allotment app" instead of their setup screens (`NotInDemo`).
+  app shows "needs the Allotment app" instead of their setup screens (`NotInDemo`). Receipts and
+  Files run their real routers on the sample files (`../demo/demoFiles.ts`); adding a file, the
+  receipt reader and the zip downloads are refused. Stored files come back as bytes
+  (`res.end(data)`), and the page shows them through `useFileSrc` (client/src/hooks), since this
+  API only answers `fetch`.
 - `worker.ts` opens an in-memory database, runs every migration in `db/migrations`, and loads the
   demo budget. "Start over" does the same again.
 - `../demo/demoBudget.ts` is the budget itself (pure: rows from today's date, the same every time

@@ -138,7 +138,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   and goals, then read-only Transactions (8 rows plus See all, all dates, details on selection)
   and Files (5 rows, opens the file). Server searches start at two trimmed characters after
   250 ms; palette-only query keys never enter the offline copy or recents. Hidden Files stays
-  hidden; offline groups say Not available offline, demo Files explains its availability;
+  hidden; offline groups say Not available offline (the demo searches its sample files);
   loading/failure rows are unavailable, amounts use Private at every Safe mode level. Split-note
   matches show the child's note; register, card, details and palette share payee/transfer wording
   in `transactions/transferLabel.ts`. Transaction amounts come from the register's

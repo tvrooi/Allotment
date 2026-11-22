@@ -95,7 +95,7 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
   - Office files are downloaded to open.
 - **Access tokens:** `/api/files` is not on the allowlist. No token sees, adds or changes a file
   (tested in `routes/files.test.ts`). Files are not in MCP.
-- **Demo:** the in-browser demo shows an empty library and refuses uploads ("not in the demo").
+- **Demo:** the in-browser demo's library has sample receipts and documents (`server/src/demo/demoFiles.ts`) that can be opened, edited, linked and deleted in the tab; adding files, finding text and Download all are refused ("not in the demo").
 - Mock data and made-up files only, in tests and the demo.
 
 ## 4. Links

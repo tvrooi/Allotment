@@ -30,7 +30,7 @@ import { Textarea } from '../ui/Textarea';
 import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { useAssets } from '../../hooks/useAssets';
 import { Private } from '../ui/Private';
-import { FilePreview, formatBytes } from './FileParts';
+import { ApiFileLink, FilePreview, formatBytes } from './FileParts';
 
 const RECEIPT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
 const KIND_NOUNS: Record<LinkKind, string> = {
@@ -364,13 +364,13 @@ export function FileDetailModal({ id, onClose }: { id: string | null; onClose: (
               <Star size={13} /> {doc.starred ? 'Starred' : 'Star'}
             </Button>
             {doc.hasFile && (
-              <a
-                href={fileUrl(doc.id, true)}
+              <ApiFileLink
+                url={fileUrl(doc.id, true)}
                 download={doc.fileName}
                 className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-xs font-medium text-text-secondary hover:bg-surface-alt"
               >
                 <Download size={13} /> Download
-              </a>
+              </ApiFileLink>
             )}
             <span className="ml-auto text-xs text-text-tertiary">
               {formatBytes(doc.size)} · added {formatDay(doc.createdAt.slice(0, 10))}

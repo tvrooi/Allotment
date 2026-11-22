@@ -37,6 +37,7 @@ const { createSession, setInitialPassword, SESSION_COOKIE } = await import('../a
 const { accessTokensRouter } = await import('./accessTokens.js');
 const { receiptsRouter } = await import('./receipts.js');
 const { filesRouter } = await import('./files.js');
+const { LINK_KINDS } = await import('../services/documentService.js');
 const { categoriesRouter } = await import('./categories.js');
 const { transactionsRouter } = await import('./transactions.js');
 const { sniffFileType } = await import('../services/fileTypes.js');
@@ -330,6 +331,16 @@ describe('the library', () => {
       'goal',
     ]);
     expect((await call('GET', '/files?linked=0')).body.total).toBe(0);
+  });
+
+  it('filters and counts files by every kind of link, whatever its column is called', async () => {
+    // homeYear's column is home_year_fy and the investment ones are snake_case: a query that
+    // spelled the column `<kind>_id` failed for them
+    for (const kind of LINK_KINDS) {
+      expect((await call('GET', `/files/counts?kind=${kind}`)).status, kind).toBe(200);
+      const id = kind === 'homeYear' ? '2025' : 'none';
+      expect((await call('GET', `/files?linkKind=${kind}&linkId=${id}`)).status, kind).toBe(200);
+    }
   });
 
   it('filters the register to transactions with receipts or files, or without', async () => {

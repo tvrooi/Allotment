@@ -63,7 +63,7 @@ The owner types a receipt's details and line items, and matching and splitting u
   a year's claims and claim past, unclaimed transactions, but never replaces or removes a claim,
   downloads the CSV or receipt archive, or sees a receipt (docs/READ-ONLY-ACCESS.md). Receipts are
   not under `/transactions`, which is allowlisted.
-- **Demo:** the in-browser demo has no file uploads ("not in the demo"). Tax claims work there.
+- **Demo:** the in-browser demo has sample receipts (matched, one in the inbox), claims, a depreciating laptop and a lodged year; receipts can be edited and matched there, but adding one and the receipt reader are refused ("not in the demo").
 - Mock data and made-up files only in tests and the demo.
 
 ## 4. Tax deductions

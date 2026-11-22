@@ -9,7 +9,8 @@ export { IS_DEMO } from './isDemo';
 interface DemoResponse {
   status: number;
   headers: Record<string, string>;
-  body?: string;
+  /** Text, or a stored file's bytes (a receipt photo, say) */
+  body?: string | Uint8Array<ArrayBuffer>;
 }
 
 type Reply = { id: number; ok: true; response?: DemoResponse } | { id: number; ok: false };

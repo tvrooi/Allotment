@@ -1,6 +1,8 @@
 // The in-browser demo's Web Worker (see README.md here). It opens a fresh in-memory
 // database, applies the real migrations, loads the demo budget, then answers the page's
 // API requests with the real routes, off the page's main thread.
+// First: the Buffer the stored-file code expects (see buffer.ts)
+import './buffer.js';
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm-browser.wasm?url';
 import { useDatabase } from './db.js';

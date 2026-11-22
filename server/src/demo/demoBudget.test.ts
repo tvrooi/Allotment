@@ -13,6 +13,16 @@ import { buildDemoBudget } from './demoBudget.js';
 import { loadDemoBudget } from './loadDemoBudget.js';
 import { listTransferSuggestions } from '../services/transferService.js';
 import { investmentOverview } from '../services/investmentService.js';
+import { getReceipt, listReceipts } from '../services/receiptService.js';
+import { listDocuments } from '../services/documentService.js';
+import { taxYear } from '../services/taxService.js';
+import { listAssets, lodgedYears } from '../services/depreciatingAssetService.js';
+import { snapshot } from '../services/householdService.js';
+import { reviewState } from '../services/reviewService.js';
+import { listPlans as listPayLater } from '../services/paymentPlanService.js';
+import { listPlans as listLongTermPlans } from '../services/longTermPlans.js';
+import { listLoanDetails } from '../services/loanDetails.js';
+import { financialYearOf } from '../services/financialYear.js';
 
 // The in-browser demo's budget (see ../browser/README.md) has to look finished whatever day
 // someone opens it: these check it for any "today".
@@ -161,6 +171,27 @@ describe('the demo budget (property-based)', () => {
     );
   });
 
+  it('keeps receipts that add up and prove a real payment of the same amount', () => {
+    fc.assert(
+      fc.property(anyDay, (today) => {
+        const demo = buildDemoBudget(today);
+        const byId = new Map(demo.transactions.map((t) => [t.id, t]));
+        for (const r of demo.receipts) {
+          expect(
+            r.items.reduce((n, i) => n + i.amount, 0),
+            r.merchant,
+          ).toBe(r.total);
+          expect(r.receiptDate <= ymd(today), r.merchant).toBe(true);
+          if (r.transactionId) expect(byId.get(r.transactionId)?.amount, r.merchant).toBe(-r.total);
+        }
+        for (const c of demo.taxClaims) expect(byId.has(c.transactionId)).toBe(true);
+        for (const id of demo.household.sharedTransactionIds)
+          expect(byId.get(id)?.amount).toBeLessThan(0);
+      }),
+      { numRuns: 20 },
+    );
+  });
+
   it('gives every account and payee a logo the app accepts', () => {
     const demo = buildDemoBudget(new Date());
     for (const row of [...demo.accounts, ...demo.payees]) {
@@ -247,5 +278,59 @@ describe('the demo budget, loaded', () => {
     expect(holding.income).toEqual([
       expect.objectContaining({ kind: 'dividend', franked: 8_400, frankingCredit: 3_600 }),
     ]);
+  });
+
+  it('keeps receipts and files on every tab: matched, in the inbox, and linked', () => {
+    const receipts = listReceipts();
+    expect(receipts).toHaveLength(5);
+    expect(receipts.every((r) => r.hasFile)).toBe(true);
+    expect(receipts.filter((r) => !r.transactionId).map((r) => r.merchant)).toEqual([
+      'Daily Grind Coffee',
+    ]);
+    const woolies = getReceipt(receipts.find((r) => r.merchant === 'Woolies')!.id);
+    expect(woolies.lineItems.reduce((n, i) => n + i.amount, 0)).toBe(7_290);
+    const files = listDocuments().documents;
+    expect(files.find((d) => d.fileName.startsWith('shieldwell'))).toMatchObject({
+      important: true,
+    });
+    expect(files.some((d) => d.starred)).toBe(true);
+  });
+
+  it('has tax time filled in: claims, a depreciating laptop and last year lodged', () => {
+    const fy = financialYearOf(format(today, 'yyyy-MM-dd'));
+    expect(lodgedYears()).toEqual([fy - 1]);
+    const [laptop] = listAssets();
+    expect(laptop).toMatchObject({ name: 'Laptop (Sam)', cost: 129_900, label: 'D5' });
+    const labels = new Set(taxYear(fy - 1).claims.map((c) => c.label));
+    expect([...labels].sort()).toEqual(['D5', 'D9']);
+  });
+
+  it('sets up a household whose balances net to zero', () => {
+    const house = snapshot('demo-household');
+    expect(house.people.map((p) => p.name)).toEqual(['Riley', 'Sam', 'Alex']);
+    expect(house.recurringBills).toHaveLength(3);
+    expect(house.events.some((e) => e.kind === 'settlement')).toBe(true);
+    const total = Object.values(house.balances as Record<string, number>).reduce(
+      (a, b) => a + b,
+      0,
+    );
+    expect(total).toBe(0);
+  });
+
+  it('leaves Review with nothing overspent and every card payment funded, records and all', () => {
+    const review = reviewState(format(today, 'yyyy-MM-dd'));
+    expect(review.deficits).toEqual([]);
+    expect(review.cards).toEqual([]);
+  });
+
+  it('plans ahead: a pay-later purchase, a long-term plan and the car loan terms', () => {
+    const [plan] = listPayLater();
+    expect(plan).toMatchObject({ merchant: 'Threadline', total: 24_000 });
+    expect(listLongTermPlans().map((p) => p.name)).toEqual(['Buying a home']);
+    expect(listLoanDetails().find((l) => l.accountId === 'demo-acct-carLoan')?.details).toEqual({
+      rateBps: 590,
+      monthlyRepayment: 38_900,
+      termMonths: 48,
+    });
   });
 });

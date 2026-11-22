@@ -37,6 +37,7 @@ import { useSetCarriedLosses } from '../hooks/useInvestments';
 import { useCanSave } from '../hooks/useConnection';
 import { formatUnits } from '../utils/units';
 import { INCOME_KIND_LABEL, UNKNOWN_TEXT } from '../api/investments';
+import { ApiFileLink } from '../components/files/FileParts';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -285,16 +286,16 @@ function Deductions() {
                             {c.receipts.length || c.files.length ? (
                               <>
                                 {c.receipts.map((r) => (
-                                  <a
+                                  <ApiFileLink
                                     key={r.id}
-                                    href={receiptFileUrl(r.id)}
+                                    url={receiptFileUrl(r.id)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
                                   >
                                     <Paperclip size={12} />
                                     <span className="truncate max-w-40">{r.fileName}</span>
-                                  </a>
+                                  </ApiFileLink>
                                 ))}
                                 {c.files.map((f) => (
                                   <Link

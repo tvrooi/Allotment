@@ -23,7 +23,7 @@ describe('demo response locals', () => {
     await router.handle(request, response, () => {
       throw new Error('Route did not answer');
     });
-    expect(JSON.parse(response.body!)).toEqual({ context: 'demo owner' });
+    expect(JSON.parse(response.body as string)).toEqual({ context: 'demo owner' });
   });
 
   it('starts each response with its own empty context', () => {

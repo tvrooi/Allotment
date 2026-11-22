@@ -195,6 +195,9 @@ const LINK_TARGETS = {
 } as const;
 
 export type LinkKind = keyof typeof LINK_TARGETS;
+
+/** A kind's column in document_links, by its real name (homeYear's is home_year_fy, not `<kind>_id`) */
+const linkColumn = (kind: LinkKind) => sql.raw(LINK_TARGETS[kind].column.name);
 export const LINK_KINDS = Object.keys(LINK_TARGETS) as LinkKind[];
 
 /** A link as the page shows it */
@@ -364,7 +367,7 @@ export function listDocuments(filter: DocumentFilter = {}) {
     where.push(filter.receipt ? HAS_RECEIPT : sql`not ${HAS_RECEIPT}`);
   if (filter.link) {
     const { kind, id } = filter.link;
-    const column = sql.raw(`${kind}_id`);
+    const column = linkColumn(kind);
     where.push(
       kind === 'transaction'
         ? sql`(exists (select 1 from document_links l where l.document_id = ${documents.id} and l.${column} = ${id}) or exists (select 1 from receipts r where r.document_id = ${documents.id} and r.transaction_id = ${id}))`
@@ -407,7 +410,7 @@ export type DocumentDetail = ReturnType<typeof getDocument>;
 
 /** How many documents each target of a kind has, for paperclips and counts */
 export function linkCounts(kind: LinkKind) {
-  const column = sql.raw(`${kind}_id`);
+  const column = linkColumn(kind);
   const query =
     kind === 'transaction'
       ? sql`select target as id, count(*) as count from (
