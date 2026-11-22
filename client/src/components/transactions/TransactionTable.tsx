@@ -411,8 +411,6 @@ export function TransactionTable({
           onToggle: () => setSelected((p) => toggle(p ?? emptySelection, tx.id)),
         }
       : undefined;
-  // On a phone, a tap on a card while selecting ticks it (the desktop row uses rowSelection)
-  const tapToggle = (id: string) => setSelected((p) => toggle(p ?? emptySelection, id));
   const withSelectGestures = (tx: (typeof transactions)[number], row: React.ReactNode) => (
     <div
       key={tx.id}
@@ -701,8 +699,8 @@ export function TransactionTable({
                               showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
                             }
                             isSelected={detailId === tx.id}
-                            // Selecting: a tap ticks the card. Otherwise it opens the details
-                            onOpenDetail={selected ? tapToggle : setDetailId}
+                            selection={rowSelection(tx)}
+                            onOpenDetail={setDetailId}
                             onMenu={(at) => openMenu(tx, at)}
                           />
                         ) : (
