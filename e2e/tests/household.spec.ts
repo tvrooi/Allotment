@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, setToggle, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, typeAmount } from './fixtures';
 
 /**
  * The page groups its sections in tabs (da18c99): Overview (balances, recording), Bills,
@@ -474,8 +474,8 @@ test('right-clicking one of several picked payments shares all of them', async (
   });
   await open(page, `/accounts/${account.id}`);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Fuel/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Dinner/ }));
+  await page.getByRole('checkbox', { name: /^Select Mock Fuel/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Mock Dinner/ }).check();
   await page
     .getByTestId('transaction-row')
     .filter({ hasText: 'Mock Fuel' })
@@ -519,8 +519,8 @@ test('a selected payment already shared is not offered for sharing again', async
   await api.call('POST', `/households/${group.group.id}/share`, { transactionIds: [dinner.id] });
   await open(page, `/accounts/${account.id}`);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Fuel/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock Dinner/ }));
+  await page.getByRole('checkbox', { name: /^Select Mock Fuel/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Mock Dinner/ }).check();
   const bar = page.getByRole('region', { name: 'Selected transactions' });
   await expect(bar).toContainText('2 selected');
   // Only the payment not yet shared counts, in the bar and in the selection's menu
@@ -566,8 +566,8 @@ test('picks payments in the register and shares just those, split equally', asyn
   await open(page, `/accounts/${account.id}`);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   const bar = page.getByRole('region', { name: 'Selected transactions' });
-  await setToggle(page.getByRole('checkbox', { name: /^Select Dinner for two/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Select Road trip fuel/ }));
+  await page.getByRole('checkbox', { name: /^Select Dinner for two/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Road trip fuel/ }).check();
   await expect(bar).toContainText('2 selected');
   await bar.getByRole('button', { name: 'Share 2 selected with household' }).click();
   const dialog = page.getByRole('dialog', { name: 'Share with household' });
