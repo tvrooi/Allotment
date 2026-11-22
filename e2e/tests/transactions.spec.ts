@@ -2151,7 +2151,7 @@ test.describe('the selection menu makes the changes the Edit dialog did', () => 
     await open(page, `/accounts/${checking.id}`);
     await page.getByRole('button', { name: 'Select', exact: true }).click();
     await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
-    await page.getByRole('checkbox', { name: /^Select Transfer: / }).check();
+    await page.getByRole('checkbox', { name: /^Select Transfer to Rainy Day Savings/ }).check();
 
     await row(page, 'Mock one').click({ button: 'right' });
     await page
@@ -2521,5 +2521,25 @@ test.describe('selecting transactions in the register', () => {
     await expect(boxes(page).nth(0)).not.toBeChecked();
     await expect(bar(page)).toContainText('0 selected');
     await expect(bar(page).getByRole('button', { name: 'Select all 1' })).toBeVisible();
+  });
+
+  test('row checkbox name uses the account currency and folded round-up total', async ({
+    page,
+    api,
+  }) => {
+    await api.call('PUT', '/currency', { currency: 'AUD' });
+    const jpy = await api.createAccount('Tokyo cash', 0, 'checking', { currency: 'JPY' });
+    await api.createTransaction({
+      accountId: jpy.id,
+      date: isoDay(),
+      amount: -1500,
+      payeeName: 'Ramen',
+    });
+
+    await open(page, '/transactions');
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await expect(
+      page.getByRole('checkbox', { name: 'Select Ramen -¥1,500', exact: true }),
+    ).toBeVisible();
   });
 });

@@ -22,9 +22,12 @@ import type { Transaction, CategoryGroup, PayeeWithCount } from '../../types';
 /** Present only while the register is selecting; the row is then the checkbox, with no visible box (owner, 22 November 2026, UAT G-03-4). */
 export interface RowSelection {
   selected: boolean;
-  label: string;
   onToggle: () => void;
 }
+
+/** Accessible checkbox name shared by desktop rows and phone cards while selecting, matching their visible payee and amount. */
+export const selectionCheckboxLabel = (payeeName: string, amountText: string) =>
+  `Select ${payeeName} ${amountText}`;
 
 /** Strongest brand tint keeping every row text colour at 4.5:1 in light and dark, plus a 3 px inset bar at >= 3:1 (WCAG 1.4.11) without taking layout space. */
 export const SELECTED_ROW = 'bg-brand-100 shadow-[inset_3px_0_0_var(--color-brand-600)]';
@@ -82,6 +85,7 @@ export function TransactionRow({
 
   const accountNameOf = useAccountName();
   const payeeName = transactionPayeeName(tx, accountNameOf);
+  const amountText = formatRegisterAmount(tx, currency);
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],
@@ -140,7 +144,7 @@ export function TransactionRow({
         className={`flex max-md:flex-wrap items-center px-4 py-2 cursor-pointer border-b border-border-light transition-colors ${fillClass} ${detailBorderClass}`}
         role={selection ? 'checkbox' : undefined}
         aria-checked={selection ? selection.selected : undefined}
-        aria-label={selection ? selection.label : undefined}
+        aria-label={selection ? selectionCheckboxLabel(payeeName, amountText) : undefined}
         onClick={() => (selection ? selection.onToggle() : onOpenDetail(tx.id))}
         // Keyboard users open the details (or toggle selection while selecting) with Enter or Space
         tabIndex={0}
@@ -249,7 +253,7 @@ export function TransactionRow({
             className={`flex items-center justify-end gap-1 text-sm font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
             <RoundUpMark tx={tx} currency={currency} />
-            {formatRegisterAmount(tx, currency)}
+            {amountText}
           </span>
           <ForeignValue tx={tx} className="block" />
         </div>

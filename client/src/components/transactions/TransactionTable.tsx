@@ -406,13 +406,10 @@ export function TransactionTable({
       range ? selectRange(p ?? emptySelection, listedIds, id) : toggle(p ?? emptySelection, id),
     );
   };
-  const selectLabel = (tx: Transaction) =>
-    `Select ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`;
   const rowSelection = (tx: Transaction): RowSelection | undefined =>
     selected
       ? {
           selected: isSelected(selected, tx.id),
-          label: selectLabel(tx),
           onToggle: () => setSelected((p) => toggle(p ?? emptySelection, tx.id)),
         }
       : undefined;

@@ -9,7 +9,7 @@ import { PayeeIcon } from '../payees/PayeeIcon';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { ForeignValue } from '../currency/ForeignValue';
 import { usePreferencesStore } from '../../store/preferencesStore';
-import { SELECTED_ROW, type RowSelection } from './TransactionRow';
+import { SELECTED_ROW, selectionCheckboxLabel, type RowSelection } from './TransactionRow';
 import type { MenuPoint } from '../ui/ContextMenu';
 import type { Transaction, PayeeWithCount } from '../../types';
 
@@ -47,6 +47,8 @@ export function TransactionCard({
   const isSplit = tx.isParent === 1 && !!tx.children?.length;
   const accountNameOf = useAccountName();
   const payeeName = transactionPayeeName(tx, accountNameOf);
+  const currency = currencyOf(tx.accountId);
+  const amountText = formatRegisterAmount(tx, currency);
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],
@@ -74,7 +76,7 @@ export function TransactionCard({
       type="button"
       role={selection ? 'checkbox' : undefined}
       aria-checked={selection ? selection.selected : undefined}
-      aria-label={selection ? selection.label : undefined}
+      aria-label={selection ? selectionCheckboxLabel(payeeName, amountText) : undefined}
       onClick={() => (selection ? selection.onToggle() : onOpenDetail(tx.id))}
       data-testid="transaction-card"
       data-tx-id={tx.id}
@@ -96,8 +98,8 @@ export function TransactionCard({
           <span
             className={`shrink-0 inline-flex items-center gap-1 text-row font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
-            <RoundUpMark tx={tx} currency={currencyOf(tx.accountId)} />
-            {formatRegisterAmount(tx, currencyOf(tx.accountId))}
+            <RoundUpMark tx={tx} currency={currency} />
+            {amountText}
           </span>
         </span>
         <ForeignValue tx={tx} className="justify-self-end" />
