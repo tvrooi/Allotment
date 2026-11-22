@@ -145,15 +145,36 @@ export function TransactionTable({
   // The rows selected to act on together: null when not selecting
   const [selected, setSelected] = useState<RegisterSelection | null>(null);
   const selectionBarRef = useRef<HTMLDivElement>(null);
+  const selectTriggerRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const focusBarOnSelect = useRef(false);
-  const startSelecting = (next: RegisterSelection) => {
+  const restoreFocusOnDone = useRef(false);
+  const startSelecting = (next: RegisterSelection, trigger?: HTMLElement | null) => {
+    if (trigger !== undefined) returnFocusRef.current = trigger;
     focusBarOnSelect.current = true;
     setSelected(next);
   };
+  const finishSelecting = () => {
+    restoreFocusOnDone.current = true;
+    setSelected(null);
+  };
   useEffect(() => {
-    if (!focusBarOnSelect.current) return;
-    focusBarOnSelect.current = false;
-    if (selected) selectionBarRef.current?.focus();
+    if (selected) {
+      if (focusBarOnSelect.current) {
+        focusBarOnSelect.current = false;
+        selectionBarRef.current?.focus();
+      }
+      return;
+    }
+    if (restoreFocusOnDone.current) {
+      restoreFocusOnDone.current = false;
+      const target =
+        returnFocusRef.current?.isConnected && !returnFocusRef.current.closest('[inert]')
+          ? returnFocusRef.current
+          : selectTriggerRef.current;
+      returnFocusRef.current = null;
+      target?.focus();
+    }
   }, [selected]);
   // The right-click (long-press, Shift+F10, ⋯) menu: which transaction, and where
   const [menu, setMenu] = useState<{ tx: Transaction; at: MenuPoint } | null>(null);
@@ -402,6 +423,7 @@ export function TransactionTable({
     e.preventDefault();
     e.stopPropagation();
     const range = e.shiftKey;
+    if (!selected) returnFocusRef.current = selectTriggerRef.current;
     setSelected((p) =>
       range ? selectRange(p ?? emptySelection, listedIds, id) : toggle(p ?? emptySelection, id),
     );
@@ -471,8 +493,9 @@ export function TransactionTable({
             params={params}
             loadedCount={transactions.length}
             fixedAccount={Boolean(accountId)}
-            onSelect={() => startSelecting(emptySelection)}
-            onSelectAll={() => startSelecting(selectAll())}
+            selectRef={selectTriggerRef}
+            onSelect={(trigger) => startSelecting(emptySelection, trigger)}
+            onSelectAll={(trigger) => startSelecting(selectAll(), trigger)}
           />
           {accountId && (
             <div className="flex items-center gap-2">
@@ -563,7 +586,7 @@ export function TransactionTable({
             >
               Clear
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
+            <Button variant="ghost" size="sm" onClick={finishSelecting}>
               Done
             </Button>
           </div>

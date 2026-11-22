@@ -2592,4 +2592,41 @@ test.describe('selecting transactions in the register', () => {
     await expect(rows.nth(0)).toBeFocused();
     expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
   });
+
+  test('keyboard Done returns focus to the trigger that started selection or a stable fallback', async ({
+    page,
+    api,
+  }) => {
+    const rows = await fiveRows(api, page);
+    const selectBtn = page.getByRole('button', { name: 'Select', exact: true });
+    const selectAllBtn = page.getByRole('button', { name: 'Select all 5' });
+
+    // Start via Select + Enter, Tab to Done and press Enter -> returns to Select
+    await selectBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(bar(page)).toBeFocused();
+    const doneBtn = bar(page).getByRole('button', { name: 'Done' });
+    for (let i = 0; i < 6; i++) {
+      if (await doneBtn.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press('Tab');
+    }
+    await expect(doneBtn).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(selectBtn).toBeFocused();
+
+    // Start via Select all 5 + Enter, activate Done via keyboard -> returns to Select all 5
+    await selectAllBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(bar(page)).toBeFocused();
+    await doneBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(selectAllBtn).toBeFocused();
+
+    // Start from a row via Cmd/Ctrl+click, activate Done via keyboard -> stable fallback on Select
+    await rows.nth(0).click({ modifiers: ['ControlOrMeta'] });
+    await expect(bar(page)).toContainText('1 selected');
+    await doneBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(selectBtn).toBeFocused();
+  });
 });
