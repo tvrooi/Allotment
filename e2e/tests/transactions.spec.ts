@@ -10,6 +10,7 @@ import {
   chooseOption,
   fillDate,
   setToggle,
+  tokenColour,
   type Api,
 } from './fixtures';
 import { startDesktopServer, stopDesktopServer } from './serverControl';
@@ -2388,5 +2389,107 @@ test.describe('selecting transactions in the register', () => {
     await expect(
       page.getByRole('menu', { name: 'Actions for 1 selected transaction' }),
     ).toBeVisible();
+  });
+
+  test('a selected row changes colour, shows no checkbox, and nothing in it moves', async ({
+    page,
+    api,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const rows = await fiveRows(api, page);
+    const brand100 = await tokenColour(page, '--color-brand-100');
+    const brand600 = await tokenColour(page, '--color-brand-600');
+    const surface = await tokenColour(page, '--color-surface');
+    const brand600Re = new RegExp(brand600.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    const layout = async () => {
+      const first = (await rows.nth(0).boundingBox())!;
+      const fifth = (await rows.nth(4).boundingBox())!;
+      const payee = (await rows.nth(0).getByText('Mock echo', { exact: true }).boundingBox())!;
+      const amount = (await rows.nth(0).getByText('-$5', { exact: true }).boundingBox())!;
+      return {
+        firstTop: first.y,
+        firstLeft: first.x,
+        fifthTop: fifth.y,
+        fifthLeft: fifth.x,
+        payeeOffset: payee.x - first.x,
+        amountOffset: first.x + first.width - (amount.x + amount.width),
+      };
+    };
+    const same = async (before: Awaited<ReturnType<typeof layout>>) => {
+      const now = await layout();
+      for (const [k, v] of Object.entries(before) as [keyof typeof before, number][]) {
+        expect(now[k], k).toBeCloseTo(v, 0);
+      }
+    };
+
+    const before = await layout();
+
+    // (1) Focus Select and press Enter: nothing moves, bar covers the toolbar and takes focus
+    const selectBtn = page.getByRole('button', { name: 'Select', exact: true });
+    await selectBtn.focus();
+    await page.keyboard.press('Enter');
+    await same(before);
+    const barBox = (await bar(page).boundingBox())!;
+    const firstBox = (await rows.nth(0).boundingBox())!;
+    expect(barBox.y + barBox.height).toBeLessThanOrEqual(firstBox.y + 0.5);
+    await expect(selectBtn).toBeHidden();
+    await expect(bar(page).getByRole('button', { name: 'Select all 5' })).toBeVisible();
+    await expect(bar(page)).toBeFocused();
+
+    // (2) The rows themselves are the checkboxes, with no nested interactive controls
+    await expect(boxes(page)).toHaveCount(5);
+    expect(
+      await boxes(page).evaluateAll((els) =>
+        els.every((el) => el.getAttribute('data-testid') === 'transaction-row'),
+      ),
+    ).toBe(true);
+    await expect(
+      rows.nth(0).locator('button, a[href], input, select, textarea, [tabindex]'),
+    ).toHaveCount(0);
+
+    // (3) Plain-click selects the first row and changes its colour without opening details
+    await rows.nth(0).click();
+    await expect(bar(page)).toContainText('1 selected');
+    await expect(rows.nth(0)).toBeChecked();
+    await expect(page.getByRole('complementary', { name: 'Transaction details' })).toHaveCount(0);
+    await same(before);
+    await expect(rows.nth(0)).toHaveCSS('background-color', brand100);
+    await expect(rows.nth(0)).toHaveCSS('box-shadow', brand600Re);
+    await page.mouse.move(0, 0);
+    await expect(rows.nth(2)).toHaveCSS('background-color', surface);
+
+    // (4) Space toggles a focused row; Shift+F10 opens the selection menu
+    await rows.nth(1).focus();
+    await page.keyboard.press('Space');
+    await expect(bar(page)).toContainText('2 selected');
+    await expect(rows.nth(1)).toBeChecked();
+    await same(before);
+    await page.keyboard.press('Space');
+    await expect(bar(page)).toContainText('1 selected');
+    await rows.nth(0).focus();
+    await page.keyboard.press('Shift+F10');
+    await expect(
+      page.getByRole('menu', { name: 'Actions for 1 selected transaction' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // (5) Done restores the toolbar and inline controls without moving the list
+    await bar(page).getByRole('button', { name: 'Done' }).click();
+    await same(before);
+    await expect(selectBtn).toBeVisible();
+    await expect(
+      rows.nth(0).getByRole('button', { name: /^Category for Mock echo/ }),
+    ).toBeVisible();
+
+    // (6) Toolbar Select all 5: bar overlays toolbar, hides its own Select all 5
+    await page.getByRole('button', { name: 'Select all 5' }).click();
+    await expect(bar(page)).toContainText('All 5 selected');
+    await same(before);
+    const allBarBox = (await bar(page).boundingBox())!;
+    const allFirstBox = (await rows.nth(0).boundingBox())!;
+    expect(allBarBox.y + allBarBox.height).toBeLessThanOrEqual(allFirstBox.y + 0.5);
+    await expect(bar(page).getByRole('button', { name: 'Select all 5' })).toHaveCount(0);
+    await bar(page).getByRole('button', { name: 'Done' }).click();
   });
 });
