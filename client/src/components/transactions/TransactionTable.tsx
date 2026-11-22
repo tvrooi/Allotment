@@ -463,7 +463,7 @@ export function TransactionTable({
       <div className="relative">
         <div
           inert={Boolean(selected)}
-          className={`px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border-light bg-page flex flex-wrap gap-2 justify-between items-center ${selected ? 'invisible' : ''}`}
+          className={`px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border-light bg-page flex flex-wrap gap-2 justify-between items-center ${transactions.length > 0 || selected ? 'min-h-24 max-md:min-h-36' : ''} ${selected ? 'invisible' : ''}`}
         >
           <SelectionSummary
             params={params}
@@ -490,7 +490,7 @@ export function TransactionTable({
             tabIndex={-1}
             role="region"
             aria-label="Selected transactions"
-            className="absolute inset-x-0 top-0 min-h-full z-10 content-center px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
+            className="absolute inset-0 z-10 content-center overflow-y-auto px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
           >
             <span className="text-text-secondary max-md:w-full max-md:text-xs">
               {isPhone

@@ -209,3 +209,86 @@ test('a selected card changes colour, with no checkbox, and nothing on it moves'
   await bar(page).getByRole('button', { name: 'Done' }).click();
   await same(before);
 });
+
+test('at 390 px the selection bar stays inside the toolbar while the summary is pending or failed', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Everyday Checking', 100_000);
+  for (const [payeeName, amount] of [
+    ['Mock one', -100],
+    ['Mock two', -200],
+  ] as const)
+    await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+
+  let releaseSummary!: () => void;
+  const summaryHeld = new Promise<void>((resolve) => {
+    releaseSummary = resolve;
+  });
+  let summaryRequested = false;
+  await page.route('**/api/transactions/summary*', async (route) => {
+    summaryRequested = true;
+    await summaryHeld;
+    await route.fulfill({
+      status: 422,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Summary unavailable' }),
+    });
+  });
+
+  await open(page, '/transactions');
+  const cards = page.getByTestId('transaction-card');
+  await expect(cards).toHaveCount(2);
+  await expect.poll(() => summaryRequested).toBe(true);
+
+  const selectBtn = page.getByRole('button', { name: 'Select', exact: true });
+  const toolbarBefore = selectBtn.locator('xpath=ancestor::div[contains(@class,"border-b")][1]');
+  const dateHeader = page
+    .getByText('Total moved')
+    .first()
+    .locator('xpath=ancestor::div[contains(@class,"border-b")][1]');
+
+  const beforeToolbar = (await toolbarBefore.boundingBox())!;
+  const beforeHeader = (await dateHeader.boundingBox())!;
+  const beforeCard = (await cards.nth(0).boundingBox())!;
+  expect(beforeToolbar.y + beforeToolbar.height).toBeLessThanOrEqual(beforeHeader.y + 0.5);
+  expect(beforeHeader.y + beforeHeader.height).toBeLessThanOrEqual(beforeCard.y + 0.5);
+
+  await selectBtn.click();
+  const toolbarWhileSelecting = bar(page).locator('xpath=preceding-sibling::div[1]');
+  const checkInsideAndUnmoved = async () => {
+    const toolbarBox = (await toolbarWhileSelecting.boundingBox())!;
+    const barBox = (await bar(page).boundingBox())!;
+    const headerBox = (await dateHeader.boundingBox())!;
+    const cardBox = (await cards.nth(0).boundingBox())!;
+    expect(barBox.y + barBox.height).toBeLessThanOrEqual(toolbarBox.y + toolbarBox.height + 0.5);
+    expect(toolbarBox.y + toolbarBox.height).toBeLessThanOrEqual(headerBox.y + 0.5);
+    expect(barBox.y + barBox.height).toBeLessThanOrEqual(headerBox.y + 0.5);
+    expect(barBox.y + barBox.height).toBeLessThanOrEqual(cardBox.y + 0.5);
+    expect(headerBox.y).toBeCloseTo(beforeHeader.y, 0);
+    expect(cardBox.y).toBeCloseTo(beforeCard.y, 0);
+  };
+  await checkInsideAndUnmoved();
+
+  await card(page, 'Mock one').click();
+  await expect(bar(page)).toContainText('1 selected');
+  await checkInsideAndUnmoved();
+
+  const summaryResponse = page.waitForResponse((res) =>
+    res.url().includes('/api/transactions/summary'),
+  );
+  releaseSummary();
+  await summaryResponse;
+  await checkInsideAndUnmoved();
+
+  await bar(page).getByRole('button', { name: 'Done' }).click();
+  expect((await dateHeader.boundingBox())!.y).toBeCloseTo(beforeHeader.y, 0);
+  expect((await cards.nth(0).boundingBox())!.y).toBeCloseTo(beforeCard.y, 0);
+});
