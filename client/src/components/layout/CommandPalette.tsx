@@ -28,7 +28,6 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { getTransactions } from '../../api/transactions';
 import { listFiles } from '../../api/files';
-import { IS_DEMO } from '../../demo/isDemo';
 import { formatDay } from '../../utils/dates';
 import { Private } from '../ui/Private';
 import { useIsPhone } from '../../hooks/useIsPhone';
@@ -249,7 +248,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
   const files = useQuery({
     queryKey: ['palette-search', 'files', debounced],
     queryFn: () => listFiles({ q: debounced, limit: 5 }),
-    enabled: ready && canSave && filesShown && !IS_DEMO,
+    enabled: ready && canSave && filesShown,
     retry: false,
     gcTime: 0,
   });
@@ -286,7 +285,6 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
     }
     if (filesShown) {
       if (!canSave) serverResults.push(message('files', 'Not available offline'));
-      else if (IS_DEMO) serverResults.push(message('files', 'Files are not available in the demo'));
       else if (!ready || files.isPending) serverResults.push(message('files', 'Searching…'));
       else if (files.isError) serverResults.push(message('files', 'Search failed'));
       else

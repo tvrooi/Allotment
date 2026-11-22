@@ -42,6 +42,8 @@ import type {
   securities,
   securityPrices,
   taxLots,
+  tags,
+  transactionTags,
   transactions,
 } from '../db/schema.js';
 import {
@@ -54,6 +56,12 @@ import type { Action, Condition } from '../services/rulesEngine.js';
 import { financialYearOf } from '../services/financialYear.js';
 import { HOME_HOURLY } from '../services/taxRates.js';
 import { DEMO_LOGOS, type DemoLogo } from './logos.js';
+import type { DEMO_NOTES, DEMO_PDFS, DEMO_RECEIPT_PHOTOS } from './demoFiles.js';
+import type { TaxLabel } from '../services/taxService.js';
+import type { AssetInput } from '../services/depreciatingAssetService.js';
+import type { Frequency, Provider } from '../services/paymentPlanService.js';
+import type { LoanDetails } from '../services/loanDetails.js';
+import type { LinkKind } from '../services/documentService.js';
 
 type Row<T extends { $inferInsert: unknown }> = T['$inferInsert'];
 
@@ -62,6 +70,70 @@ export interface ScheduleLink {
   scheduledDate: string;
   /** The payment, or null for an occurrence the couple skipped */
   transactionId: string | null;
+}
+
+/** One of the sample files in demoFiles.ts */
+export type DemoFile =
+  | { kind: 'photo'; key: keyof typeof DEMO_RECEIPT_PHOTOS }
+  | { kind: 'pdf'; key: keyof typeof DEMO_PDFS }
+  | { kind: 'note'; key: keyof typeof DEMO_NOTES };
+
+/** A saved receipt: its file, what it says, and the transaction it proves (null = the inbox) */
+export interface DemoReceipt {
+  file: DemoFile;
+  fileName: string;
+  transactionId: string | null;
+  merchant: string;
+  receiptDate: string;
+  total: number;
+  tax: number | null;
+  items: { description: string; amount: number; categoryId: string | null }[];
+  /** Also the records of this depreciating asset (by name) */
+  assetName?: string;
+}
+
+/** A file in Files that isn't a receipt */
+export interface DemoDocument {
+  file: DemoFile;
+  fileName: string;
+  description: string;
+  documentDate: string;
+  important: boolean;
+  starred: boolean;
+  link: { kind: LinkKind; id: string } | null;
+}
+
+/**
+ * The household the couple share their house with: who's in it, which recurring bills (their
+ * recent payments are shared too) and other payments are shared, and expenses others paid.
+ * Loaded through householdService so the Household page's rules hold (loadDemoBudget.ts).
+ */
+export interface DemoHousehold {
+  name: string;
+  people: string[];
+  /** Which of `people` the budget's owner is */
+  selfIndex: number;
+  billScheduleIds: string[];
+  sharedTransactionIds: string[];
+  /** Expenses someone else paid; `payer` is an index into `people` */
+  expenses: { date: string; description: string; amount: number; payer: number }[];
+  /** Everyone settles up with the owner on this day, leaving what's here (cents, by person) */
+  settledOn: string;
+  stillOwing: number[];
+}
+
+/** A purchase paid off in instalments, on a pay-later account the loader opens */
+export interface DemoPayLater {
+  provider: Provider;
+  merchant: string;
+  purchaseDate: string;
+  total: number;
+  categoryId: string;
+  fundingAccountId: string;
+  instalmentCount: number;
+  frequency: Frequency;
+  firstDueDate: string;
+  notes: string;
 }
 
 export interface DemoBudget {
@@ -99,6 +171,20 @@ export interface DemoBudget {
   /** Three weeks of working-from-home hours this financial year (D4a), kept lean */
   taxHomeHours: Row<typeof taxHomeHours>[];
   taxHomeYears: Row<typeof taxHomeYears>[];
+  /** Tax time: phone bills partly for work, donations, and the laptop as a depreciating asset */
+  taxClaims: { transactionId: string; label: TaxLabel; workUseBps: number; notes: string | null }[];
+  depreciatingAssets: (AssetInput & { name: string })[];
+  /** Last financial year, marked lodged (its figures are recorded when loaded) */
+  lodgedYears: number[];
+  receipts: DemoReceipt[];
+  documents: DemoDocument[];
+  household: DemoHousehold;
+  payLater: DemoPayLater[];
+  /** A long-term forecast plan, checked by the forecast's own schema when loaded */
+  longTermPlans: unknown[];
+  loanDetails: { accountId: string; details: LoanDetails }[];
+  tags: Row<typeof tags>[];
+  transactionTags: Row<typeof transactionTags>[];
 }
 
 // ─── Random numbers ────────────────────────────────────────────────────────────
@@ -382,6 +468,26 @@ export function buildDemoBudget(today: Date): DemoBudget {
     investmentSplits: [],
     taxHomeHours: [],
     taxHomeYears: [],
+    taxClaims: [],
+    depreciatingAssets: [],
+    lodgedYears: [],
+    receipts: [],
+    documents: [],
+    household: {
+      name: '',
+      people: [],
+      selfIndex: 0,
+      billScheduleIds: [],
+      sharedTransactionIds: [],
+      expenses: [],
+      settledOn: todayStr,
+      stillOwing: [],
+    },
+    payLater: [],
+    longTermPlans: [],
+    loanDetails: [],
+    tags: [],
+    transactionTags: [],
   };
   const budgetTypes = {} as Record<CategoryKey, BudgetType | undefined>;
   GROUPS.forEach((group, gi) => {
@@ -1120,6 +1226,27 @@ export function buildDemoBudget(today: Date): DemoBudget {
     payee: 'hearthHome',
   });
 
+  // Three recent purchases kept with their receipts (Records, below): the photos in demoFiles.ts
+  // print these totals
+  const wooliesShop = add({
+    account: 'card',
+    date: ymd(subDays(today, 4)),
+    amount: -7_290,
+    payee: 'freshFields',
+  });
+  const warehouseRun = add({
+    account: 'card',
+    date: ymd(subDays(today, 6)),
+    amount: -12_045,
+    payee: 'costwise',
+  });
+  const chemist = add({
+    account: 'checking',
+    date: ymd(subDays(today, 2)),
+    amount: -2_048,
+    payee: 'wellway',
+  });
+
   // The opening deposit: money they had when they started budgeting
   add({
     account: 'checking',
@@ -1671,5 +1798,241 @@ export function buildDemoBudget(today: Date): DemoBudget {
       createdAt: notedAt,
       updatedAt: notedAt,
     });
+  // ─── Records kept with the budget: receipts, files, tax time, the household ─────
+  // Loaded through the services that keep their rules (loadDemoBudget.ts), so each is lean data
+  // here. Every tab has something to explore.
+  const fy = financialYearOf(todayStr);
+  const paymentsTo = (payee: PayeeKey, from?: string) =>
+    result.transactions
+      .filter(
+        (t) =>
+          t.payeeId === `demo-payee-${payee}` &&
+          t.amount < 0 &&
+          !t.isParent &&
+          !t.transferTransactionId &&
+          (!from || t.date >= from),
+      )
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  const laptop = result.transactions.find((t) => t.notes === 'New laptop for Sam')!;
+  const item = (description: string, amount: number, category: CategoryKey | null = null) => ({
+    description,
+    amount,
+    categoryId: category ? cat[category] : null,
+  });
+  result.receipts.push(
+    {
+      // Items in three categories: matching it splits the payment by category
+      file: { kind: 'photo', key: 'woolies' },
+      fileName: 'woolies-receipt.jpg',
+      transactionId: wooliesShop,
+      merchant: 'Woolies',
+      receiptDate: ymd(subDays(today, 4)),
+      total: 7_290,
+      tax: 305,
+      items: [
+        item('Bananas 1kg', 450, 'groceries'),
+        item('Free range eggs 12pk', 780, 'groceries'),
+        item('Sourdough loaf', 650, 'groceries'),
+        item('Full cream milk 2L', 360, 'groceries'),
+        item('Chicken thighs 1kg', 1_300, 'groceries'),
+        item('Baby spinach 120g', 400, 'groceries'),
+        item('Dishwasher tablets 40pk', 1_800, 'homeGoods'),
+        item('Toothpaste 2pk', 600, 'personalCare'),
+        item('Shampoo 400ml', 950, 'personalCare'),
+      ],
+    },
+    {
+      // Items still Uncategorised, for the editor
+      file: { kind: 'photo', key: 'costwise' },
+      fileName: 'costwise-receipt.jpg',
+      transactionId: warehouseRun,
+      merchant: 'Costwise Warehouse',
+      receiptDate: ymd(subDays(today, 6)),
+      total: 12_045,
+      tax: 354,
+      items: [
+        item('Toilet paper 36pk', 2_199),
+        item('Coffee beans 1kg', 3_299),
+        item('Olive oil 3L', 2_999),
+        item('Basmati rice 10kg', 1_849),
+        item('Paper towel 12pk', 1_699),
+      ],
+    },
+    {
+      file: { kind: 'photo', key: 'wellway' },
+      fileName: 'wellway-receipt.jpg',
+      transactionId: chemist,
+      merchant: 'Wellway Chemist',
+      receiptDate: ymd(subDays(today, 2)),
+      total: 2_048,
+      tax: 136,
+      items: [
+        item('Paracetamol 500mg 24pk', 549, 'pharmacy'),
+        item('Sunscreen SPF50 200ml', 1_499, 'pharmacy'),
+      ],
+    },
+    {
+      // A PDF invoice, also the laptop's records on Tax time → Assets
+      file: { kind: 'pdf', key: 'laptopInvoice' },
+      fileName: 'parcel-tax-invoice.pdf',
+      transactionId: laptop.id,
+      merchant: 'Parcel',
+      receiptDate: laptop.date,
+      total: 129_900,
+      tax: 11_809,
+      items: [item('14-inch laptop, 16GB / 512GB', 129_900, 'electronics')],
+      assetName: 'Laptop (Sam)',
+    },
+    {
+      // Waiting in the inbox for its payment
+      file: { kind: 'photo', key: 'dailyGrind' },
+      fileName: 'daily-grind-receipt.jpg',
+      transactionId: null,
+      merchant: 'Daily Grind Coffee',
+      receiptDate: ymd(subDays(today, 1)),
+      total: 1_170,
+      tax: null,
+      items: [item('Flat white (large)', 520), item('Banana bread', 650)],
+    },
+  );
+  result.documents.push(
+    {
+      file: { kind: 'pdf', key: 'carInsurance' },
+      fileName: 'shieldwell-certificate-of-insurance.pdf',
+      description: 'Comprehensive cover for the hatchback',
+      documentDate: ymd(subMonths(today, 3)),
+      important: true,
+      starred: false,
+      link: { kind: 'account', id: acct.car },
+    },
+    {
+      file: { kind: 'note', key: 'threadlineReturn' },
+      fileName: 'threadline-return.txt',
+      description: 'Refund of $59.95 still to come',
+      documentDate: ymd(subDays(today, 5)),
+      important: false,
+      starred: true,
+      link: { kind: 'category', id: cat.clothing },
+    },
+  );
+
+  // Tax time: this year's and last year's phone bills (40% work) and donations; the laptop is
+  // depreciated rather than claimed; last year is lodged
+  const lastFyStart = `${fy - 1}-07-01`;
+  for (const t of paymentsTo('nimbus', lastFyStart))
+    result.taxClaims.push({
+      transactionId: t.id,
+      label: 'D5',
+      workUseBps: 4_000,
+      notes: 'Work calls and hotspot: 40% from a four-week diary',
+    });
+  for (const t of paymentsTo('kindred', lastFyStart))
+    result.taxClaims.push({ transactionId: t.id, label: 'D9', workUseBps: 10_000, notes: null });
+  result.depreciatingAssets.push({
+    name: 'Laptop (Sam)',
+    notes: 'For Sam’s work from home, three days a week',
+    label: 'D5',
+    method: 'diminishing_value',
+    cost: 129_900,
+    startDate: laptop.date,
+    purchaseDate: laptop.date,
+    effectiveLifeHundredths: 200,
+    workUseBps: 6_000,
+    transactionId: laptop.id,
+  });
+  result.lodgedYears.push(fy - 1);
+
+  // Tags: the work phone bills and laptop, and the trip up the coast
+  const recently = ymd(subMonths(today, 6));
+  result.tags.push(
+    { id: 'demo-tag-work', name: 'Work', color: '#0284c7' },
+    { id: 'demo-tag-trip', name: 'Trip up the coast', color: '#16a34a' },
+  );
+  for (const id of [
+    ...result.taxClaims.filter((c) => c.label === 'D5').map((c) => c.transactionId),
+    laptop.id,
+  ])
+    result.transactionTags.push({ transactionId: id, tagId: 'demo-tag-work' });
+  for (const t of result.transactions)
+    if (
+      t.date >= recently &&
+      (t.payeeId === 'demo-payee-lakesideInn' ||
+        t.payeeId === 'demo-payee-skyhop' ||
+        t.notes?.startsWith('Trip'))
+    )
+      result.transactionTags.push({ transactionId: t.id, tagId: 'demo-tag-trip' });
+
+  // The household: Alex rents the spare room. Rent, power and internet are shared three ways
+  // (with their recent payments), and so was the last warehouse run. Alex bought the cleaning
+  // things; everyone settled up last weekend, and Alex owes a little since
+  result.household = {
+    name: 'Harbour St house',
+    people: ['Riley', 'Sam', 'Alex'],
+    selfIndex: 0,
+    billScheduleIds: ['demo-schedule-rent', 'demo-schedule-electric', 'demo-schedule-internet'],
+    sharedTransactionIds: [warehouseRun],
+    expenses: [
+      { date: ymd(subDays(today, 9)), description: 'Cleaning supplies', amount: 4_560, payer: 2 },
+    ],
+    settledOn: ymd(subDays(today, 3)),
+    stillOwing: [0, 0, 4_015],
+  };
+
+  // Pay later: a coat on Afterpay today, four fortnightly payments from Spending. The whole price
+  // is spent from Clothing now, so it's budgeted. Today, not earlier: the Afterpay account's
+  // payment envelope starts the day it's opened, and an older purchase would be old debt
+  const coat = 24_000;
+  const clothingNow = result.budgetMonths.find(
+    (b) => b.categoryId === cat.clothing && b.month === currentMonth,
+  );
+  if (clothingNow) clothingNow.budgeted = (clothingNow.budgeted ?? 0) + coat;
+  else
+    result.budgetMonths.push({
+      id: `demo-budget-${currentMonth}-${cat.clothing}`,
+      month: currentMonth,
+      categoryId: cat.clothing,
+      budgeted: coat,
+    });
+  result.payLater.push({
+    provider: 'afterpay',
+    merchant: 'Threadline',
+    purchaseDate: todayStr,
+    total: coat,
+    categoryId: cat.clothing,
+    fundingAccountId: acct.checking,
+    instalmentCount: 4,
+    frequency: 'fortnightly',
+    firstDueDate: ymd(addDays(today, 14)),
+    notes: 'Winter coat',
+  });
+
+  // The long-term forecast: buying a first home in four years, instead of renting
+  result.longTermPlans.push({
+    name: 'Buying a home',
+    settings: { birthYear: today.getFullYear() - 33 },
+    events: [
+      {
+        id: 'demo-first-home',
+        name: 'First home',
+        kind: 'home',
+        start: { year: today.getFullYear() + 4 },
+        price: 95_000_000,
+        deposit: { kind: 'percent', bps: 1_000 },
+        loanRateBps: 600,
+        termYears: 30,
+        purchaseCosts: 4_000_000,
+        annualRates: 250_000,
+        annualInsurance: 180_000,
+        rentMonthly: Math.round((RENT * 26) / 12),
+        replaceRent: true,
+        propertyGrowthBps: 400,
+      },
+    ],
+  });
+  result.loanDetails.push({
+    accountId: acct.carLoan,
+    details: { rateBps: 590, monthlyRepayment: 38_900, termMonths: 48 },
+  });
   return result;
 }

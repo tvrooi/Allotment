@@ -11,11 +11,9 @@ test('the long-term forecast works in the offline demo', async ({ page }) => {
     'aria-selected',
     'true',
   );
-  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
-  await page.getByLabel('Plan name').fill('Demo plan');
-  await page.getByRole('button', { name: 'Create plan' }).click();
+  // The sample budget's plan (buying a first home) opens straight away
   await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'Net worth by year, Demo plan' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Net worth by year, Buying a home' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Add an event' }).click();
   await page.getByRole('button', { name: /^Retirement/ }).click();

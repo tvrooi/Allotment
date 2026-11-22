@@ -36,13 +36,14 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
   await openDemo(page);
   await expect(leftToSpend(page)).toBeVisible();
   await expect(page.getByText('Bills and income')).toBeVisible();
-  // The status strip names the sample's Up feed; the sample has no household to show
+  // The status strip names the sample's Up feed and the household's balance
   const strip = page.getByRole('region', { name: 'Budget status' });
   await expect(strip.getByRole('link', { name: /^Synced from Up / })).toHaveAttribute(
     'href',
     '#/accounts/connections?provider=up',
   );
-  await expect(strip.getByRole('listitem')).toHaveCount(1);
+  await expect(strip.getByRole('listitem')).toHaveCount(2);
+  await expect(strip.getByText('Harbour St house')).toBeVisible();
   await expect(
     page
       .getByRole('region', { name: 'Review attention' })
@@ -421,7 +422,7 @@ test('the search palette finds the sample budget’s payees and goals', async ({
   await expect(page).toHaveURL(/#\/goals$/);
 });
 
-test('the palette searches demo transactions and explains Files availability', async ({ page }) => {
+test('the palette searches demo transactions and the sample files', async ({ page }) => {
   await openDemo(page, '/files');
   await page.getByRole('heading', { level: 1 }).first().waitFor();
   await page.keyboard.press('ControlOrMeta+k');
@@ -433,16 +434,13 @@ test('the palette searches demo transactions and explains Files availability', a
       .getByRole('option', { name: /^Daily Grind Coffee/ })
       .first(),
   ).toBeVisible();
+  // The sample files are searched in the tab, like a server's
   const files = palette.getByRole('group', { name: 'Files', exact: true }).getByRole('option');
-  await expect(files).toHaveText('Files are not available in the demo');
-  await expect(files).toHaveAttribute('aria-disabled', 'true');
-  await files.press('Enter');
-  await expect(palette).toBeVisible();
-  await page.screenshot({ path: '../.ui-evidence/2026-11-12-palette-2/demo-files.png' });
+  await palette.getByRole('combobox').fill('shieldwell');
+  await expect(files.filter({ hasText: 'shieldwell-certificate-of-insurance.pdf' })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId('phone-header')).toBeVisible();
-  await palette.getByRole('combobox').fill('Daily Grind');
-  await expect(files).toHaveText('Files are not available in the demo');
+  await palette.getByRole('combobox').fill('shieldwell');
+  await expect(files.filter({ hasText: 'shieldwell-certificate-of-insurance.pdf' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: '../.ui-evidence/2026-11-12-palette-2/phone-demo-files.png' });
 });

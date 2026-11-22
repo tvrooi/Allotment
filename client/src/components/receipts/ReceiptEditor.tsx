@@ -20,6 +20,7 @@ import {
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCanSave } from '../../hooks/useConnection';
 import { useCategories } from '../../hooks/useCategories';
+import { useFileSrc } from '../../hooks/useFileSrc';
 import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { newClientId } from '../../utils/offline';
@@ -151,6 +152,7 @@ function Editor({
   const remove = useDeleteReceipt();
   const canSave = useCanSave();
   const { data: groups = [] } = useCategories();
+  const fileSrc = useFileSrc(receipt.hasFile ? receiptFileUrl(receipt.id) : undefined);
   const [merchant, setMerchant] = useState(receipt.merchant ?? '');
   const [date, setDate] = useState(receipt.receiptDate ?? '');
   const [total, setTotal] = useState(receipt.total ?? 0);
@@ -192,14 +194,14 @@ function Editor({
     <div className="grid gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <div className="space-y-2">
         <a
-          href={receipt.hasFile ? receiptFileUrl(receipt.id) : undefined}
+          href={fileSrc}
           target="_blank"
           rel="noreferrer"
           className="block rounded-md border border-border-light bg-surface-alt overflow-hidden"
         >
           {photo ? (
             <img
-              src={receiptFileUrl(receipt.id)}
+              src={fileSrc}
               alt={receipt.fileName}
               className="w-full max-h-[28rem] object-contain"
             />

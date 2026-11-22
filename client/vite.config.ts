@@ -28,8 +28,13 @@ function demoServerModules(): Plugin {
     async resolveId(source, importer, options) {
       if (!importer || !normalizePath(importer).startsWith(file(''))) return null;
       if (source === 'express') return file('browser/expressShim.ts');
-      if (source === 'path') return file('browser/path.ts');
+      if (source === 'path' || source === 'node:path') return file('browser/path.ts');
       if (source === 'crypto' || source === 'node:crypto') return file('browser/crypto.ts');
+      // Receipts and Files (fileStore.ts, fileText.ts): only their on-disk and archive paths,
+      // which the demo refuses, need these
+      if (source === 'node:fs') return file('browser/fs.ts');
+      if (source === 'node:os') return file('browser/os.ts');
+      if (source === 'node:zlib') return file('browser/zlib.ts');
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
       const swap = resolved && swaps[normalizePath(resolved.id)];
       return swap ?? null;

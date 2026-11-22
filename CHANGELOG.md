@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.179
+
+- **The demo has something on every tab.** The sample budget now has a household (Harbour St house: Riley, Sam and their housemate Alex, sharing rent, power and internet, with an expense Alex paid and a settle-up), five saved receipts with photos and line items (three matched, one split across categories, one waiting in the inbox), a car insurance certificate and a starred return note in Files, phone bills and donations claimed on Tax time, the laptop as a depreciating asset with its invoice, last financial year lodged, an Afterpay purchase on Pay later, a Buying a home long-term plan, the car loan's rate and repayment, and Work and Trip up the coast tags. Review still opens with nothing overspent.
+- **Receipts and Files work in the demo.** Their sample files open, and receipts can be edited, categorised, matched and deleted in the tab, like any other demo change. Adding a file, the receipt reader and the zip downloads still need the app. The search palette finds the sample files.
+- **Fix: file lists for a working-from-home year, an investment sale or an income row.** Filtering or counting files linked to one of these failed on the server, because the query named the wrong column.
+
 ## 0.2.0-up.178
 
 - **Select transactions and change them from the right-click menu.** In the register, Select puts a checkbox on every transaction (and phone card). Tick them one by one, Shift+click a range, or choose Select all to take the whole list, then right-click one of the selected rows (or use More actions, or ⋯ on a phone card) to mark them reviewed, set a category or payee, replace or remove notes, add or remove a tag, show or hide them in reports, share them with a household or delete them. The Edit dialog is gone. A change applies at once and the toast offers Undo, and it says how many rows were changed and which it left alone (a transfer, a split, a household entry). Delete still waits for you to type delete. While saving is paused every change in the menu waits too. The household sharing button that used to be called Pick to share is now Select, and the button that picked every shown row is gone: Select all does that.
