@@ -1,10 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
-import { test, expect, open, isoDay, categoryOption, toggleTarget } from '../fixtures';
+import { test, expect, open, isoDay, categoryOption, tokenColour } from '../fixtures';
 import { sidewaysOverflow } from './overflow';
 
-// The register's selection on a phone (390×844, the "phone" project): Select puts a checkbox on
-// every card, a tap on a card toggles it while selecting, and the card's ⋯ or the bar's More
-// actions opens the one selection menu, whose sub-menus open in place with Back.
+// The register's selection on a phone (390×844, the "phone" project): Select lets a tap select
+// cards, which change colour, with no checkbox; the bar covers the toolbar so the list does not
+// move, and the card's ⋯ or the bar's More actions opens the one selection menu, whose sub-menus
+// open in place with Back.
 
 const TOUCH = 44;
 
@@ -66,7 +67,7 @@ test('on a phone cards are selected by tapping, and the one menu edits and revie
     bar(page).getByRole('button', { name: 'Clear selection' }),
     bar(page).getByRole('button', { name: 'Done' }),
     bar(page).getByRole('button', { name: 'Share 2 selected with household' }),
-    toggleTarget(page.getByRole('checkbox', { name: /^Select Mock one/ })),
+    page.getByRole('checkbox', { name: /^Select Mock one/ }),
     page.getByRole('button', { name: 'Actions for Mock two' }),
   ])
     await expectTouchSize(control);
@@ -111,4 +112,100 @@ test('on a phone cards are selected by tapping, and the one menu edits and revie
   expect(await sidewaysOverflow(page)).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
+});
+
+test('a selected card changes colour, with no checkbox, and nothing on it moves', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Everyday Checking', 100_000);
+  for (const [payeeName, amount] of [
+    ['Mock one', -100],
+    ['Mock two', -200],
+  ] as const)
+    await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+
+  await open(page, '/transactions');
+  const cards = page.getByTestId('transaction-card');
+  await expect(cards).toHaveCount(2);
+
+  const brand100 = await tokenColour(page, '--color-brand-100');
+  const brand600 = await tokenColour(page, '--color-brand-600');
+  const surface = await tokenColour(page, '--color-surface');
+  const brand600Re = new RegExp(brand600.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  const layout = async () => {
+    const first = (await cards.nth(0).boundingBox())!;
+    const second = (await cards.nth(1).boundingBox())!;
+    const payee = (await cards
+      .nth(0)
+      .getByText(/^Mock (one|two)$/)
+      .boundingBox())!;
+    const amount = (await cards
+      .nth(0)
+      .getByText(/^-\$[12]$/)
+      .boundingBox())!;
+    return {
+      firstTop: first.y,
+      firstLeft: first.x,
+      secondTop: second.y,
+      secondLeft: second.x,
+      payeeOffset: payee.x - first.x,
+      amountOffset: first.x + first.width - (amount.x + amount.width),
+    };
+  };
+  const same = async (before: Awaited<ReturnType<typeof layout>>) => {
+    const now = await layout();
+    for (const [k, v] of Object.entries(before) as [keyof typeof before, number][]) {
+      expect(now[k], k).toBeCloseTo(v, 0);
+    }
+  };
+
+  const before = await layout();
+
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await same(before);
+  const barBox = (await bar(page).boundingBox())!;
+  const firstBox = (await cards.nth(0).boundingBox())!;
+  expect(barBox.y + barBox.height).toBeLessThanOrEqual(firstBox.y + 0.5);
+
+  const checkboxes = page.getByRole('checkbox', { name: /^Select / });
+  await expect(checkboxes).toHaveCount(2);
+  expect(
+    await checkboxes.evaluateAll((els) =>
+      els.every(
+        (el) => el.getAttribute('data-testid') === 'transaction-card' && el.tagName !== 'INPUT',
+      ),
+    ),
+  ).toBe(true);
+
+  await card(page, 'Mock one').click();
+  await expect(page.getByRole('checkbox', { name: /^Select Mock one/ })).toBeChecked();
+  await expect(card(page, 'Mock one')).toHaveCSS('background-color', brand100);
+  await expect(card(page, 'Mock one')).toHaveCSS('box-shadow', brand600Re);
+  await expect(card(page, 'Mock two')).toHaveCSS('background-color', surface);
+  await expect(page.getByRole('complementary', { name: 'Transaction details' })).toHaveCount(0);
+  await same(before);
+
+  expect(await sidewaysOverflow(page)).toEqual([]);
+  for (const control of [
+    bar(page).getByRole('button', { name: 'More actions' }),
+    bar(page).getByRole('button', { name: 'Select all 2' }),
+    bar(page).getByRole('button', { name: 'Share 1 selected with household' }),
+    bar(page).getByRole('button', { name: 'Clear selection' }),
+    bar(page).getByRole('button', { name: 'Done' }),
+    page.getByRole('checkbox', { name: /^Select Mock one/ }),
+    page.getByRole('button', { name: 'Actions for Mock one' }),
+  ])
+    await expectTouchSize(control);
+
+  await bar(page).getByRole('button', { name: 'Done' }).click();
+  await same(before);
 });
