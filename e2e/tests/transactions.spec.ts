@@ -2492,4 +2492,34 @@ test.describe('selecting transactions in the register', () => {
     await expect(bar(page).getByRole('button', { name: 'Select all 5' })).toHaveCount(0);
     await bar(page).getByRole('button', { name: 'Done' }).click();
   });
+
+  test('does not offer Select all while a filtered list is loading', async ({ page, api }) => {
+    await fiveRows(api, page);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await expect(bar(page).getByRole('button', { name: 'Select all 5' })).toBeVisible();
+
+    let releaseFiltered!: () => void;
+    const filteredHeld = new Promise<void>((resolve) => {
+      releaseFiltered = resolve;
+    });
+    let filteredRequested = false;
+    await page.route(
+      (url) => url.pathname === '/api/transactions' && url.search.includes('alpha'),
+      async (route) => {
+        filteredRequested = true;
+        await filteredHeld;
+        await route.continue();
+      },
+    );
+
+    await page.getByPlaceholder('Search payee or notes…').fill('alpha');
+    await expect.poll(() => filteredRequested).toBe(true);
+    await expect(bar(page).getByRole('button', { name: /^Select all/ })).toHaveCount(0);
+
+    releaseFiltered();
+    await expect(page.getByTestId('transaction-row')).toHaveCount(1);
+    await expect(boxes(page).nth(0)).not.toBeChecked();
+    await expect(bar(page)).toContainText('0 selected');
+    await expect(bar(page).getByRole('button', { name: 'Select all 1' })).toBeVisible();
+  });
 });

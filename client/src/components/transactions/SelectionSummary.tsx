@@ -23,6 +23,13 @@ interface Props {
 /** Label shared between the toolbar's Select all button and the selection bar's */
 export const selectAllLabel = (count: number) => `Select all ${count.toLocaleString()}`;
 
+/** Tooltip shared between the toolbar's Select all button and the selection bar's */
+export const SELECT_ALL_TITLE = 'Choose an action for every transaction in this list';
+
+/** Whether Select all may be offered: only when rows are actually loaded and not already all selected */
+export const canSelectAll = (loadedCount: number, wholeList = false) =>
+  loadedCount > 0 && !wholeList;
+
 /**
  * Count, money in/out and date span of the register's list, with its CSV export, Select and
  * Select all, which starts the register's whole-list selection (while selecting, the selection bar
@@ -94,12 +101,12 @@ export function SelectionSummary({ params, loadedCount, onSelect, onSelectAll }:
             <ListChecks size={12} /> Select
           </button>
         )}
-        {loadedCount > 0 && (
+        {canSelectAll(loadedCount) && (
           <button
             type="button"
             onClick={onSelectAll}
             className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-            title="Choose an action for every transaction in this list"
+            title={SELECT_ALL_TITLE}
           >
             <ListChecks size={12} /> {selectAllLabel(loadedCount)}
           </button>

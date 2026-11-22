@@ -7,7 +7,12 @@ import { MenuTarget, type MenuPoint } from '../ui/ContextMenu';
 import { TransactionContextMenu, whyNotShareable } from './TransactionContextMenu';
 import { SelectionMenu } from './SelectionMenu';
 import { useTransactions } from '../../hooks/useTransactions';
-import { SelectionSummary, selectAllLabel } from './SelectionSummary';
+import {
+  SelectionSummary,
+  canSelectAll,
+  SELECT_ALL_TITLE,
+  selectAllLabel,
+} from './SelectionSummary';
 import { SaveViewModal } from './SavedViews';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
@@ -516,11 +521,11 @@ export function TransactionTable({
               <MoreHorizontal size={16} />
             </Button>
             <div className="flex-1" />
-            {!wholeList && (
+            {canSelectAll(transactions.length, wholeList) && (
               <Button
                 variant="ghost"
                 size="sm"
-                title="Choose an action for every transaction in this list"
+                title={SELECT_ALL_TITLE}
                 onClick={() => startSelecting(selectAll())}
               >
                 {selectAllLabel(transactions.length)}
