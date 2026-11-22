@@ -424,6 +424,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
               onChange={setCategoryId}
               position="above"
               transferAccounts={transferAccounts}
+              phoneDrawer
             />
           </div>
 

@@ -281,6 +281,12 @@ type SearchListBodyProps = {
   /** Below the list, outside it: a create form or a link */
   footer?: ReactNode;
   onClose: () => void;
+  /**
+   * Whether the search field takes focus when the list opens (default true). A caller can let it
+   * wait for a tap, so the phone keyboard does not open by itself (owner, 21 November 2026, UAT
+   * G-03-1); focus then rests on the listbox, whose keys are the same.
+   */
+  focusSearchOnOpen?: boolean;
 };
 
 type SearchListProps = SearchListBodyProps & {
@@ -289,6 +295,12 @@ type SearchListProps = SearchListBodyProps & {
   placement?: 'bottom start' | 'top start';
   /** 'trigger' is at least the trigger's width; otherwise a width class such as w-64 */
   width?: 'trigger' | string;
+  /**
+   * The least gap, in px, between the list and the edge of the container it is drawn in (React
+   * Aria's default is 12). A list drawn into `portalContainer` that must sit flush with its
+   * trigger sets 0, or it is pushed 12 px in from the container's left edge.
+   */
+  containerPadding?: number;
   /** Added to the popover */
   className?: string;
   /**
@@ -308,6 +320,9 @@ type Row = { id: string; pick: () => void };
  * Autocomplete: Autocomplete highlights the first option only after typed text (not a fill or
  * a deletion) and would highlight the pinned row while searching, and both rules are the picker's
  * (T-02-24). The keyboard order: the pinned row first when it is in it, then every enabled option.
+ * The search field takes focus on open unless the caller sets `focusSearchOnOpen` to false (a
+ * caller can let it wait for a tap, so the phone keyboard does not open by itself, owner,
+ * 21 November 2026, UAT G-03-1); focus then rests on the listbox, which handles the same keys.
  */
 export function SearchListBody({
   searchLabel,
@@ -321,6 +336,7 @@ export function SearchListBody({
   emptyText,
   footer,
   onClose,
+  focusSearchOnOpen = true,
 }: SearchListBodyProps) {
   const baseId = useId();
   // Where the arrow keys moved to, for the search it was moved under. A new search starts over:
@@ -344,9 +360,12 @@ export function SearchListBody({
   // What a click on each enabled row picks, the pinned row included even when the keys skip it
   const picks = new Map<string, () => void>();
   const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // Read once, on open: the list's focus does not follow a later change of the prop
+  const focusSearch = useRef(focusSearchOnOpen);
 
   useEffect(() => {
-    searchRef.current?.focus();
+    (focusSearch.current ? searchRef : listRef).current?.focus();
   }, []);
 
   useEffect(() => {
@@ -433,12 +452,14 @@ export function SearchListBody({
         {/* The keys stay in the search field (aria-activedescendant), so the listbox takes
             clicks only: one handler for its rows, and no focus taken from the field */}
         <div
+          ref={listRef}
           id={rowId('list')}
           role="listbox"
           aria-label={searchLabel}
+          aria-activedescendant={activeId}
           tabIndex={-1}
           onMouseDown={(e) => e.preventDefault()}
-          // Should focus land on the list itself, its keys are the field's
+          // Should focus land on the list itself (focusSearchOnOpen false), its keys are the field's
           onKeyDown={onKeyDown}
           onClick={(e) => {
             const row = (e.target as Element).closest('[role="option"]');
@@ -511,8 +532,8 @@ export function SearchListBody({
  * `onClose`. With a search typed its first option is highlighted, so Enter picks it; with none
  * typed nothing is, so Enter picks nothing. The arrows stop at the ends. Escape closes only the
  * list and focus returns to the trigger; a click outside closes it with no pick, and a click
- * inside never reaches what is behind it.
- *
+ * inside never reaches what is behind it. The search takes focus on open unless `focusSearchOnOpen`
+ * is false (so the phone keyboard does not open by itself, owner, 21 November 2026, UAT G-03-1).
  *
  * The popover is non-modal, as the hand-rolled category picker was: nothing behind it is made
  * inert, so a click outside goes on to the panel heading or row it was aimed at, and the list
@@ -523,6 +544,7 @@ export function SearchList({
   triggerRef,
   placement = 'bottom start',
   width = 'trigger',
+  containerPadding,
   className = '',
   portalContainer,
   onClose,
@@ -552,6 +574,7 @@ export function SearchList({
       isNonModal
       placement={placement}
       offset={4}
+      containerPadding={containerPadding}
       className={`${popoverClass} flex flex-col ${width === 'trigger' ? '' : width} ${className}`}
     >
       <Dialog

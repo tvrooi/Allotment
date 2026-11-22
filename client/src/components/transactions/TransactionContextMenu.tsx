@@ -16,6 +16,8 @@ import {
   type HouseholdSummary,
 } from '../../api/households';
 import { useHouseholds } from '../../hooks/useHouseholds';
+import { useCanSave } from '../../hooks/useConnection';
+import { SAVING_PAUSED } from '../connection/savingPaused';
 import { useUndoStore } from '../../store/undoStore';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { splitText, useShareWithHousehold } from '../household/ShareWithHousehold';
@@ -25,8 +27,8 @@ import type { Transaction } from '../../types';
 
 // The register's right-click (long-press, Shift+F10, ⋯) menu for one transaction: open it,
 // share it with a household in one step (default split, Undo in the toast), or see and stop
-// how it's shared. Right-clicking one of several picked payments shares all of them. A payment
-// to someone in a household can be marked as paid ahead towards a shared expense (PayAhead.tsx).
+// how it's shared. A payment to someone in a household can be marked as paid ahead towards a
+// shared expense (PayAhead.tsx). Selected transactions have their own menu (SelectionMenu.tsx).
 
 /** Why a payment can't be shared from here (null = it can), as sharing in the register decides */
 export function whyNotShareable(tx: Transaction): string | null {
@@ -42,8 +44,6 @@ const payeeOf = (tx: Transaction) => tx.payeeName || 'this payment';
 interface Props {
   /** The open menu: for which transaction, and where (null = closed) */
   menu: { tx: Transaction; at: MenuPoint } | null;
-  /** The payments picked to share in the register, when picking */
-  pickedIds?: string[];
   onOpenDetail: (id: string) => void;
   onClose: () => void;
 }
@@ -52,13 +52,14 @@ interface Props {
  * Stays mounted while the menu opens and closes, so a share or stop started from it can still
  * report back once the menu has closed.
  */
-export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onClose }: Props) {
+export function TransactionContextMenu({ menu, onOpenDetail, onClose }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: households = [] } = useHouseholds();
   const share = useShareWithHousehold();
   const payAhead = usePayAhead();
   const announce = useUndoStore((s) => s.announce);
+  const canSave = useCanSave();
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['households'] });
@@ -101,9 +102,9 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
     onError: (e: Error) => announce(e.message, false),
   });
 
-  const shareWith = (h: HouseholdSummary, ids: string[]) =>
+  const shareWith = (h: HouseholdSummary, id: string) =>
     share.mutate(
-      { groupId: h.id, ids, householdName: h.name },
+      { groupId: h.id, ids: [id], householdName: h.name },
       {
         onError: (e: Error) => announce(e.message, false),
       },
@@ -113,8 +114,6 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
   const { tx, at } = menu;
   const name = payeeOf(tx);
   const linked = tx.household ? households.find((h) => h.id === tx.household!.id) : undefined;
-  // Right-clicking one of several picked payments acts on all of them
-  const ids = pickedIds.length > 1 && pickedIds.includes(tx.id) ? pickedIds : [tx.id];
 
   const items: MenuItem[] = [
     {
@@ -175,7 +174,7 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
   } else {
     items.push({
       key: 'share',
-      label: ids.length > 1 ? `Share ${ids.length.toLocaleString()} picked with` : 'Share with',
+      label: 'Share with',
       icon: <Users size={14} />,
       separatorBefore: true,
       submenu: [
@@ -184,28 +183,23 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
           label: h.name,
           hint: splitText(h),
           icon: <HouseholdIcon name={h.name} logo={h.logo} size="sm" />,
-          onSelect: () => shareWith(h, ids),
+          onSelect: () => shareWith(h, tx.id),
         })),
-        ...(ids.length === 1
-          ? [
-              {
-                key: 'custom',
-                label: 'Custom split…',
-                hint: 'Choose who pays what',
-                icon: <SlidersHorizontal size={14} />,
-                separatorBefore: true,
-                onSelect: () =>
-                  navigate(
-                    `/household?household=${encodeURIComponent(households[0].id)}&transaction=${encodeURIComponent(tx.id)}`,
-                  ),
-              },
-            ]
-          : []),
+        {
+          key: 'custom',
+          label: 'Custom split…',
+          hint: 'Choose who pays what',
+          icon: <SlidersHorizontal size={14} />,
+          separatorBefore: true,
+          onSelect: () =>
+            navigate(
+              `/household?household=${encodeURIComponent(households[0].id)}&transaction=${encodeURIComponent(tx.id)}`,
+            ),
+        },
       ],
     });
   }
-  const targets =
-    ids.length === 1 && !whyNotPayAhead(tx, households) ? payAheadTargets(households) : [];
+  const targets = !whyNotPayAhead(tx, households) ? payAheadTargets(households) : [];
   if (targets.length)
     items.push({
       key: 'ahead',
@@ -235,5 +229,16 @@ export function TransactionContextMenu({ menu, pickedIds = [], onOpenDetail, onC
       onSelect: () => navigate('/household'),
     });
 
-  return <ContextMenu items={items} at={at} onClose={onClose} label={`Actions for ${name}`} />;
+  // While saving is paused, every item that writes waits with the hint (as SelectionMenu does);
+  // opening details or a household page still works
+  const writes = new Set(['share', 'stop', 'ahead']);
+  const shown = canSave
+    ? items
+    : items.map((item) =>
+        writes.has(item.key)
+          ? { ...item, disabled: true, hint: SAVING_PAUSED, submenu: undefined }
+          : item,
+      );
+
+  return <ContextMenu items={shown} at={at} onClose={onClose} label={`Actions for ${name}`} />;
 }

@@ -4,6 +4,7 @@ import { queueOnDevice, useOutbox } from '../offline/outbox';
 import { newClientId } from '../utils/offline';
 import { useCanSave } from './useConnection';
 import { useCreateTransaction, useCreateTransfer } from './useTransactions';
+import { SAVING_PAUSED } from '../components/connection/savingPaused';
 
 /**
  * Whether a new transaction can be added right now, whether it would wait on this device
@@ -16,7 +17,7 @@ export function useCanAddTransaction() {
   const allowed = canSave || canWait;
   const onDevice = !canSave;
   const hint = !allowed
-    ? 'Saving is paused until Allotment reconnects'
+    ? SAVING_PAUSED
     : onDevice
       ? 'Saved on this device and sent when Allotment reconnects'
       : undefined;

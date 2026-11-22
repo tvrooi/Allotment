@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import * as txApi from '../api/transactions';
 import { useUndoStore } from '../store/undoStore';
-import type { Transaction, TransactionQueryParams } from '../types';
+import type { Transaction } from '../types';
 
 // Splitting a transaction after it arrives, and editing many at once
 
@@ -53,15 +53,16 @@ export function useSplitTransaction() {
   });
 }
 
+/** What an edit can change (the server's own field list), what it did and why it skipped rows */
+export type { BulkChanges, BulkResult, BulkSkipReason } from '../api/transactions';
+
+/** The rows an edit or delete reaches: the register's list, or hand-picked rows within it */
+export type EditTarget = txApi.BulkTarget;
+
 export function usePreviewBulkEdit() {
   return useMutation({
-    mutationFn: ({
-      params,
-      changes,
-    }: {
-      params: TransactionQueryParams;
-      changes: txApi.BulkChanges;
-    }) => txApi.previewBulkEdit({ params }, changes),
+    mutationFn: ({ changes, ...target }: EditTarget & { changes: txApi.BulkChanges }) =>
+      txApi.previewBulkEdit(target, changes),
   });
 }
 
@@ -70,21 +71,20 @@ export function useBulkEdit() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
-      params,
       changes,
       expectedCount,
-    }: {
-      params: TransactionQueryParams;
+      ...target
+    }: EditTarget & {
       changes: txApi.BulkChanges;
       expectedCount: number;
       /** What the toast says, from how many changed (it offers Undo only when one was recorded) */
-      message?: (changed: number) => string;
-    }) => txApi.bulkEditTransactions({ params }, changes, expectedCount),
+      message?: (changed: number, result: txApi.BulkResult) => string;
+    }) => txApi.bulkEditTransactions(target, changes, expectedCount),
     onSuccess: (result, { changes, message }) => {
       refreshAfterEdit(qc);
       // Nothing restorable means nothing was recorded to undo
       if (!result.restore.length) {
-        if (message) useUndoStore.getState().announce(message(result.changed), false);
+        if (message) useUndoStore.getState().announce(message(result.changed, result), false);
         return;
       }
       const ids = result.restore.map((r) => r.id);
@@ -100,7 +100,7 @@ export function useBulkEdit() {
             refreshAfterEdit(qc);
           },
         },
-        { message: message?.(result.changed) },
+        { message: message?.(result.changed, result) },
       );
     },
   });
@@ -108,8 +108,7 @@ export function useBulkEdit() {
 
 export function usePreviewBulkDelete() {
   return useMutation({
-    mutationFn: ({ params }: { params: TransactionQueryParams }) =>
-      txApi.previewBulkDelete({ params }),
+    mutationFn: (target: EditTarget) => txApi.previewBulkDelete(target),
   });
 }
 
@@ -117,13 +116,8 @@ export function usePreviewBulkDelete() {
 export function useBulkDelete() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      params,
-      expectedCount,
-    }: {
-      params: TransactionQueryParams;
-      expectedCount: number;
-    }) => txApi.bulkDeleteTransactions({ params }, expectedCount),
+    mutationFn: ({ expectedCount, ...target }: EditTarget & { expectedCount: number }) =>
+      txApi.bulkDeleteTransactions(target, expectedCount),
     onSuccess: () => refreshAfterEdit(qc),
   });
 }

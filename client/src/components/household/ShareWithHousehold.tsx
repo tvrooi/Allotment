@@ -17,7 +17,7 @@ import type { TransactionQueryParams } from '../../types';
 
 // "Share with household": records payments as shared household expenses with the household's
 // default split (Household → Sharing), in one step instead of a form per payment. For one
-// transaction, the payments picked in the register, or every payment in its current list.
+// transaction, the payments selected in the register, or every payment in its current list.
 // Undo removes the entries.
 
 /** The share endpoint takes at most this many ids, so a larger selection goes in batches */
@@ -118,7 +118,7 @@ export function useShareWithHousehold() {
 }
 
 interface Props {
-  /** One transaction, the payments picked in the register, or the register's list */
+  /** One transaction, the payments selected in the register, or the register's list */
   transactionId?: string;
   transactionIds?: string[];
   params?: TransactionQueryParams;
@@ -167,7 +167,7 @@ export function ShareWithHousehold({
   const label = transactionId
     ? 'Share with household'
     : transactionIds
-      ? `Share ${transactionIds.length.toLocaleString()} picked with household`
+      ? `Share ${transactionIds.length.toLocaleString()} selected with household`
       : `Share ${count === undefined ? '' : `${count.toLocaleString()} `}with household`;
 
   return (
@@ -179,7 +179,7 @@ export function ShareWithHousehold({
             setOutcome(null);
             setOpen(true);
           }}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-8"
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
           title="Record the payments in this list as shared household expenses"
         >
           <Users size={12} /> {label}
@@ -226,7 +226,7 @@ export function ShareWithHousehold({
             {transactionId
               ? 'This payment'
               : transactionIds
-                ? `Each of the ${transactionIds.length.toLocaleString()} picked payments`
+                ? `Each of the ${transactionIds.length.toLocaleString()} selected payments`
                 : 'Each payment (money out) in this list'}{' '}
             becomes a shared {chosen.name} expense, {splitText(chosen)}. Change the split in
             Household → Sharing. Payments already shared are skipped.

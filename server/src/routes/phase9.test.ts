@@ -206,24 +206,28 @@ describe('review', () => {
       .where(eq(transactions.id, 'pay'))
       .run();
     const selection = { from: '2026-10-01', to: '2026-10-31' };
-    const done = await send('POST', '/transactions/review', {
+    const done = await send('POST', '/transactions/bulk', {
       selection,
-      reviewed: true,
+      changes: { reviewed: true },
       expectedCount: 3,
     });
     expect(done.status).toBe(200);
     expect(done.body.matched).toBe(3);
     // Already reviewed rows keep their time; only the others change
-    expect(done.body.changes.map((c: any) => c.id).sort()).toEqual(['groc', 'laptop']);
+    expect(done.body.changed).toBe(2);
+    expect(done.body.restore.map((c: any) => c.id).sort()).toEqual(['groc', 'laptop']);
     expect(await ids('reviewed=0&from=2026-10-01&to=2026-10-31')).toEqual([]);
+    expect(db.select().from(transactions).where(eq(transactions.id, 'pay')).get()?.reviewedAt).toBe(
+      '2026-10-01T00:00:00.000Z',
+    );
 
     db.insert(transactions)
       .values({ id: 'late', accountId: 'mock', date: '2026-10-20', amount: -100 })
       .run();
     try {
-      const stale = await send('POST', '/transactions/review', {
+      const stale = await send('POST', '/transactions/bulk', {
         selection,
-        reviewed: false,
+        changes: { reviewed: false },
         expectedCount: 3,
       });
       expect(stale.status).toBe(409);
@@ -236,12 +240,27 @@ describe('review', () => {
       db.delete(transactions).where(eq(transactions.id, 'late')).run();
     }
 
-    const undo = await send('POST', '/transactions/review', { restore: done.body.changes });
+    const undo = await send('POST', '/transactions/bulk', { restore: done.body.restore });
     expect(undo.body).toEqual({ restored: 2 });
     const rows = db.select().from(transactions).all();
     expect(rows.find((r) => r.id === 'pay')?.reviewedAt).toBe('2026-10-01T00:00:00.000Z');
     expect(rows.filter((r) => r.id !== 'pay').every((r) => r.reviewedAt === null)).toBe(true);
     db.update(transactions).set({ reviewedAt: null }).where(eq(transactions.id, 'pay')).run();
+  });
+
+  it('has one route for marking a list reviewed: the old review route is gone', async () => {
+    // Express answers an unknown route with an HTML page, so read the status only
+    const res = await fetch(`${base}/transactions/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        selection: { from: '2026-10-01', to: '2026-10-31' },
+        reviewed: true,
+        expectedCount: 3,
+      }),
+    });
+    expect(res.status).toBe(404);
+    expect(await ids('reviewed=1&from=2026-10-01&to=2026-10-31')).toEqual([]);
   });
 
   it('is never set by new transactions, imports or rules', async () => {

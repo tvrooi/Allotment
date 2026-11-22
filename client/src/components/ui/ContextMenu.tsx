@@ -2,11 +2,28 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useIsPhone } from '../../hooks/useIsPhone';
+import { Button } from './Button';
+import { Input } from './Input';
 
 // A menu opened at the pointer (right-click), from the keyboard (Shift+F10 or the Menu key),
 // by a long press, or from a ⋯ button. Sub-menus fly out beside their item; on a phone they
 // open in place, with a Back item. Arrow keys move, Right/Enter opens a sub-menu, Left/Escape
-// goes back, and closing returns focus to where it was.
+// goes back, and closing returns focus to where it was. A root item with a `prompt` opens a
+// one-field form in place of the menu (a dialog: the field, Apply, Back), for a change that
+// needs a word from the person, with no dialog of its own to open; Enter applies, Escape or
+// Back returns to the menu, and Tab stays inside it.
+
+/** A one-field form a root-level item opens in place of the menu */
+export interface MenuPrompt {
+  /** The form's accessible name, e.g. "Payee for 2 transactions" */
+  title: string;
+  /** The field's accessible name */
+  label: string;
+  /** The button that applies it; disabled while the field is blank */
+  submitLabel: string;
+  /** Called with the trimmed text, after the menu has closed */
+  onSubmit: (text: string) => void;
+}
 
 export interface MenuItem {
   key: string;
@@ -20,6 +37,8 @@ export interface MenuItem {
   separatorBefore?: boolean;
   onSelect?: () => void;
   submenu?: MenuItem[];
+  /** Root level only: choosing the item opens this form in place of the menu */
+  prompt?: MenuPrompt;
 }
 
 export interface MenuPoint {
@@ -48,6 +67,8 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
   const [openSub, setOpenSub] = useState<{ key: string; focus: boolean } | null>(null);
   const [rootPos, setRootPos] = useState<{ left: number; top: number } | null>(null);
   const [subPos, setSubPos] = useState<{ left: number; top: number } | null>(null);
+  // The root item whose prompt is showing in place of the menu
+  const [promptItem, setPromptItem] = useState<MenuItem | null>(null);
   const subItem = openSub ? items.find((i) => i.key === openSub.key) : undefined;
   // On a phone the sub-menu replaces the menu in place
   const inPlace = isPhone && subItem;
@@ -68,7 +89,7 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
         ? Math.max(GAP, window.innerHeight - height - GAP)
         : at.y;
     setRootPos({ left, top });
-  }, [at.x, at.y, inPlace, items]);
+  }, [at.x, at.y, inPlace, items, promptItem]);
 
   useLayoutEffect(() => {
     if (!openSub || inPlace) return setSubPos(null);
@@ -121,8 +142,31 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
     if (key) requestAnimationFrame(() => triggerRefs.current.get(key)?.focus());
   };
 
+  /** Leaves the prompt for the menu, with focus on the item that opened it */
+  const backFromPrompt = () => {
+    const key = promptItem?.key;
+    setPromptItem(null);
+    if (key) requestAnimationFrame(() => triggerRefs.current.get(key)?.focus());
+  };
+
   function onKeyDown(e: React.KeyboardEvent, level: 'root' | 'sub') {
     const list = level === 'sub' ? subRef.current : rootRef.current;
+    if (promptItem) {
+      // The prompt's own keys: the field keeps its arrows and Enter; Tab walks its controls
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        backFromPrompt();
+      } else if (e.key === 'Tab') {
+        const all = focusable(list);
+        if (!all.length) return;
+        const at = all.indexOf(document.activeElement as HTMLElement);
+        const next = e.shiftKey ? (at <= 0 ? all.length - 1 : at - 1) : (at + 1) % all.length;
+        e.preventDefault();
+        all[next].focus();
+      }
+      return;
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
       e.preventDefault();
       move(list, e.key);
@@ -168,6 +212,10 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
             }}
             onClick={() => {
               if (hasSub) return setOpenSub({ key: item.key, focus: true });
+              if (item.prompt) {
+                setOpenSub(null);
+                return setPromptItem(item);
+              }
               close();
               item.onSelect?.();
             }}
@@ -201,10 +249,11 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
     <>
       <div
         ref={rootRef}
-        role="menu"
-        aria-label={inPlace ? subItem.label : label}
+        role={promptItem ? 'dialog' : 'menu'}
+        aria-label={promptItem?.prompt ? promptItem.prompt.title : inPlace ? subItem.label : label}
         onKeyDown={(e) => onKeyDown(e, 'root')}
-        onContextMenu={(e) => e.preventDefault()}
+        // The prompt's field keeps the browser's own menu (paste, say)
+        onContextMenu={(e) => !promptItem && e.preventDefault()}
         className={panel}
         style={{
           width: WIDTH,
@@ -213,7 +262,16 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
           visibility: rootPos ? 'visible' : 'hidden',
         }}
       >
-        {inPlace ? (
+        {promptItem?.prompt ? (
+          <PromptPanel
+            prompt={promptItem.prompt}
+            onBack={backFromPrompt}
+            onSubmit={(text) => {
+              close();
+              promptItem.prompt?.onSubmit(text);
+            }}
+          />
+        ) : inPlace ? (
           <>
             <div role="none">
               <button
@@ -232,7 +290,7 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
           renderItems(items, 'root')
         )}
       </div>
-      {subItem && !inPlace && (
+      {subItem && !inPlace && !promptItem && (
         <div
           ref={subRef}
           role="menu"
@@ -255,10 +313,62 @@ export function ContextMenu({ items, at, onClose, label }: Props) {
   );
 }
 
+/** The prompt's form: Back, the field and its Apply button, in place of the menu's items */
+function PromptPanel({
+  prompt,
+  onBack,
+  onSubmit,
+}: {
+  prompt: MenuPrompt;
+  onBack: () => void;
+  onSubmit: (text: string) => void;
+}) {
+  const [text, setText] = useState('');
+  const fieldRef = useRef<HTMLInputElement>(null);
+  useEffect(() => fieldRef.current?.focus(), []);
+  const trimmed = text.trim();
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (trimmed) onSubmit(trimmed);
+      }}
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full flex items-center gap-2 px-3 py-3 text-left text-sm text-text-secondary hover:bg-hover focus:bg-hover outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600 cursor-pointer"
+      >
+        <ChevronLeft size={14} aria-hidden /> Back
+      </button>
+      <div role="separator" className="my-1 border-t border-border" />
+      <div className="space-y-2 px-3 pb-2 pt-1">
+        <Input
+          ref={fieldRef}
+          type="text"
+          fieldSize="sm"
+          aria-label={prompt.label}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <Button type="submit" size="sm" className="w-full" disabled={!trimmed}>
+          {prompt.submitLabel}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 const enabledItems = (list: HTMLElement | null) =>
   Array.from(
     list?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [],
   ).filter((el) => el.closest('[role="menu"]') === list);
+
+/** Every control in a panel that can take focus, in the order Tab walks them */
+const focusable = (list: HTMLElement | null) =>
+  Array.from(
+    list?.querySelectorAll<HTMLElement>('input:not(:disabled), button:not(:disabled)') ?? [],
+  );
 
 const firstItem = (list: HTMLElement | null) => enabledItems(list)[0];
 

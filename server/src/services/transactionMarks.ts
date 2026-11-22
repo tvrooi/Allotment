@@ -1,8 +1,8 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { savedViews, tags, transactions, transactionTags } from '../db/schema.js';
-import { parseSelection, registerCondition, type Selection } from './transactionSelection.js';
+import { parseSelection } from './transactionSelection.js';
 
 // Phase 9 (docs/PHASE-9-DEVELOPMENT-PHASE.md): per-transaction review, visibility in reports,
 // tags and saved views. All of it lives on register rows (unsplit transactions and split
@@ -39,54 +39,6 @@ export function setFlags(id: string, flags: { reviewed?: boolean; hiddenFromRepo
     db.update(transactions).set(update).where(eq(transactions.id, id)).run();
   }
   return db.select().from(transactions).where(eq(transactions.id, id)).get()!;
-}
-
-export interface ReviewChange {
-  id: string;
-  /** What reviewed_at was before, so an undo puts back exactly that */
-  previous: string | null;
-}
-
-/**
- * Mark the selection's register rows reviewed (or not). `expectedCount` is the count the user
- * confirmed: if the selection now matches a different number of rows, nothing is written.
- */
-export function reviewSelection(selection: Selection, reviewed: boolean, expectedCount: number) {
-  return db.transaction((tx) => {
-    const rows = tx
-      .select({ id: transactions.id, reviewedAt: transactions.reviewedAt })
-      .from(transactions)
-      .where(registerCondition(selection))
-      .all();
-    if (rows.length !== expectedCount) {
-      throw new MarkError(
-        `The selection now has ${rows.length} transactions, not ${expectedCount}. Check it and try again.`,
-        409,
-      );
-    }
-    const at = reviewed ? new Date().toISOString() : null;
-    const changed = rows.filter((r) => (r.reviewedAt !== null) !== reviewed);
-    for (const r of changed) {
-      tx.update(transactions).set({ reviewedAt: at }).where(eq(transactions.id, r.id)).run();
-    }
-    return {
-      matched: rows.length,
-      changes: changed.map((r) => ({ id: r.id, previous: r.reviewedAt })) as ReviewChange[],
-    };
-  });
-}
-
-/** Put review states back exactly (the undo of reviewSelection) */
-export function restoreReview(changes: ReviewChange[]) {
-  db.transaction((tx) => {
-    for (const c of changes) {
-      tx.update(transactions)
-        .set({ reviewedAt: c.previous })
-        .where(and(eq(transactions.id, c.id), isNull(transactions.parentTransactionId)))
-        .run();
-    }
-  });
-  return { restored: changes.length };
 }
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────

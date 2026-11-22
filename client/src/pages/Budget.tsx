@@ -43,6 +43,7 @@ import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
+import { SAVING_PAUSED } from '../components/connection/savingPaused';
 import {
   availability,
   availableTone,
@@ -419,7 +420,7 @@ function CategoryRow({
             <button
               onClick={() => onStartEdit?.(cat.id)}
               disabled={!canSave}
-              title={canSave ? undefined : 'Saving is paused until Allotment reconnects'}
+              title={canSave ? undefined : SAVING_PAUSED}
               aria-label={`${isIncome ? 'Expected from' : 'Assigned to'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
               // Plain text until pointed at or focused: a column of empty boxes says nothing
               className="tabular-nums text-sm rounded px-2 py-0.5 min-w-[5.5rem] text-right border border-transparent bg-transparent transition-colors hover:border-border hover:bg-surface focus-visible:border-brand-500 focus-visible:bg-surface cursor-text disabled:cursor-not-allowed disabled:opacity-60"
