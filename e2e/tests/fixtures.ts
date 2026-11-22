@@ -180,15 +180,22 @@ export const test = base.extend<Fixtures>({
 export { expect };
 
 /** A theme token's computed colour (`rgb(...)`), read from a temporary element in the page */
-export const tokenColour = (page: Page, name: string) =>
-  page.evaluate((token) => {
-    const probe = document.createElement('span');
-    probe.style.backgroundColor = `var(${token})`;
-    document.body.append(probe);
-    const colour = getComputedStyle(probe).backgroundColor;
-    probe.remove();
-    return colour;
-  }, name);
+export const tokenColour = (
+  page: Page,
+  name: string,
+  property: 'backgroundColor' | 'color' = 'backgroundColor',
+) =>
+  page.evaluate(
+    ({ token, prop }) => {
+      const probe = document.createElement('span');
+      probe.style[prop] = `var(${token})`;
+      document.body.append(probe);
+      const colour = getComputedStyle(probe)[prop];
+      probe.remove();
+      return colour;
+    },
+    { token: name, prop: property },
+  );
 
 /** Today and nearby days as yyyy-MM-dd, in the browser's time zone setting */
 export function isoDay(offsetDays = 0) {
