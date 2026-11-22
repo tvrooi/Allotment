@@ -177,9 +177,14 @@ describe('DatePicker on phones', () => {
   // field centres its line (owner, 22 November 2026, UAT G-03-3)
   it('gives the iOS date value box no vertical margin and a 42 px line, keeping the G-03-1 classes (UAT G-03-3)', () => {
     const tag = input(phone());
-    // The server markup writes the variant's `&` as `&amp;`
-    expect(tag).toMatch(/class="[^"]*webkit-date-and-time-value\]:my-0[^"]*"/);
-    expect(tag).toMatch(/class="[^"]*webkit-date-and-time-value\]:leading-\[42px\][^"]*"/);
+    // The server markup writes the variant's `&` as `&amp;`. Android Chromium draws the same
+    // value box, so both rules sit behind a WebKit-only @supports (review CR-01)
+    expect(tag).toMatch(
+      /class="[^"]*supports-\[-webkit-touch-callout:none\]:\[&amp;::-webkit-date-and-time-value\]:my-0[^"]*"/,
+    );
+    expect(tag).toMatch(
+      /class="[^"]*supports-\[-webkit-touch-callout:none\]:\[&amp;::-webkit-date-and-time-value\]:leading-\[42px\][^"]*"/,
+    );
     expect(tag).toMatch(/class="[^"]*\bmin-h-11\b[^"]*"/);
     expect(tag).toMatch(/class="[^"]*\bmin-w-0\b[^"]*"/);
     expect(tag).toMatch(/class="[^"]*\bappearance-none\b[^"]*"/);
