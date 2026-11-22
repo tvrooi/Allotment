@@ -172,6 +172,20 @@ describe('DatePicker on phones', () => {
     expect(tag).toMatch(/class="[^"]*webkit-date-and-time-value\]:text-left[^"]*"/);
   });
 
+  // With `block` from fieldBase, iOS stacks the value at the top of the field; a 42 px line
+  // (the 44 px field less its two 1 px borders) with no vertical margin centres it, as a text
+  // field centres its line (owner, 22 November 2026, UAT G-03-3)
+  it('gives the iOS date value box no vertical margin and a 42 px line, keeping the G-03-1 classes (UAT G-03-3)', () => {
+    const tag = input(phone());
+    // The server markup writes the variant's `&` as `&amp;`
+    expect(tag).toMatch(/class="[^"]*webkit-date-and-time-value\]:my-0[^"]*"/);
+    expect(tag).toMatch(/class="[^"]*webkit-date-and-time-value\]:leading-\[42px\][^"]*"/);
+    expect(tag).toMatch(/class="[^"]*\bmin-h-11\b[^"]*"/);
+    expect(tag).toMatch(/class="[^"]*\bmin-w-0\b[^"]*"/);
+    expect(tag).toMatch(/class="[^"]*\bappearance-none\b[^"]*"/);
+    expect(tag).toMatch(/class="[^"]*webkit-date-and-time-value\]:text-left[^"]*"/);
+  });
+
   it('carries min, max, disabled and readOnly', () => {
     const tag = input(phone({ minValue: '2026-11-01', maxValue: '2026-11-30' }));
     expect(tag).toMatch(/ min="2026-11-01"/);
