@@ -2542,4 +2542,54 @@ test.describe('selecting transactions in the register', () => {
       page.getByRole('checkbox', { name: 'Select Ramen -¥1,500', exact: true }),
     ).toBeVisible();
   });
+
+  test('selected and unselected rows are visually distinct in forced colors without affecting focus outline', async ({
+    page,
+    api,
+  }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    const rows = await fiveRows(api, page);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await rows.nth(0).click();
+    await expect(rows.nth(0)).toBeChecked();
+    await expect(rows.nth(1)).not.toBeChecked();
+
+    const probeMarker = (locator: ReturnType<typeof rows.nth>) =>
+      locator.evaluate((el) => {
+        const before = getComputedStyle(el, '::before');
+        const probe = document.createElement('span');
+        probe.style.borderLeft = '3px solid Highlight';
+        document.body.append(probe);
+        const highlight = getComputedStyle(probe).borderLeftColor;
+        probe.remove();
+        return {
+          content: before.content,
+          position: before.position,
+          borderLeftStyle: before.borderLeftStyle,
+          borderLeftWidth: before.borderLeftWidth,
+          borderLeftColor: before.borderLeftColor,
+          highlight,
+        };
+      });
+
+    const selected = await probeMarker(rows.nth(0));
+    const unselected = await probeMarker(rows.nth(1));
+    expect(selected.content).not.toBe('none');
+    expect(selected.position).toBe('absolute');
+    expect(selected.borderLeftStyle).toBe('solid');
+    expect(parseFloat(selected.borderLeftWidth)).toBeGreaterThanOrEqual(3);
+    expect(selected.borderLeftColor).toBe(selected.highlight);
+    expect(unselected).not.toMatchObject({
+      content: selected.content,
+      borderLeftStyle: selected.borderLeftStyle,
+      borderLeftWidth: selected.borderLeftWidth,
+    });
+
+    // Keyboard focus outline stays independent of the forced-colors selection marker
+    await rows.nth(0).focus();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(rows.nth(0)).toBeFocused();
+    expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
+  });
 });

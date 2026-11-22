@@ -29,8 +29,9 @@ export interface RowSelection {
 export const selectionCheckboxLabel = (payeeName: string, amountText: string) =>
   `Select ${payeeName} ${amountText}`;
 
-/** Strongest brand tint keeping every row text colour at 4.5:1 in light and dark, plus a 3 px inset bar at >= 3:1 (WCAG 1.4.11) without taking layout space. */
-export const SELECTED_ROW = 'bg-brand-100 shadow-[inset_3px_0_0_var(--color-brand-600)]';
+/** Strongest brand tint keeping every row text colour at 4.5:1 in light and dark, plus a 3 px inset bar at >= 3:1 (WCAG 1.4.11) without taking layout space, and a forced-colors Highlight marker. */
+export const SELECTED_ROW =
+  'relative bg-brand-100 shadow-[inset_3px_0_0_var(--color-brand-600)] forced-colors:before:content-[""] forced-colors:before:absolute forced-colors:before:inset-y-0 forced-colors:before:left-0 forced-colors:before:border-l-[3px] forced-colors:before:border-l-[color:Highlight] forced-colors:before:pointer-events-none';
 
 interface Props {
   tx: Transaction;
