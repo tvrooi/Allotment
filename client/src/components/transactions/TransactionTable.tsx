@@ -499,9 +499,18 @@ export function TransactionTable({
                 ? 'Tap transactions to select them.'
                 : 'Click transactions to select them, then right-click one of them to change them all. Shift+click to select a range.'}
             </span>
-            <span className="font-medium text-text">
-              {wholeList ? 'All ' : ''}
-              {ticked.length.toLocaleString()} selected
+            <span
+              className="inline-grid font-medium text-text tabular-nums before:content-[attr(data-max)] before:col-start-1 before:row-start-1 before:invisible before:h-0 before:overflow-hidden"
+              data-max={
+                transactions.length > 0
+                  ? `All ${transactions.length.toLocaleString()} selected`
+                  : '0 selected'
+              }
+            >
+              <span className="col-start-1 row-start-1">
+                {wholeList ? 'All ' : ''}
+                {ticked.length.toLocaleString()} selected
+              </span>
             </span>
             <Button
               variant="ghost"

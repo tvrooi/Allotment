@@ -292,3 +292,51 @@ test('at 390 px the selection bar stays inside the toolbar while the summary is 
   expect((await dateHeader.boundingBox())!.y).toBeCloseTo(beforeHeader.y, 0);
   expect((await cards.nth(0).boundingBox())!.y).toBeCloseTo(beforeCard.y, 0);
 });
+
+test('More actions keeps its horizontal position when the selected count crosses to two digits', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Everyday Checking', 100_000);
+  for (let i = 1; i <= 12; i++) {
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -i * 100,
+      payeeName: `Mock ${String(i).padStart(2, '0')}`,
+    });
+  }
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+
+  await open(page, '/transactions');
+  const cards = page.getByTestId('transaction-card');
+  await expect(cards).toHaveCount(12);
+
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  const more = bar(page).getByRole('button', { name: 'More actions' });
+  const before = (await more.boundingBox())!;
+
+  for (let i = 0; i < 9; i++) await cards.nth(i).click();
+  await expect(bar(page)).toContainText('9 selected');
+  const atNine = (await more.boundingBox())!;
+  expect(atNine.x).toBeCloseTo(before.x, 0);
+  expect(atNine.y).toBeCloseTo(before.y, 0);
+
+  await cards.nth(9).click();
+  await expect(bar(page)).toContainText('10 selected');
+  const atTen = (await more.boundingBox())!;
+  expect(atTen.x).toBeCloseTo(before.x, 0);
+  expect(atTen.y).toBeCloseTo(before.y, 0);
+
+  await bar(page).getByRole('button', { name: 'Select all 12' }).click();
+  await expect(bar(page)).toContainText('All 12 selected');
+  const atAll = (await more.boundingBox())!;
+  expect(atAll.x).toBeCloseTo(before.x, 0);
+  expect(atAll.y).toBeCloseTo(before.y, 0);
+});
