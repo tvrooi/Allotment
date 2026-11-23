@@ -1,7 +1,7 @@
 # UAT 03 round 2 close-out Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:executing-plans to implement this
-> plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> plan task by task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Ship the two UAT 03 round 2 fixes (G-03-3 iPhone date centring, G-03-4 colour-only row
 selection) as one PR into `redesign`.
@@ -20,30 +20,30 @@ allowlist). Where they differ, the handoff is newer.
 
 ### Task 1: One PR branch
 
-- [ ] Create `fix/uat-03-selection-colour-and-date` from `origin/redesign`.
-- [ ] Merge `fix/uat-03-date-centre` and `fix/uat-03-row-selection` into it, and nothing else (no
+- [x] Create `fix/uat-03-selection-colour-and-date` from `origin/redesign`.
+- [x] Merge `fix/uat-03-date-centre` and `fix/uat-03-row-selection` into it, and nothing else (no
       `.impeccable` or `.ui-evidence` files).
 
 ### Task 2: Whole-change gate on Node 24 (`PATH=/opt/homebrew/opt/node@24/bin:$PATH`)
 
-- [ ] Client unit tests, client tsc and build.
-- [ ] Lint, lowering the warning cap if warnings fell.
-- [ ] e2e tsc.
-- [ ] Playwright, one project at a time: desktop, phone, iphone-webkit, demo, server-mode, gallery.
-- [ ] Recheck `transactions.spec.ts:1346` on `origin/redesign` as well, and record whether the branch
+- [x] Client unit tests, client tsc and build.
+- [x] Lint, lowering the warning cap if warnings fell.
+- [x] e2e tsc.
+- [x] Playwright, one project at a time: desktop, phone, iphone-webkit, demo, server-mode, gallery.
+- [x] Recheck `transactions.spec.ts:1346` on `origin/redesign` as well, and record whether the branch
       made it flaky.
 
 ### Task 3: Docs and version
 
-- [ ] `npm run release:prepare -- 0.2.0-up.180` (confirm no tag exists for it), plus a CHANGELOG entry
+- [x] `npm run release:prepare -- 0.2.0-up.180` (confirm no tag exists for it), plus a CHANGELOG entry
       for both fixes.
-- [ ] Update `docs/ui/HANDOVER-UI.md`, `docs/ui/MAP.md`, `docs/ui/WAVES.md`, `docs/HOUSEHOLDS.md` and
+- [x] Update `docs/ui/HANDOVER-UI.md`, `docs/ui/MAP.md`, `docs/ui/WAVES.md`, `docs/HOUSEHOLDS.md` and
       `HANDOVER.md` State as the handoff lists. None may still say rows are ticked.
-- [ ] Tick this plan and update "Where things stand" in `docs/superpowers/README.md`.
+- [x] Tick this plan and update "Where things stand" in `docs/superpowers/README.md`.
 
 ### Task 4: Evidence
 
-- [ ] Screenshots of two selected rows at 1280 px and 390 px, light and dark, from demo or disposable
+- [x] Screenshots of two selected rows at 1280 px and 390 px, light and dark, from demo or disposable
       data, in the git-ignored `.ui-evidence/2026-11-22-uat-03-round-2/`.
 
 ### Task 5: The PR
