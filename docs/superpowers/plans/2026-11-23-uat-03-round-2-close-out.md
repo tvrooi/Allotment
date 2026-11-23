@@ -48,11 +48,13 @@ allowlist). Where they differ, the handoff is newer.
 
 ### Task 5: The PR
 
-- [ ] Open one PR into `redesign` with `--repo tvrooi/Allotment`. The body follows the handoff's
+- [x] Open one PR into `redesign` with `--repo tvrooi/Allotment`. The body follows the handoff's
       list: owner's words apart from planner choices, the review fixes, the unplanned spec change, and
       G-03-3 reported as awaiting the owner's iPhone check.
-- [ ] CI green, including the Linux gallery pixel comparison. Do not merge, tag or release.
+- [x] CI green, including the Linux gallery pixel comparison. Do not merge, tag or release.
 
 ### Task 6: Cleanup once the PR is open
 
 - [ ] Remove the local GSD worktrees and their `worktree-agent-*` branches named in the handoff.
+      Left for the owner: the agent's sandbox refused the removal (23 November 2026). All four were
+      checked clean, with nothing outside local `redesign`.
