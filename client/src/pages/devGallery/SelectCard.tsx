@@ -1,3 +1,7 @@
+import { Checkbox } from '../../components/ui/Checkbox';
+import { DatePicker } from '../../components/ui/DatePicker';
+import { Combobox } from '../../components/ui/Combobox';
+import { CurrencyInput } from '../../components/ui/CurrencyInput';
 import { useState } from 'react';
 import { Select, type SelectGroup, type SelectOption } from '../../components/ui/Select';
 import { GalleryCard, Specimen } from './Specimen';
@@ -142,6 +146,48 @@ export function SelectCard() {
       <Specimen control="Select" state="Small">
         <Select aria-label="Group by" fieldSize="sm" options={FREQUENCIES} {...small} />
       </Specimen>
+    </GalleryCard>
+  );
+}
+
+const SWATCHES = [
+  { value: 'green', label: 'Green' },
+  { value: 'red', label: 'Red' },
+];
+
+export function FormProbes() {
+  return (
+    <GalleryCard title="Named form controls">
+      <form aria-label="Named form controls" className="space-y-4">
+        <Specimen control="Select" state="Swatch">
+          <Select
+            aria-label="Colour for Food"
+            name="colour"
+            defaultValue="green"
+            options={SWATCHES}
+            swatch={(value) => (
+              <span
+                className={`block size-4 rounded-full ${value === 'red' ? 'bg-negative' : 'bg-positive'}`}
+              />
+            )}
+          />
+        </Specimen>
+        <Combobox
+          label="Frequency"
+          name="frequency"
+          defaultValue="monthly"
+          items={FREQUENCIES}
+          optional
+        />
+        <CurrencyInput aria-label="Amount" name="amount" currency="AUD" defaultValue={1234} />
+        <DatePicker label="Due date" name="dueDate" defaultValue="2026-10-21" optional />
+        <Checkbox name="advance" value="yes" defaultChecked={false}>
+          Advance
+        </Checkbox>
+        <Checkbox name="isDefault" defaultChecked>
+          Default household
+        </Checkbox>
+      </form>
     </GalleryCard>
   );
 }

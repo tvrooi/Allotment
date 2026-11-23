@@ -1,13 +1,13 @@
 import { Check, Minus } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CheckboxButton, CheckboxField } from 'react-aria-components';
 import { FieldDescription, FieldErrorText } from './Field';
 import { toggleDisabled, toggleFocusRing, toggleInvalid, toggleReadOnly } from './fieldClasses';
 import { errorLine, present, toggleNames, type ToggleNames } from './fieldMessages';
 
 type Props = ToggleNames & {
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
+  name?: string;
+  value?: string;
   /** Shows a dash: some of what this box stands for is on. Clicking it turns it all on */
   isIndeterminate?: boolean;
   disabled?: boolean;
@@ -20,7 +20,10 @@ type Props = ToggleNames & {
   errorMessage?: ReactNode;
   /** Added to the label, the target that holds the box and any visible text */
   className?: string;
-};
+} & (
+    | { checked: boolean; onCheckedChange: (checked: boolean) => void; defaultChecked?: never }
+    | { defaultChecked: boolean; checked?: never; onCheckedChange?: (checked: boolean) => void }
+  );
 
 /**
  * The shared checkbox on React Aria's CheckboxField and CheckboxButton: a hidden native checkbox
@@ -33,8 +36,11 @@ type Props = ToggleNames & {
  */
 export function Checkbox(props: Props) {
   const {
-    checked,
+    checked: controlledChecked,
+    defaultChecked,
     onCheckedChange,
+    name,
+    value,
     isIndeterminate = false,
     disabled = false,
     readOnly = false,
@@ -44,6 +50,12 @@ export function Checkbox(props: Props) {
     className = '',
     children,
   } = props;
+  const [selected, setSelected] = useState(defaultChecked ?? false);
+  const checked = controlledChecked ?? selected;
+  const change = (next: boolean) => {
+    if (controlledChecked === undefined) setSelected(next);
+    onCheckedChange?.(next);
+  };
   const errorMessage = errorLine(props.errorMessage, {
     isRequired,
     kind: 'toggle',
@@ -64,8 +76,10 @@ export function Checkbox(props: Props) {
   const Mark = isIndeterminate ? Minus : checked ? Check : null;
   return (
     <CheckboxField
+      name={name}
+      value={name === undefined ? undefined : (value ?? 'on')}
       isSelected={checked}
-      onChange={onCheckedChange}
+      onChange={change}
       isIndeterminate={isIndeterminate}
       isDisabled={disabled}
       isReadOnly={readOnly}

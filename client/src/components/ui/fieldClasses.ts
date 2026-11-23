@@ -28,9 +28,11 @@ export const toggleInvalid = 'ring-1 ring-negative';
 // screens as well as inside a Field. Width is left to the caller (Input's default className is
 // w-full), so a caller's own width never fights one set here.
 
+export const fieldFocus =
+  'outline-none transition-colors focus:border-brand-600 focus:ring-1 focus:ring-brand-600';
+
 /** A field's box: border, radius, padding, type and placeholder, with the 1 px brand focus ring */
-export const fieldBase =
-  'block rounded-md border border-border bg-surface px-3 text-sm max-md:text-base text-text placeholder:text-text-tertiary outline-none transition-colors focus:border-brand-600 focus:ring-1 focus:ring-brand-600';
+export const fieldBase = `block rounded-md border border-border bg-surface px-3 text-sm max-md:text-base text-text placeholder:text-text-tertiary ${fieldFocus}`;
 
 /** 40 px beside a md Button, 32 px beside a sm one; always 44 px on phones */
 export const fieldHeights = { md: 'h-10 max-md:min-h-11', sm: 'h-8 max-md:min-h-11' } as const;

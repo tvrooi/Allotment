@@ -7,7 +7,7 @@ import { ComboboxCard } from './devGallery/ComboboxCard';
 import { DialogCard } from './devGallery/DialogCard';
 import { DatePickerCard, MonthPickerCard, MonthRangePickerCard } from './devGallery/DateCards';
 import { PickerCards } from './devGallery/PickerCards';
-import { SelectCard } from './devGallery/SelectCard';
+import { FormProbes, SelectCard } from './devGallery/SelectCard';
 import { SwitchCard } from './devGallery/SwitchCard';
 import { FieldProbes, TextFieldCards } from './devGallery/TextFieldCards';
 import { CheckboxCard, RadioGroupCard } from './devGallery/ToggleCards';
@@ -34,7 +34,7 @@ export default function DevControlsGallery() {
     document.documentElement.classList.toggle('dark', next);
     setDark(next);
   };
-  const fieldProbes = new URLSearchParams(window.location.search).get('probe') === 'fields';
+  const probe = new URLSearchParams(window.location.search).get('probe');
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-page text-text">
@@ -47,7 +47,9 @@ export default function DevControlsGallery() {
           }
         />
         <main className={`${PAGE_GUTTER} pt-6 pb-16 space-y-8`}>
-          {fieldProbes ? (
+          {probe === 'forms' ? (
+            <FormProbes />
+          ) : probe === 'fields' ? (
             <FieldProbes />
           ) : (
             <>

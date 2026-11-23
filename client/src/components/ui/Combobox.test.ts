@@ -339,3 +339,10 @@ describe('SearchList', () => {
     expect(html).not.toMatch(/opacity-/);
   });
 });
+
+it.each(['savings', ''])('submits the option key %j by name', (defaultValue) => {
+  const html = render({ name: 'payerId', value: undefined, defaultValue } as Partial<Props>);
+  expect(html).toMatch(
+    new RegExp(`<input[^>]*type="hidden"[^>]*name="payerId"[^>]*value="${defaultValue}"`),
+  );
+});

@@ -14,7 +14,8 @@ vi.mock('../../utils/currency', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils/currency')>();
   return {
     ...actual,
-    useAmountStyle: () => AU_STYLE,
+    useAmountStyle: (currency?: string) =>
+      currency === 'JPY' ? { ...AU_STYLE, minor: 0 } : AU_STYLE,
   };
 });
 
@@ -118,4 +119,36 @@ describe('readMoneyText', () => {
     expect(readMoneyText('12.50', AU_STYLE, false)).toBe(1250);
     expect(readMoneyText('', AU_STYLE, false)).toBe(0);
   });
+});
+
+it.each([
+  [0, '0.00'],
+  [1, '0.01'],
+  [10, '0.10'],
+  [99, '0.99'],
+  [100, '1.00'],
+  [1234, '12.34'],
+  [99999999, '999999.99'],
+  [-1234, '-12.34'],
+  [null, ''],
+])('submits a plain AUD decimal for %j', (defaultValue, text) => {
+  const html = render({
+    name: 'amount',
+    currency: 'AUD',
+    value: undefined,
+    defaultValue,
+    allowNegative: true,
+  } as Partial<Props>);
+  const submitted = html.match(/<input type="hidden" name="amount" value="([^"]*)"/)?.[1];
+  expect(submitted).toBe(text);
+  if (defaultValue !== null && defaultValue >= 0) {
+    const [, dollars, cents] = /^(\d+)\.(\d{2})$/.exec(submitted ?? '') ?? [];
+    expect(parseInt(dollars, 10) * 100 + parseInt(cents, 10)).toBe(defaultValue);
+  }
+});
+
+// Household currency is constrained to AUD by the household route.
+it('submits whole yen for a zero-decimal currency', () => {
+  const html = render({ name: 'amount', currency: 'JPY', value: undefined, defaultValue: 1234 });
+  expect(html).toContain('<input type="hidden" name="amount" value="1234"');
 });

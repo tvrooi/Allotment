@@ -36,11 +36,11 @@ Tasks run in the listed order; "after" names the tasks that must be done first.
 
 ### Task 2: Add what G4 needs to the shared set — [04-02-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-02-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 3: DatePicker and Checkbox form support for Household — [04-17-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-17-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 4: Settings, first half — [04-03-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-03-PLAN.md) (after 1)
 

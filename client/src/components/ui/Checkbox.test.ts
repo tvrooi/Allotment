@@ -168,3 +168,14 @@ describe('Checkbox', () => {
     }
   });
 });
+
+it.each([
+  ['isDefault', undefined, 'on'],
+  ['advance', 'yes', 'yes'],
+])('names the submitted checkbox %s', (name, value, submitted) => {
+  const html = render({ name, value, checked: undefined, defaultChecked: true } as Partial<Props>);
+  const tag = input(html);
+  expect(attr(tag, 'name')).toBe(name);
+  expect(attr(tag, 'value')).toBe(submitted);
+  expect(tag).toContain('checked=""');
+});

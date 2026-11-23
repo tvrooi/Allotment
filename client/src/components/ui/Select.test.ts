@@ -251,3 +251,26 @@ describe('Select on phones', () => {
     expect(attr(select(html), 'aria-describedby')?.split(' ')).toContain(id);
   });
 });
+
+describe('named Select defaults', () => {
+  it.each([false, true])('selects the option value with phone=%s', (phone) => {
+    screen.phone = phone;
+    const html = render({
+      name: 'kind',
+      value: undefined,
+      defaultValue: 'monthly',
+    } as Partial<Props>);
+    expect(html).toContain('name="kind"');
+    expect(html).toMatch(/<option[^>]*value="monthly"[^>]*selected/);
+  });
+
+  it('renders only the swatch in a named trigger', () => {
+    const html = render({
+      value: 'weekly',
+      swatch: () => createElement('span', { 'aria-hidden': true }, 'Swatch'),
+    } as Partial<Props>);
+    const content = html.match(/<button[^>]*>(.*?)<\/button>/)?.[1];
+    expect(content).toContain('Swatch');
+    expect(content).not.toMatch(/Weekly|Chevron|<svg/);
+  });
+});
