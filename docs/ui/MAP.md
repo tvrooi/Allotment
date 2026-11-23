@@ -53,7 +53,8 @@ or a picker wrapper, and the leftover gate in 03-15-PLAN.md prints 0 over their 
   `CurrencyInput`, `Input`; the register selection (Select, `utils/registerSelection.ts`) with its
   right-click menu `SelectionMenu` (`ContextMenu` with a prompt item over `Input` and `Button`,
   and `CategoryPicker`; no edit dialog); bulk delete `Input`; split `CategorySelectButton`,
-  `CurrencyInput`, `Input`; transfer suggestions and the selection's row `Checkbox`; receipts
+  `CurrencyInput`, `Input`; transfer suggestions `Checkbox` (a selected row has no checkbox: it is
+  shown by colour, `SELECTED_ROW`, and is itself `role="checkbox"`); receipts
   `DatePicker`, `CategorySelectButton`, `Combobox`, `Checkbox`, `Select`. Specs for the selection:
   transactions, household, phase9 and phone/register-selection-phone.
 - `/accounts`: `Select` (account type, `CurrencySelect`), `Field` and `Input`, `Checkbox`,

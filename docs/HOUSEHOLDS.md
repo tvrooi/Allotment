@@ -63,8 +63,9 @@ The **default split** (equal, percentages in basis points, or weights) is what q
 uses. **Share with household** records a payment as an expense with that split: paid by you
 when it left a personal account, or by the household account when it left a pool account. From the
 register it shares each selected payment, each checked on its own, so one refusal doesn't stop the
-rest; **Undo** removes the entries it made. **Select** in the register puts a checkbox on every
-transaction and card; tick the ones you want, or use **Select all _N_** for the whole list, then
+rest; **Undo** removes the entries it made. **Select** in the register lets you click
+transactions (or tap cards) to select them, and each selected one turns the selected colour; or use
+**Select all _N_** for the whole list, then
 **Share _N_ selected with household** (only money out that isn't a transfer can be shared; the
 others are left out and counted in the button's hint). Right-clicking a selected payment opens the
 selection's menu, which also has **Share _N_ selected with ▸**. Without a default split, sharing splits equally, so a
