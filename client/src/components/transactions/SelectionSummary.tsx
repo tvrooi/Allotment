@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { Download, ListChecks } from 'lucide-react';
 import { useTransactionSummary } from '../../hooks/useTransactions';
 import { useBudgetCurrency } from '../../hooks/useCurrency';
@@ -14,28 +15,33 @@ interface Props {
   /** Rows in the register, shown until the summary arrives */
   loadedCount: number;
   fixedAccount?: boolean;
-  /** Starts selecting with nothing ticked; not given while the register is already selecting */
-  onSelect?: () => void;
+  /** Ref to the Select button, used as a stable focus fallback when Done closes a row-started selection */
+  selectRef?: Ref<HTMLButtonElement>;
+  /** Starts selecting with nothing selected yet (covered by the selection bar while selecting) */
+  onSelect: (trigger: HTMLButtonElement) => void;
   /** Starts the register's whole-list selection (every listed row) */
-  onSelectAll: () => void;
-  /** The whole list is selected already, so the button is not offered */
-  selectingAll: boolean;
+  onSelectAll: (trigger: HTMLButtonElement) => void;
 }
+
+/** Label shared between the toolbar's Select all button and the selection bar's */
+export const selectAllLabel = (count: number) => `Select all ${count.toLocaleString()}`;
+
+/** Tooltip shared between the toolbar's Select all button and the selection bar's */
+export const SELECT_ALL_TITLE = 'Choose an action for every transaction in this list';
+
+/** Whether Select all may be offered: only when rows are actually loaded and not already all selected */
+export const canSelectAll = (loadedCount: number, wholeList = false) =>
+  loadedCount > 0 && !wholeList;
 
 /**
  * Count, money in/out and date span of the register's list, with its CSV export, Select and
- * Select all, which starts the register's whole-list selection (the bar and menu act on it; a filter change
- * ends it, TransactionTable, so a whole-list action always follows an explicit Select all).
+ * Select all, which starts the register's whole-list selection (while selecting, the selection bar
+ * covers this toolbar in TransactionTable so the list below stays put; a filter change ends a
+ * whole-list selection so an action always follows an explicit Select all).
  * Money in and out describe bank movement (a refund is money in), not income and spending
  * (docs/MONARCH-DEVELOPMENT-PHASE.md). A filtered split counts only its matching parts.
  */
-export function SelectionSummary({
-  params,
-  loadedCount,
-  onSelect,
-  onSelectAll,
-  selectingAll,
-}: Props) {
+export function SelectionSummary({ params, loadedCount, selectRef, onSelect, onSelectAll }: Props) {
   const { data } = useTransactionSummary(params);
   const budgetCurrency = useBudgetCurrency();
   const decimalComma = decimalSeparator(useAmountStyle().format) === ',';
@@ -88,24 +94,25 @@ export function SelectionSummary({
           </span>
         )}
         {data && <MissingRateNote count={data.missingRateCount} />}
-        {loadedCount > 0 && onSelect && (
+        {loadedCount > 0 && (
           <button
+            ref={selectRef}
             type="button"
-            onClick={onSelect}
+            onClick={(e) => onSelect(e.currentTarget)}
             className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-            title="Tick transactions to change them together"
+            title="Select transactions to change them together"
           >
             <ListChecks size={12} /> Select
           </button>
         )}
-        {loadedCount > 0 && !selectingAll && (
+        {canSelectAll(loadedCount) && (
           <button
             type="button"
-            onClick={onSelectAll}
+            onClick={(e) => onSelectAll(e.currentTarget)}
             className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
-            title="Choose an action for every transaction in this list"
+            title={SELECT_ALL_TITLE}
           >
-            <ListChecks size={12} /> Select all {loadedCount.toLocaleString()}
+            <ListChecks size={12} /> {selectAllLabel(loadedCount)}
           </button>
         )}
         {count > 0 && (

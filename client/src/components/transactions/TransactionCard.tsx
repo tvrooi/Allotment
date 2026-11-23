@@ -9,6 +9,7 @@ import { PayeeIcon } from '../payees/PayeeIcon';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { ForeignValue } from '../currency/ForeignValue';
 import { usePreferencesStore } from '../../store/preferencesStore';
+import { SELECTED_ROW, selectionCheckboxLabel, type RowSelection } from './TransactionRow';
 import type { MenuPoint } from '../ui/ContextMenu';
 import type { Transaction, PayeeWithCount } from '../../types';
 
@@ -19,6 +20,7 @@ interface Props {
   /** Shown on the all-transactions page, where rows come from several accounts */
   accountName?: string;
   isSelected: boolean;
+  selection?: RowSelection;
   onOpenDetail: (id: string) => void;
   /** Opens its actions menu (a ⋯ button; a long press does the same) */
   onMenu?: (at: MenuPoint) => void;
@@ -35,6 +37,7 @@ export function TransactionCard({
   payees,
   accountName,
   isSelected,
+  selection,
   onOpenDetail,
   onMenu,
 }: Props) {
@@ -44,6 +47,8 @@ export function TransactionCard({
   const isSplit = tx.isParent === 1 && !!tx.children?.length;
   const accountNameOf = useAccountName();
   const payeeName = transactionPayeeName(tx, accountNameOf);
+  const currency = currencyOf(tx.accountId);
+  const amountText = formatRegisterAmount(tx, currency);
   const payee = useMemo(
     () => (tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined),
     [payees, tx.payeeId],
@@ -69,12 +74,19 @@ export function TransactionCard({
   const card = (
     <button
       type="button"
-      onClick={() => onOpenDetail(tx.id)}
+      role={selection ? 'checkbox' : undefined}
+      aria-checked={selection ? selection.selected : undefined}
+      aria-label={selection ? selectionCheckboxLabel(payeeName, amountText) : undefined}
+      onClick={() => (selection ? selection.onToggle() : onOpenDetail(tx.id))}
       data-testid="transaction-card"
       data-tx-id={tx.id}
       aria-current={isSelected || undefined}
       className={`w-full min-h-14 flex items-center gap-3 px-4 py-2.5 text-left select-none [-webkit-touch-callout:none] border-b border-border-light transition-colors ${
-        isSelected ? 'bg-brand-50' : 'bg-surface active:bg-hover'
+        selection?.selected
+          ? SELECTED_ROW
+          : isSelected
+            ? 'bg-brand-50'
+            : 'bg-surface active:bg-hover'
       }`}
     >
       <PayeeIcon name={payeeName} logo={payee?.logo} transfer={isTransfer} />
@@ -86,8 +98,8 @@ export function TransactionCard({
           <span
             className={`shrink-0 inline-flex items-center gap-1 text-row font-medium tabular-nums ${tx.amount > 0 && !tx.transferPair ? 'text-positive' : 'text-text'}`}
           >
-            <RoundUpMark tx={tx} currency={currencyOf(tx.accountId)} />
-            {formatRegisterAmount(tx, currencyOf(tx.accountId))}
+            <RoundUpMark tx={tx} currency={currency} />
+            {amountText}
           </span>
         </span>
         <ForeignValue tx={tx} className="justify-self-end" />

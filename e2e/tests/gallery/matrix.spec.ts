@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { tokenColour } from '../fixtures';
 import {
   clearFocus,
   expectScreenshot,
@@ -38,17 +39,6 @@ const CONTROLS: { control: string; mark: Mark; target: (row: Locator) => Locator
   { control: 'RadioGroup', mark: 'outline', target: (row) => row.getByRole('radio').first() },
   { control: 'Switch', mark: 'outline', target: (row) => row.getByRole('switch') },
 ];
-
-/** A token's computed colour, drawn by the page itself, so tests never hard-code a hex value */
-const tokenColour = (page: Page, token: string) =>
-  page.evaluate((name) => {
-    const probe = document.createElement('span');
-    probe.style.color = `var(${name})`;
-    document.body.append(probe);
-    const colour = getComputedStyle(probe).color;
-    probe.remove();
-    return colour;
-  }, token);
 
 /**
  * What the focused element looks like: for a field or trigger, the box-shadow and outline style
@@ -106,7 +96,7 @@ for (const entry of CONTROLS)
     page,
   }) => {
     await focusSpecimen(page, entry);
-    const brand = await tokenColour(page, '--color-brand-600');
+    const brand = await tokenColour(page, '--color-brand-600', 'color');
     // Polled: a toggle's indicator and a field's border ease into their focused colours
     if (entry.mark === 'ring') {
       await expect
