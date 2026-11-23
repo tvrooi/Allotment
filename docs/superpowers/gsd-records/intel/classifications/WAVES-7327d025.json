@@ -1,0 +1,20 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/ui/WAVES.md",
+  "type": "PRD",
+  "confidence": "medium",
+  "manifest_override": true,
+  "title": "UI waves: orchestration handover",
+  "summary": "Orchestration handover for the UI design re-review waves (issues #222 to #245): wave status, open PRs, owner decisions and the per-wave routine.",
+  "scope": [
+    "UI design re-review backlog",
+    "wave orchestration",
+    "wave status table",
+    "owner decisions on record",
+    "PR review and merge routine",
+    "Antigravity and Codex review"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Type PRD taken from MANIFEST_TYPE (authoritative). Content is an orchestration status handover, not a requirements document: no user stories or acceptance criteria. It records owner decisions on wave scope (for example #224, #226, #235, #243, #245, #240, #244), so its decisions may be relevant to the synthesizer. Confidence is medium because the manifest declared the type, not the content. cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

@@ -1,0 +1,22 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/READ-ONLY-ACCESS.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Access tokens and MCP",
+  "summary": "Defines read-only and scoped write access tokens for the budget API and MCP endpoint, the endpoints each scope may call, and the assistant write and approval rules.",
+  "scope": [
+    "access tokens",
+    "MCP endpoint",
+    "REST API",
+    "assistant endpoint",
+    "change sets",
+    "household proposals",
+    "tax claims",
+    "investments"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

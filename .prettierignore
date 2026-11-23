@@ -14,3 +14,6 @@ e2e/playwright-report
 
 # Vendored third-party skill (skills-lock.json): kept as published upstream, so updates stay clean diffs
 .agents/skills/impeccable
+
+# GSD records, kept verbatim (docs/superpowers/README.md)
+docs/superpowers/gsd-records

@@ -7,6 +7,7 @@ Detailed upstream architecture: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), on d
 Release process and known limitations: [MAINTENANCE.md](MAINTENANCE.md).
 Current state, live setup and where to pick up: [HANDOVER.md](HANDOVER.md), kept short; update it as
 work lands. History is archived in docs/handover/ARCHIVE.md (grep it, never read it whole).
+Specs and plans (Superpowers workflow; GSD is retired): [docs/superpowers/README.md](docs/superpowers/README.md).
 Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the other).
 
 ## Where to work

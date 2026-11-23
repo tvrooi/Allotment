@@ -1,0 +1,24 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/PAYDAY-PLANS.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": true,
+  "title": "Payday plans and bill coverage",
+  "summary": "Defines optional payday plans: anchor dates, ordered funding rules and methods, deposit selection, preview and apply behaviour, and funding history constraints.",
+  "scope": [
+    "payday plans",
+    "bill coverage",
+    "funding rules",
+    "funding methods",
+    "envelope budget",
+    "funding history",
+    "recurring schedules",
+    "deposit selection",
+    "fundingState",
+    "fundingMath.ts"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "MANIFEST_TYPE SPEC applied as authoritative (manifest_override true). Content is a behavioural and calculation contract: explicit calculation rules, a funding-method table and system constraints, with no endpoint or request/response schema. Confidence medium because the body reads as feature behaviour rather than a classic technical spec. Names fundingState and fundingMath.ts as implementation references; no ADR status field is present. cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

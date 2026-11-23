@@ -1,0 +1,22 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/DEPRECIATING-ASSETS-PLAN.md",
+  "type": "PRD",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Plan: depreciating assets on the Tax time page",
+  "summary": "Plan to add depreciating assets to the Tax tab, calculated by the ATO prime cost and diminishing value methods, with a low-value pool in phase 3.",
+  "scope": [
+    "depreciating assets",
+    "Tax time page",
+    "prime cost method",
+    "diminishing value method",
+    "low-value pool",
+    "tax_claims",
+    "Files asset links",
+    "taxService"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "MANIFEST_TYPE PRD applied as authoritative. Source is a plan with status and phase notes, not an ADR. Cross-refs are the links in the header; the ATO guide links were not included because they are external. The output filename has no source hash because this agent has no hashing tool, so the SHA-256 suffix required by the write_output step is missing and the file is named -nohash instead. cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

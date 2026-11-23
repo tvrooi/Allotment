@@ -1,0 +1,26 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/INVESTMENT-SALES-AND-INCOME.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Investments: sales, dividends and franking",
+  "summary": "Design for recording investment sales with lot selection, dividends, franking credits and splits, feeding Australian tax time capital gains and dividend items.",
+  "scope": [
+    "investments",
+    "security sales",
+    "realised gains",
+    "lot selection",
+    "dividends",
+    "franking credits",
+    "TFN amounts withheld",
+    "splits and consolidations",
+    "Tax time",
+    "investment holdings",
+    "tax lots",
+    "read-only assistant tool"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}
