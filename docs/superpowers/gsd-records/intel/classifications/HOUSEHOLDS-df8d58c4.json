@@ -1,0 +1,26 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/HOUSEHOLDS.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": true,
+  "title": "Household attribution and shared expenses",
+  "summary": "Specifies the private AUD Household feature: shared expenses, contributions, repayments, balances, recurring bills, reconciliation, reporting and combining households.",
+  "scope": [
+    "Household page",
+    "household accounts",
+    "shared expenses",
+    "contributions",
+    "repayments",
+    "balances",
+    "recurring bills",
+    "household ledger",
+    "expense-share reporting",
+    "contribution-based personal budgeting",
+    "backup versions",
+    "multi-user combining"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Manifest declared SPEC, which is applied as authoritative (manifest_override true). Content is mostly prose feature behaviour with API routes, schema column names, migration and backup-version references, so SPEC fits but the signal is medium rather than high. No Status field, so locked is false. The file's own feature and policy rules are not classified as ADR decisions. Output filename uses the suffix UNHASHED because the SHA-256 path hash could not be computed with the tools available to this classifier; the synthesizer or orchestrator should rename it to HOUSEHOLDS-{first 8 hex of sha256(source_path)}.json. cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

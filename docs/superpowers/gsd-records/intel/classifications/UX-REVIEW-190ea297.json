@@ -1,0 +1,23 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/UX-REVIEW.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Allotment UX teardown — 3 November 2026",
+  "summary": "UX teardown of the Allotment website, demo and first-run flow, ranking findings by their cost to visitor-to-demo, demo-to-install and install-to-activated conversion.",
+  "scope": [
+    "Allotment website",
+    "in-browser demo",
+    "download page",
+    "server-mode first run",
+    "desktop layout",
+    "phone layout",
+    "Up",
+    "Home Assistant",
+    "FlyBudget branding"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

@@ -1,0 +1,23 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/ui/MAP.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "UI map",
+  "summary": "One-row-per-route map of client/src/App.tsx pages, component folders, key hooks and e2e specs, with line-count snapshots and split candidates.",
+  "scope": [
+    "client/src/App.tsx",
+    "routes",
+    "client/src/pages",
+    "client/src/components",
+    "client/src/hooks",
+    "e2e/tests",
+    "AppShell",
+    "AddTransactionModal",
+    "addTransactionStore"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "MANIFEST_TYPE DOC supplied; classification taken from manifest. Content is a reference table of routes and file locations, not a decision or requirement. cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

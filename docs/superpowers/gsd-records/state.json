@@ -1,0 +1,33 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v1.0 — Redesign finish",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Settings split and good moments",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Shared form controls",
+      "status": "in_progress"
+    },
+    {
+      "number": "3",
+      "name": "Screens on shared controls",
+      "status": "in_progress"
+    },
+    {
+      "number": "4",
+      "name": "Remaining screens and the guard",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 3 of 4 · executing"
+  },
+  "updated_at": "2026-11-22T02:41:20.616Z"
+}

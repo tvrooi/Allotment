@@ -1,0 +1,24 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/DESKTOP-UPDATES.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": true,
+  "title": "Desktop updates",
+  "summary": "Describes desktop app update behaviour: in-app updates only for verified signed Mac builds, installer downloads otherwise, and the optional Mac signing and notarization setup.",
+  "scope": [
+    "desktop application",
+    "Budget Reload",
+    "in-app updater",
+    "GitHub Releases",
+    "Squirrel.Mac",
+    "Developer ID signing",
+    "notarization",
+    "GitHub Actions secrets",
+    "MAC_SIGNING_REQUIRED",
+    "Home Assistant server"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Type SPEC taken from MANIFEST_TYPE (manifest_override true). Content is operational/configuration (update channels, signing secrets, release gating) rather than API or schema contracts, so content signals are weak. No internal doc links; only external URLs (electron-builder, Apple notarization) are referenced, which are not recorded in cross_refs. Output filename uses placeholder suffix NOHASH because the SHA-256 of the source path could not be computed with the tools available (no shell access). cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

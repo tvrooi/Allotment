@@ -7,7 +7,7 @@ UI sessions start at [docs/ui/README.md](docs/ui/README.md) instead.
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 22 November 2026 (the UAT 03 fixes on top of Wave G3, design re-review waves on `redesign`; see `docs/ui/WAVES.md`).
+Last updated: 23 November 2026 (planning moved from GSD to Superpowers; UAT 03 round 2 paused before its PR; the UAT 03 fixes on top of Wave G3, design re-review waves on `redesign`; see `docs/ui/WAVES.md`).
 
 ## State
 
@@ -27,6 +27,13 @@ Last updated: 22 November 2026 (the UAT 03 fixes on top of Wave G3, design re-re
 - The demo has sample records on every tab (up.179, branch `feat/demo-every-tab`): a household,
   receipts and files that open and can be edited in the tab (`server/src/demo/demoFiles.ts`), tax
   claims, a depreciating asset, a lodged year, pay later, a long-term plan and loan terms.
+- **Paused, 22 November 2026: UAT 03 round 2** (G-03-3 iPhone date centring, G-03-4 colour-only
+  selection). The code is done and verified on two unpushed branches; the PR, docs and version are
+  left. Pick up from [docs/handover/UAT-03-ROUND-2.md](docs/handover/UAT-03-ROUND-2.md) and its
+  checklist plan in `docs/superpowers/plans/`.
+- **Planning:** specs, plans and where the milestone stands are in
+  [docs/superpowers/README.md](docs/superpowers/README.md) (Superpowers workflow). GSD was retired on
+  23 November 2026; its records are in `docs/superpowers/gsd-records/`.
 - `redesign` holds the design passes: Budget (up.154), Dashboard (up.154, made the Dashboard in up.166).
 - Also on `redesign`: Transactions money clarity and iPhone web-app hardening (up.155), Review (up.156 to up.160).
 - Also on `redesign`: Accounts (up.161 to up.163), day-first dates and Household (up.164), Forecast (up.165), Goals, Investments.
