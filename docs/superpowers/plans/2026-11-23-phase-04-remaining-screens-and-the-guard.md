@@ -31,7 +31,7 @@ Tasks run in the listed order; "after" names the tasks that must be done first.
 
 ### Task 1: Reconcile G4 with the merged tree — [04-01-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-01-PLAN.md)
 
-- [ ] Record "G4 reconcile: match" or "G4 reconcile: revise" (D-16), with the files Phase 3 left and
+- [x] Record "G4 reconcile: match" or "G4 reconcile: revise" (D-16), with the files Phase 3 left and
       the binding owner answers. If "revise", update the affected tasks below before going on.
 
 ### Task 2: Add what G4 needs to the shared set — [04-02-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-02-PLAN.md) (after 1)
