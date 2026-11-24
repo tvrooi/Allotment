@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, typeAmount, categoryOption } from './fixtures';
 
 // Pay later (docs/PAYMENT-PLANS.md): an Afterpay purchase is recorded once, in what it was for,
 // and the bank's Afterpay payments are linked to it only when confirmed. Mock bank rows only.
@@ -29,7 +29,8 @@ test('records an Afterpay purchase as Home Improvement and links its payments', 
   await page.getByRole('button', { name: 'Add a purchase' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Add a purchase' });
   await dialog.getByLabel('Where you bought it').fill('Bunnings');
-  await dialog.getByLabel('What it was for').selectOption(home.id);
+  await dialog.getByRole('button', { name: /^What it was for:/ }).click();
+  await categoryOption(page, 'Home Improvement', { exact: true }).click();
   await typeAmount(dialog.getByLabel('Price'), '200');
   await expect(dialog).toContainText('4 × $50 fortnightly');
   await dialog.getByRole('button', { name: 'Add purchase' }).click();
@@ -95,4 +96,26 @@ test('records earlier Afterpay payments as the purchase they paid for', async ({
   const rows = await api.transactions();
   for (const id of ids)
     expect(rows.find((t) => t.importedId === id).transferTransactionId).toBeTruthy();
+});
+
+test('the plan can be saved at the 60-payment limit', async ({ page, api }) => {
+  await api.createAccount('Everyday', 100000);
+  await api.call('POST', '/payment-plans/account', { provider: 'afterpay' });
+  await open(page, '/payment-plans');
+  await page.getByRole('button', { name: 'Add a purchase' }).first().click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add a purchase' });
+  await dialog.getByLabel('Where you bought it').fill('Long plan');
+  await typeAmount(dialog.getByLabel('Price'), '600');
+  const count = dialog.getByLabel('Number of payments');
+  const save = dialog.getByRole('button', { name: 'Add purchase' });
+  await count.fill('61');
+  await expect(dialog.getByText('Enter a whole number from 1 to 60.')).toBeVisible();
+  await expect(save).toBeDisabled();
+
+  await count.fill('60');
+  await save.click();
+  await expect(dialog).toBeHidden();
+  const plan = page.getByTestId('payment-plan').filter({ hasText: 'Long plan' });
+  await expect(plan).toContainText('0 of 60 paid');
 });
