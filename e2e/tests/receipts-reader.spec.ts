@@ -171,3 +171,28 @@ test("a photo added from a transaction's details is read, and the transaction sh
   // The read adds the items to the transaction's notes; the open panel shows them
   await expect(panel.getByText('Milk, Light globes')).toBeVisible({ timeout: 20_000 });
 });
+
+// The inbox row is on screen before the read finishes; the date the model finds must show in
+// its Receipt date field (G4 review: the field kept the empty date it mounted with)
+test('a receipt read in the tax inbox shows the date the model found', async ({ page, api }) => {
+  chatDelay = 3_000;
+  await api.call('PUT', '/receipts/reader', {
+    url: base,
+    model: 'qwen3-vl:4b-instruct',
+    enabled: true,
+  });
+  await open(page, '/tax');
+  await page.getByRole('tab', { name: 'Receipt inbox' }).click();
+  await page.getByLabel('Add receipts to the inbox: choose files').setInputFiles({
+    name: 'inbox.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(SAMPLE_RECEIPT_PNG, 'base64'),
+  });
+  const item = page.getByRole('listitem', { name: 'Receipt inbox.png' });
+  await expect(item.getByLabel('Merchant')).toHaveValue('Coles', { timeout: 20_000 });
+  const [year, month, day] = isoDay().split('-').map(Number);
+  const date = item.getByRole('group', { name: 'Receipt date', exact: true });
+  await expect(date.locator('[data-type="year"]')).toHaveAttribute('aria-valuenow', String(year));
+  await expect(date.locator('[data-type="month"]')).toHaveAttribute('aria-valuenow', String(month));
+  await expect(date.locator('[data-type="day"]')).toHaveAttribute('aria-valuenow', String(day));
+});

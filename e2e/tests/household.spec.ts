@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import {
   test,
   expect,
@@ -1343,4 +1343,99 @@ test('adding a bill saves the formatted total in cents', async ({ page, api }) =
       expect.objectContaining({ description: 'Council rates', amount: 123456 }),
     ]),
   );
+});
+
+/** Empties one part of a DatePicker, leaving a half-typed date */
+async function emptyDay(page: Page, scope: Locator, name: string) {
+  const segment = scope.getByRole('group', { name, exact: true }).locator('[data-type="day"]');
+  await segment.click();
+  for (let i = 0; i < 2; i++) await page.keyboard.press('Backspace');
+  await expect(segment).toHaveAttribute('data-placeholder');
+}
+
+// G4 review: a contribution's Save changes ignored a half-typed date and silently did nothing
+test('editing a repayment holds Save changes while its date is half-typed', async ({
+  page,
+  api,
+}) => {
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'expense',
+    date: '2026-10-20',
+    description: 'Groceries',
+    amount: 10000,
+    payerId: group.people[0].id,
+    shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
+  });
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'settlement',
+    date: '2026-10-21',
+    description: 'Paid back',
+    amount: 5000,
+    payerId: group.people[1].id,
+    recipientId: group.people[0].id,
+  });
+  await open(page, '/household');
+  await openTab(page, 'Activity');
+  await page.getByRole('button', { name: /^All contributions, payments & repayments/ }).click();
+  await page.getByRole('button', { name: 'Edit Paid back' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit entry' });
+  const save = dialog.getByRole('button', { name: 'Save changes' });
+  await expect(save).toBeEnabled();
+  await emptyDay(page, dialog, 'Date');
+  await expect(save).toBeDisabled();
+  await fillDate(dialog, 'Date', '2026-10-22');
+  await expect(save).toBeEnabled();
+});
+
+// G4 review: Paid by kept the pool's empty choice after the event became an advance, which needs
+// a person; the native select used to fall back to the first person
+test('Paid by falls back to a person when a pool expense becomes an advance', async ({
+  page,
+  api,
+}) => {
+  const pool = await api.createAccount('Pool', 0);
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+    accountId: pool.id,
+  });
+  await open(page, '/household');
+  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
+  const paidBy = event.getByRole('combobox', { name: 'Paid by' });
+  await paidBy.fill('');
+  await paidBy.press('Tab');
+  await expect(paidBy).toHaveValue('');
+  await chooseOption(event.getByRole('button', { name: /Event$/ }), 'Advance into pool');
+  await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
+});
+
+// G4 review: the statement's dates had no Clear, and a half-typed one still exported
+test('the statement dates clear, and a half-typed one holds the export', async ({ page, api }) => {
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  await openTab(page, 'Activity');
+  const exportButton = page.getByRole('button', { name: 'Export this statement' });
+  await fillDate(page, 'From', '2026-10-01');
+  await page.getByRole('button', { name: 'Clear From' }).click();
+  await expect(
+    page.getByRole('group', { name: 'From', exact: true }).locator('[data-type="day"]'),
+  ).toHaveAttribute('data-placeholder');
+  await fillDate(page, 'To', '2026-10-31');
+  await expect(exportButton).toBeEnabled();
+  await emptyDay(page, page.getByRole('main'), 'To');
+  await expect(exportButton).toBeDisabled();
 });
