@@ -1,3 +1,5 @@
+import { Input } from '../ui/Input';
+import { Checkbox } from '../ui/Checkbox';
 import { ReadOnlyAccess } from './ReadOnlyAccess';
 import { ReminderSettings } from './ReminderSettings';
 import { PeopleSettings } from './PeopleSettings';
@@ -35,9 +37,6 @@ import { SELF_HOSTING_URL } from '../../utils/project';
 import { Button } from '../ui/Button';
 import { MIN_PASSWORD_LENGTH } from '../auth/passwordRules';
 import { IS_DEMO } from '../../demo/demoApi';
-
-const inputClass =
-  'w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';
 
 /**
  * Settings → Server. Desktop app (and dev): where the data lives, and how to use
@@ -130,28 +129,20 @@ function OfflineCopySettings() {
   return (
     <section className="pt-6 border-t border-border-light">
       <SectionTitle>Offline copy</SectionTitle>
-      <label className="mt-3 flex items-start gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={keep}
-          onChange={(e) => {
-            setKeep(e.target.checked);
-            if (!e.target.checked) void clearOfflineCopy();
-          }}
-          className="mt-0.5 h-4 w-4 max-md:h-5 max-md:w-5 accent-brand-600 shrink-0"
-        />
-        <span className="text-sm">
-          <span className="font-medium text-text flex items-center gap-1.5">
-            <WifiOff size={14} className="text-text-tertiary" aria-hidden />
-            Keep a copy of my budget on this device
-          </span>
-          <span className="block text-xs text-text-tertiary mt-1 leading-relaxed">
-            When Allotment can't reach its server, it opens with what this browser last loaded. You
-            can look through everything and add new transactions; they're sent when it reconnects.
-            The copy is deleted when you sign out. Turn this off on a shared computer.
-          </span>
+      <Checkbox
+        checked={keep}
+        onCheckedChange={(checked) => {
+          setKeep(checked);
+          if (!checked) void clearOfflineCopy();
+        }}
+        className="mt-3 gap-3"
+        description="When Allotment can't reach its server, it opens with what this browser last loaded. You can look through everything and add new transactions; they're sent when it reconnects. The copy is deleted when you sign out. Turn this off on a shared computer."
+      >
+        <span className="font-medium flex items-center gap-1.5">
+          <WifiOff size={14} className="text-text-tertiary" aria-hidden />
+          Keep a copy of my budget on this device
         </span>
-      </label>
+      </Checkbox>
       {waiting > 0 && (
         <p className="text-xs text-caution mt-3">
           {waiting} transaction{waiting === 1 ? '' : 's'} saved on this device{' '}
@@ -416,14 +407,13 @@ function SelfHostedSettings() {
             >
               Current password
             </label>
-            <input
+            <Input
               id={`${fieldId}-current-password`}
               type="password"
               autoComplete="current-password"
               aria-label="Current password"
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
-              className={inputClass}
             />
           </div>
           <div>
@@ -433,14 +423,13 @@ function SelfHostedSettings() {
             >
               New password
             </label>
-            <input
+            <Input
               id={`${fieldId}-new-password`}
               type="password"
               autoComplete="new-password"
               aria-label="New password"
               value={next}
               onChange={(e) => setNext(e.target.value)}
-              className={inputClass}
             />
           </div>
           <div>
@@ -450,14 +439,13 @@ function SelfHostedSettings() {
             >
               Confirm new password
             </label>
-            <input
+            <Input
               id={`${fieldId}-confirm-password`}
               type="password"
               autoComplete="new-password"
               aria-label="Confirm new password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className={inputClass}
             />
           </div>
           {message && (

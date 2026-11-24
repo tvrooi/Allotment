@@ -1,3 +1,5 @@
+import { Input } from '../ui/Input';
+import { Checkbox } from '../ui/Checkbox';
 import { useEffect, useId, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BellRing } from 'lucide-react';
@@ -12,9 +14,6 @@ import { REMINDERS_QUERY_KEY, useReminderSettings } from '../../hooks/useReminde
 // until both are set. The message is generic unless the owner asks for names and amounts.
 // Behind the multi-user gateway (D2b) there is no service to name: reminders are on or off, and
 // go to the person's own phone or email, chosen under Password codes.
-
-const inputClass =
-  'w-full px-3 py-1.5 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none';
 
 export function ReminderSettings() {
   const qc = useQueryClient();
@@ -93,33 +92,25 @@ export function ReminderSettings() {
           }}
         >
           {data.viaGateway ? (
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                className="mt-0.5 rounded border-border text-brand-600 focus:ring-brand-600"
-              />
-              <span className="text-sm text-text-secondary">
-                Send reminders
-                <span className="block text-xs text-text-tertiary">
-                  They go to your phone or email, chosen under Password codes.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              checked={enabled}
+              onCheckedChange={setEnabled}
+              description="They go to your phone or email, chosen under Password codes."
+            >
+              Send reminders
+            </Checkbox>
           ) : (
             <label className="block">
               <span className="block text-xs font-medium text-text-secondary mb-1">
                 Notify service
               </span>
-              <input
+              <Input
                 value={service}
                 onChange={(e) => setService(e.target.value)}
                 placeholder="e.g. mobile_app_your_phone"
                 maxLength={100}
                 autoCapitalize="none"
                 spellCheck={false}
-                className={inputClass}
               />
               <span className="block text-xs text-text-tertiary mt-1">
                 The name of a Home Assistant notify service, without “notify.”. Leave it empty to
@@ -127,21 +118,13 @@ export function ReminderSettings() {
               </span>
             </label>
           )}
-          <label className="flex items-start gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showDetails}
-              onChange={(e) => setShowDetails(e.target.checked)}
-              className="mt-0.5 rounded border-border text-brand-600 focus:ring-brand-600"
-            />
-            <span className="text-sm text-text-secondary">
-              Include the name and amount
-              <span className="block text-xs text-text-tertiary">
-                Off, a reminder only says how many items are due. A phone's lock screen shows the
-                text to anyone holding it.
-              </span>
-            </span>
-          </label>
+          <Checkbox
+            checked={showDetails}
+            onCheckedChange={setShowDetails}
+            description="Off, a reminder only says how many items are due. A phone's lock screen shows the text to anyone holding it."
+          >
+            Include the name and amount
+          </Checkbox>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={!dirty || save.isPending || !canSave}>
               Save

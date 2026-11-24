@@ -1,10 +1,22 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, typeAmount, chooseOption } from './fixtures';
 
 // Phase 7: priorities (7A), the flexibility reserve (7B), adverse-event scenarios (7C), goal
 // pauses (7D) and the resume review (7E) on desktop and phone. Disposable budgets only.
 
 const noSideScroll = async (page: import('@playwright/test').Page) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+test('an essentials estimate displays as money and survives reload', async ({ page, api }) => {
+  await open(page, '/settings?tab=priorities');
+  const estimate = page.getByRole('textbox', { name: 'Monthly essentials estimate' });
+  await typeAmount(estimate, '1234.56');
+  await expect(estimate).toHaveValue(/1,234\.56/);
+  await page.getByRole('button', { name: 'Save priorities' }).click();
+  await expect(page.getByText('Priorities saved. No money was moved.')).toBeVisible();
+  expect(await api.call('GET', '/priorities')).toMatchObject({ essentialMonthlyAmount: 123456 });
+  await page.reload();
+  await expect(estimate).toHaveValue(/1,234\.56/);
+});
 
 for (const phone of [false, true])
   test(`priorities set up a flexibility reserve the review measures${phone ? ' on a phone' : ''}`, async ({
@@ -19,11 +31,20 @@ for (const phone of [false, true])
 
     await open(page, '/settings?tab=priorities');
     await expect(page.getByRole('heading', { name: 'Financial priorities' })).toBeVisible();
-    await page.getByLabel('Purpose for Gifts').selectOption('flexibility');
-    await page.getByLabel('Purpose for Groceries').selectOption('essential');
-    await page.getByLabel('Comfort target').selectOption('amount');
-    await page.getByLabel('Target amount').fill('1000');
-    await page.getByLabel('Reserve minimum').fill('500');
+    await chooseOption(
+      page.getByRole(phone ? 'combobox' : 'button', { name: /Purpose for Gifts/ }),
+      'Flexibility reserve',
+    );
+    await chooseOption(
+      page.getByRole(phone ? 'combobox' : 'button', { name: /Purpose for Groceries/ }),
+      'Essential',
+    );
+    await chooseOption(
+      page.getByRole(phone ? 'combobox' : 'button', { name: /Comfort target/ }),
+      'An amount',
+    );
+    await typeAmount(page.getByLabel('Target amount'), '1000');
+    await typeAmount(page.getByLabel('Reserve minimum'), '500');
     await page.getByRole('button', { name: 'Save priorities' }).click();
     await expect(page.getByText('Priorities saved. No money was moved.')).toBeVisible();
     // Labels only: the budget is exactly as it was.

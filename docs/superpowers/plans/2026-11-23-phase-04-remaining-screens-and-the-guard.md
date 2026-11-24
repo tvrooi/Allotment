@@ -48,7 +48,7 @@ Tasks run in the listed order; "after" names the tasks that must be done first.
 
 ### Task 5: Settings, second half (People, Server and the rest) — [04-04-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-04-PLAN.md) (after 1, 2)
 
-- [ ] Done
+- [x] Done
 
 ### Task 6: Up and Plaid bank sections — [04-05-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-05-PLAN.md) (after 1)
 

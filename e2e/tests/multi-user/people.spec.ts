@@ -1,3 +1,4 @@
+import { setToggle } from '../fixtures';
 import fs from 'fs';
 import { test, expect, type Page } from '@playwright/test';
 import { caughtMail } from '../../mailCatcher';
@@ -232,7 +233,7 @@ test('a person adds an email address with its code, gets reminders there, and re
   // Bill reminders from his budget go there too, through the gateway: no service to name
   const reminders = partner.getByRole('region', { name: 'Reminders' });
   await expect(reminders.getByLabel('Notify service')).toHaveCount(0);
-  await reminders.getByLabel(/Send reminders/).check();
+  await setToggle(reminders.getByRole('checkbox', { name: 'Send reminders' }));
   await reminders.getByRole('button', { name: 'Save' }).click();
   await expect(reminders.getByRole('status')).toContainText('Saved.');
   await reminders.getByRole('button', { name: 'Send a test' }).click();
