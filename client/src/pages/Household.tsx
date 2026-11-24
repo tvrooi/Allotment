@@ -171,6 +171,7 @@ export default function HouseholdPage() {
   const eventFields = useAmountValidity();
   const billFields = useAmountValidity();
   const editBillFields = useAmountValidity();
+  const statementDates = useAmountValidity();
   // ?household= opens that household (e.g. "View in household" on a shared payment)
   const [id, setId] = useState(() => params.get('household') ?? '');
   const [error, setError] = useState('');
@@ -887,9 +888,14 @@ export default function HouseholdPage() {
                           </div>
                           {kind !== 'refund' && (
                             <Combobox
+                              // Only an expense can be paid from the pool; leaving it remounts
+                              // the field with a person, as the native select used to pick one
+                              key={kind === 'expense' && state.group.accountId ? 'pool' : 'person'}
                               name="payerId"
                               label="Paid by"
                               defaultValue={
+                                kind === 'expense' &&
+                                state.group.accountId &&
                                 payment?.accountId === state.group.accountId
                                   ? ''
                                   : (self?.id ?? state.people[0]?.id)
@@ -982,7 +988,6 @@ export default function HouseholdPage() {
                                 label="Match shared bill"
                                 placeholder="No bill"
                                 optional
-
                                 items={state.bills
                                   .filter((bill) => bill.status !== 'paid')
                                   .map((bill) => ({ value: bill.id, label: bill.description }))}
@@ -995,7 +1000,6 @@ export default function HouseholdPage() {
                               label="Original expense"
                               placeholder="Choose expense"
                               isRequired
-
                               items={state.events
                                 .filter((entry) => entry.kind === 'expense')
                                 .map((entry) => ({
@@ -1010,7 +1014,6 @@ export default function HouseholdPage() {
                             defaultValue={payment?.id ?? ''}
                             placeholder="No bank link"
                             optional
-
                             items={bankPayments
                               .filter(
                                 (t) =>
@@ -1373,21 +1376,29 @@ export default function HouseholdPage() {
                           { value: 'household', label: 'Household' },
                         ]}
                       />
-                      <DatePicker
-                        label="From"
-                        fieldSize="sm"
-                        className="w-40"
-                        value={from}
-                        onChange={setFrom}
-                      />
-                      <DatePicker
-                        label="To"
-                        fieldSize="sm"
-                        className="w-40"
-                        value={to}
-                        onChange={setTo}
-                      />
-                      <Button variant="secondary" onClick={download}>
+                      <AmountFields report={statementDates.report}>
+                        <DatePicker
+                          label="From"
+                          fieldSize="sm"
+                          className="w-40"
+                          value={from}
+                          onChange={setFrom}
+                          optional
+                        />
+                        <DatePicker
+                          label="To"
+                          fieldSize="sm"
+                          className="w-40"
+                          value={to}
+                          onChange={setTo}
+                          optional
+                        />
+                      </AmountFields>
+                      <Button
+                        variant="secondary"
+                        onClick={download}
+                        disabled={!statementDates.allValid}
+                      >
                         Export this statement
                       </Button>
                     </div>

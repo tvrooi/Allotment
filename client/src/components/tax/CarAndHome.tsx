@@ -60,6 +60,7 @@ export default function CarAndHome() {
         <span className="block">Financial year (1 July to 30 June)</span>
         <Select
           aria-label="Financial year"
+          className="w-48 max-md:w-full"
           value={fy === null ? '' : String(fy)}
           onChange={(value) => setFy(Number(value))}
           options={years.map((year) => ({ value: String(year.financialYear), label: year.name }))}

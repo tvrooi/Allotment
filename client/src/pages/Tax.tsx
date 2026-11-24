@@ -754,6 +754,13 @@ function InboxItem({ receipt }: { receipt: Receipt }) {
   const { data: matches = [] } = useReceiptMatches(receipt.id);
   const [merchant, setMerchant] = useState(receipt.merchant ?? '');
   const [receiptDate, setReceiptDate] = useState(receipt.receiptDate ?? '');
+  // The receipt reader fills these in after the row is on screen; show what it found when it lands
+  const [read, setRead] = useState({ merchant: receipt.merchant, date: receipt.receiptDate });
+  if (receipt.merchant !== read.merchant || receipt.receiptDate !== read.date) {
+    setRead({ merchant: receipt.merchant, date: receipt.receiptDate });
+    if (receipt.merchant !== read.merchant) setMerchant(receipt.merchant ?? '');
+    if (receipt.receiptDate !== read.date) setReceiptDate(receipt.receiptDate ?? '');
+  }
   const save = (change: Parameters<typeof update.mutate>[0]['change']) =>
     update.mutate({ id: receipt.id, change });
   return (
