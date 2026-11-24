@@ -52,11 +52,11 @@ Tasks run in the listed order; "after" names the tasks that must be done first.
 
 ### Task 6: Up and Plaid bank sections — [04-05-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-05-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 7: SimpleFIN and Enable Banking sections — [04-18-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-18-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 8: Screens with no Phase 3 parent (sign-in and others, D-13) — [04-06-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-06-PLAN.md) (after 1)
 

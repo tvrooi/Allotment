@@ -1,3 +1,4 @@
+import { Input } from '../ui/Input';
 import { useState, useId } from 'react';
 import { KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -87,13 +88,12 @@ function PlaidSetupModalDialog({ isOpen, onClose, onConfigured }: Props) {
               >
                 Client ID
               </label>
-              <input
+              <Input
                 id={`${fieldId}-client-id`}
                 type="text"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
                 placeholder="Enter your Plaid client ID"
-                className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
               />
             </div>
             <div>
@@ -103,13 +103,12 @@ function PlaidSetupModalDialog({ isOpen, onClose, onConfigured }: Props) {
               >
                 Secret
               </label>
-              <input
+              <Input
                 id={`${fieldId}-secret`}
                 type="password"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
                 placeholder="Enter your Plaid secret"
-                className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
               />
             </div>
             <PlaidEnvironmentSelect value={environment} onChange={setEnvironment} />

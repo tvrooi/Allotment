@@ -1,3 +1,7 @@
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
+import { Combobox } from '../ui/Combobox';
+import { Checkbox } from '../ui/Checkbox';
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -351,22 +355,14 @@ function BankPicker(props: {
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,12rem)_1fr]">
         <div>
-          <label htmlFor="eb-country" className="block text-xs font-medium text-text-tertiary mb-1">
-            Country
-          </label>
-          <select
+          <Select
             id="eb-country"
+            label="Country"
             value={props.country}
-            onChange={(e) => props.onCountryChange(e.target.value)}
-            className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600"
-          >
-            <option value="">Choose…</option>
-            {countries.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={props.onCountryChange}
+            placeholder="Choose…"
+            options={countries.map((c) => ({ value: c.code, label: c.name }))}
+          />
         </div>
         <div>
           <label htmlFor="eb-search" className="block text-xs font-medium text-text-tertiary mb-1">
@@ -378,14 +374,14 @@ function BankPicker(props: {
               className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
               aria-hidden
             />
-            <input
+            <Input
               id="eb-search"
               type="search"
               value={props.search}
               onChange={(e) => props.onSearchChange(e.target.value)}
               placeholder="Search banks"
               disabled={!props.country}
-              className="w-full text-sm border border-border rounded-md pl-8 pr-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 disabled:opacity-50"
+              className="w-full pl-8"
             />
           </div>
         </div>
@@ -533,7 +529,7 @@ function BankLoginWaiting({
               paste it here:
             </label>
             <div className="flex gap-2">
-              <input
+              <Input
                 id="eb-paste"
                 type="text"
                 value={pasted}
@@ -541,7 +537,7 @@ function BankLoginWaiting({
                 placeholder="https://…?code=…&state=…"
                 autoComplete="off"
                 spellCheck={false}
-                className="flex-1 min-w-0 text-sm border border-border rounded-md px-3 py-2 bg-surface text-text font-mono focus:outline-none focus:ring-1 focus:ring-brand-600"
+                className="flex-1 min-w-0 font-mono"
               />
               <Button type="submit" disabled={!pasted.trim() || pasting}>
                 {pasting ? <Loader2 size={14} className="animate-spin" /> : 'Continue'}
@@ -659,8 +655,6 @@ function MappingCard({
         ? 'bg-brand-600 text-brand-contrast'
         : 'bg-surface text-text-secondary border border-border hover:bg-surface-alt disabled:opacity-40 disabled:cursor-not-allowed'
     }`;
-  const fieldClass =
-    'w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600';
 
   return (
     <div className="bg-brand-50 border border-brand-100 rounded-lg p-4 space-y-3">
@@ -700,44 +694,33 @@ function MappingCard({
 
       {mapping.action === 'create' && (
         <div className="grid gap-2 sm:grid-cols-[1fr_11rem]">
-          <input
+          <Input
             type="text"
             value={mapping.accountName}
             onChange={(e) => onChange({ accountName: e.target.value })}
             aria-label={`Name for ${account.name}`}
             placeholder="Account name"
-            className={fieldClass}
           />
-          <select
+          <Select
             value={mapping.accountType}
-            onChange={(e) => onChange({ accountType: e.target.value as AccountType })}
+            onChange={(accountType) => onChange({ accountType: accountType as AccountType })}
             aria-label={`Type of ${account.name}`}
-            className={fieldClass}
-          >
-            {ACCOUNT_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+            options={ACCOUNT_TYPES}
+          />
         </div>
       )}
 
       {mapping.action === 'link' && (
         <>
-          <select
+          <Combobox
             value={mapping.accountId ?? ''}
-            onChange={(e) => onChange({ accountId: e.target.value || undefined })}
+            onChange={(accountId) => onChange({ accountId: accountId || undefined })}
             aria-label={`Account for ${account.name}`}
-            className={fieldClass}
-          >
-            <option value="">Choose an account…</option>
-            {available.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+            placeholder="Choose an account…"
+            optional
+            menuTrigger="focus"
+            items={available.map((a) => ({ value: a.id, label: a.name }))}
+          />
           {account.suggestedAccountId && mapping.accountId === account.suggestedAccountId && (
             <p className="text-2xs text-text-tertiary">
               Your last bank statement for this account went here.
@@ -755,19 +738,14 @@ function MappingCard({
             ) : null;
           })()}
           {!account.accountId && (
-            <label className="flex items-start gap-2 text-xs text-text-secondary">
-              <input
-                type="checkbox"
-                checked={mapping.fullHistory}
-                onChange={(e) => onChange({ fullHistory: e.target.checked })}
-                className="mt-0.5"
-              />
-              <span>
-                Also bring in older transactions the bank has. Without this, syncing starts a week
-                before this account&apos;s latest transaction. Transactions you already imported
-                from files are recognised either way.
-              </span>
-            </label>
+            <Checkbox
+              checked={mapping.fullHistory}
+              onCheckedChange={(fullHistory) => onChange({ fullHistory })}
+            >
+              Also bring in older transactions the bank has. Without this, syncing starts a week
+              before this account&apos;s latest transaction. Transactions you already imported from
+              files are recognised either way.
+            </Checkbox>
           )}
         </>
       )}

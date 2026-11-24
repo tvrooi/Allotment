@@ -1,3 +1,7 @@
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
+import { Combobox } from '../ui/Combobox';
+import { DatePicker } from '../ui/DatePicker';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -273,7 +277,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                 Up personal access token
               </label>
               <div className="mt-1 flex gap-2">
-                <input
+                <Input
                   id="up-token"
                   type="password"
                   autoComplete="off"
@@ -282,7 +286,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   aria-describedby={tokenLooksWrong ? 'up-token-hint' : undefined}
-                  className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-text font-mono"
+                  className="min-w-0 flex-1 font-mono"
                 />
                 {canPaste && (
                   <Button
@@ -344,35 +348,34 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                     <p className="text-xs text-text-secondary">
                       Available: <Private>{formatMoney(a.balance, 'AUD')}</Private>
                     </p>
-                    <label className="block text-xs text-text-secondary">
-                      Set up {a.name}
-                      <select
-                        aria-label={`Set up ${a.name}`}
-                        value={choice.action}
-                        disabled={busy}
-                        onChange={(e) =>
-                          update(a.upAccountId, {
-                            action: e.target.value as UpMappingChoice['action'],
-                          })
-                        }
-                        className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-2 text-text"
-                      >
-                        {!a.accountId && <option value="create">Create a new account</option>}
-                        <option value="link" disabled={!eligible.length}>
-                          Link an existing account
-                        </option>
-                        <option value="skip">Skip this account</option>
-                      </select>
-                    </label>
+                    <Select
+                      label={`Set up ${a.name}`}
+                      value={choice.action}
+                      isDisabled={busy}
+                      onChange={(action) =>
+                        update(a.upAccountId, { action: action as UpMappingChoice['action'] })
+                      }
+                      options={[
+                        ...(!a.accountId
+                          ? [{ value: 'create', label: 'Create a new account' }]
+                          : []),
+                        {
+                          value: 'link',
+                          label: 'Link an existing account',
+                          isDisabled: !eligible.length,
+                        },
+                        { value: 'skip', label: 'Skip this account' },
+                      ]}
+                    />
                     {choice.action === 'create' && (
                       <label className="block text-xs text-text-secondary">
                         Account name
-                        <input
+                        <Input
                           aria-label={`Name for ${a.name}`}
                           value={choice.accountName ?? ''}
                           disabled={busy}
                           onChange={(e) => update(a.upAccountId, { accountName: e.target.value })}
-                          className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-2 text-text"
+                          className="mt-1 w-full"
                         />
                       </label>
                     )}
@@ -382,36 +385,31 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                       </p>
                     )}
                     {choice.action === 'link' && (
-                      <select
+                      <Combobox
                         aria-label={`Link ${a.name} to account`}
                         value={choice.accountId ?? ''}
-                        disabled={busy}
-                        onChange={(e) => chooseAccount(a.upAccountId, e.target.value)}
-                        className="w-full rounded-md border border-border bg-surface px-2 py-2 text-text"
-                      >
-                        <option value="">Choose an account</option>
-                        {eligible.map((local) => (
-                          <option key={local.id} value={local.id}>
-                            {local.name}
-                          </option>
-                        ))}
-                      </select>
+                        isDisabled={busy}
+                        onChange={(id) => chooseAccount(a.upAccountId, id)}
+                        placeholder="Choose an account"
+                        optional
+                        menuTrigger="focus"
+                        items={eligible.map((local) => ({ value: local.id, label: local.name }))}
+                      />
                     )}
                     {choice.action === 'link' && choice.cutoverDate && (
                       <div className="space-y-1">
-                        <label className="block text-xs text-text-secondary">
-                          Up takes over from
-                          <input
-                            type="date"
-                            aria-label={`Cut-over date for ${a.name}`}
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Up takes over from</p>
+                          <DatePicker
+                            label={`Cut-over date for ${a.name}`}
+                            hideLabel
                             value={choice.cutoverDate}
-                            disabled={busy}
-                            onChange={(e) =>
-                              update(a.upAccountId, { cutoverDate: e.target.value || undefined })
+                            isDisabled={busy}
+                            onChange={(date) =>
+                              update(a.upAccountId, { cutoverDate: date || undefined })
                             }
-                            className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-2 text-text"
                           />
-                        </label>
+                        </div>
                         <p className="text-xs text-text-secondary">
                           Your existing history up to {formatDay(dayBefore(choice.cutoverDate))}{' '}
                           stays as it is. Up’s transactions from {formatDay(choice.cutoverDate)}{' '}
