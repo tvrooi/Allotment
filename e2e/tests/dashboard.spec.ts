@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, chooseOption } from './fixtures';
 import { sidewaysOverflow } from './phone/overflow';
 
 for (const width of [430, 1512]) {
@@ -100,7 +100,12 @@ for (const width of [430, 1512]) {
       summary.getByText(/^0% of spending money used · \d+% through the month$/),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Edit savings target' }).click();
-    await expect(page.getByRole('combobox', { name: 'Savings rate goal' })).toBeVisible();
+    const goal = page.getByRole(width < 768 ? 'combobox' : 'button', { name: /Savings rate goal/ });
+    await expect(goal).toBeVisible();
+    await chooseOption(goal, '25% goal');
+    await expect(page.getByRole('button', { name: 'Edit savings target' })).toHaveText(
+      'Target 25% · Edit',
+    );
     expect(await sidewaysOverflow(page)).toEqual([]);
     await review.click();
     await expect(page).toHaveURL(/#\/review$/);

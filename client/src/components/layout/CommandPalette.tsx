@@ -1,3 +1,4 @@
+import { Input } from '../ui/Input';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -365,7 +366,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
           aria-hidden
           className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
         />
-        <input
+        <Input
           ref={inputRef}
           type="text"
           role="combobox"
@@ -383,7 +384,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
             setActive(0);
           }}
           onKeyDown={onKeyDown}
-          className="block w-full h-11 rounded-md border border-border pl-9 pr-3 text-sm max-md:text-base bg-surface text-text placeholder:text-text-tertiary focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+          className="w-full h-11 pl-9 pr-3"
         />
       </div>
       {flat.length === 0 ? (

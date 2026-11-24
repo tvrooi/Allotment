@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, setToggle } from './fixtures';
 
 // Home dashboard personalization (phase 8): cards can be hidden, moved and reset per
 // device. Presentation only: balances and transactions never change.
@@ -11,7 +11,7 @@ test('hides, moves and resets home cards, keeping them across a reload', async (
 
   await page.getByRole('button', { name: 'Customise' }).click();
   const dialog = page.getByRole('dialog', { name: 'Customise home' });
-  await dialog.getByRole('checkbox', { name: 'Net worth' }).uncheck();
+  await setToggle(dialog.getByRole('checkbox', { name: 'Net worth' }), false);
   await dialog.getByRole('button', { name: 'Move Recent transactions up' }).click();
   await dialog.getByRole('button', { name: 'Done' }).click();
 
@@ -28,7 +28,7 @@ test('hides, moves and resets home cards, keeping them across a reload', async (
 
   // Hiding everything leaves a way back, and nothing in the budget changed
   await page.getByRole('button', { name: 'Customise' }).click();
-  for (const box of await dialog.getByRole('checkbox').all()) await box.uncheck();
+  for (const box of await dialog.getByRole('checkbox').all()) await setToggle(box, false);
   await dialog.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByText('All cards are hidden')).toBeVisible();
   await page.getByRole('button', { name: 'Show the default cards' }).click();
@@ -128,6 +128,7 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
   await open(page, '/dashboard');
   // The savings goal dropdown shows once its Edit link is opened
   await page.getByRole('button', { name: 'Edit savings target' }).click();
+  const goal = page.getByRole('button', { name: /Savings rate goal/ });
   const comparison = page.getByTestId('home-card-spending-comparison');
   await expect(comparison.locator('path[stroke-dasharray="5 4"]').first()).toHaveAttribute(
     'stroke-dasharray',
@@ -135,7 +136,7 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
   );
   for (const dark of [false, true]) {
     await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), dark);
-    const results = await page.evaluate(() => {
+    const results = await goal.evaluate((control) => {
       // Read the theme's colours, not a colour transition part way through
       for (const animation of document.getAnimations()) animation.finish();
       const canvas = document.createElement('canvas');
@@ -158,22 +159,18 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
           b = luminance(background, background);
         return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
       };
-      const selects = [...document.querySelectorAll<HTMLSelectElement>('main select')];
-      const surface = getComputedStyle(selects[0]).backgroundColor;
+      const style = getComputedStyle(control);
+      const surface = style.backgroundColor;
       // The charts' range controls: every option, chosen or not, reads against the card
       const segments = [
         ...document.querySelectorAll<HTMLButtonElement>('main [role="group"] button[aria-pressed]'),
       ];
       return {
         segments: segments.map((el) => contrast(getComputedStyle(el).color, surface)),
-        controls: selects.map((el) => {
-          const style = getComputedStyle(el);
-          return {
-            text: contrast(style.color, surface),
-            border: contrast(style.borderTopColor, surface),
-            radius: style.borderRadius,
-          };
-        }),
+        control: {
+          text: contrast(style.color, surface),
+          border: contrast(style.borderTopColor, surface),
+        },
         labels: [...document.querySelectorAll('[data-testid="chart-legend"] > span')].map((el) =>
           contrast(getComputedStyle(el).color, surface),
         ),
@@ -188,14 +185,11 @@ test('dashboard chart labels and compact controls keep contrast in both themes',
       };
     });
     // The savings target is the one dropdown left; the chart ranges are segmented controls
-    expect(results.controls).toHaveLength(1);
+    await expect(goal).toHaveCount(1);
     expect(results.segments.length).toBeGreaterThanOrEqual(11);
     for (const ratio of results.segments) expect(ratio).toBeGreaterThanOrEqual(4.5);
-    for (const control of results.controls) {
-      expect(control.text).toBeGreaterThanOrEqual(4.5);
-      expect(control.border).toBeGreaterThanOrEqual(3);
-      expect(control.radius).toBe(results.controls[0].radius);
-    }
+    expect(results.control.text).toBeGreaterThanOrEqual(4.5);
+    expect(results.control.border).toBeGreaterThanOrEqual(3);
     for (const ratio of results.labels) expect(ratio).toBeGreaterThanOrEqual(4.5);
     expect(results.line).toBeGreaterThanOrEqual(3);
   }
