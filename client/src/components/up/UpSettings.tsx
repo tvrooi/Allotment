@@ -1,3 +1,4 @@
+import { Select } from '../ui/Select';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { GuideLink } from '../guide/GuideLink';
 import { useState } from 'react';
@@ -105,34 +106,31 @@ export function UpSettings() {
               Last synced: {formatDayTime(connection.lastSyncedAt)}
             </p>
           )}
-          <label className="block text-xs text-text-secondary">
-            Background sync
-            <select
-              aria-label="Background sync"
-              className="block mt-1 rounded border border-border bg-surface p-2 text-text"
-              value={connection.pollIntervalMinutes ?? 0}
-              disabled={!canSave || busy || connection.syncStatus === 'syncing'}
-              onChange={async (e) => {
-                setBusy(true);
-                setError(null);
-                try {
-                  await setUpPolling(Number(e.target.value));
-                  await refresh();
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : 'Could not save background sync.');
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              <option value={0}>Off · startup and manual only</option>
-              {[15, 30, 60, 240].map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  Every {minutes} minutes
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Background sync"
+            className="w-fit max-w-full"
+            value={String(connection.pollIntervalMinutes ?? 0)}
+            isDisabled={!canSave || busy || connection.syncStatus === 'syncing'}
+            onChange={async (value) => {
+              setBusy(true);
+              setError(null);
+              try {
+                await setUpPolling(Number(value));
+                await refresh();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Could not save background sync.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+            options={[
+              { value: '0', label: 'Off · startup and manual only' },
+              ...[15, 30, 60, 240].map((minutes) => ({
+                value: String(minutes),
+                label: `Every ${minutes} minutes`,
+              })),
+            ]}
+          />
           {connection.nextSyncAt && (
             <p className="text-xs text-text-tertiary">
               Next background attempt: {formatDayTime(connection.nextSyncAt)}. Failures delay

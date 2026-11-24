@@ -79,12 +79,11 @@ function isHalfTyped(group: HTMLElement | null): boolean {
   return filled.length > 0 && filled.length < segments.length;
 }
 
-interface Props {
-  /** A real YYYY-MM-DD day, or '' for none */
-  value: string;
-  /** A complete day as YYYY-MM-DD; a cleared or half-typed one as '' */
-  onChange: (value: string) => void;
+interface DatePickerFields {
+  name?: string;
   label: string;
+  /** For autosave: commit segment edits when leaving the field, picker choices immediately. */
+  onCommit?: (value: string) => void;
   /** Clearing is offered when the date is optional */
   optional?: boolean;
   /** Shows a muted "(optional)" hint beside the label without changing the accessible name */
@@ -111,6 +110,15 @@ interface Props {
   className?: string;
 }
 
+type DatePickerChange = (value: string) => void;
+
+/** A complete YYYY-MM-DD day, or '' for none */
+type Props = DatePickerFields &
+  (
+    | { value: string; onChange: DatePickerChange; defaultValue?: never }
+    | { defaultValue: string; value?: never; onChange?: DatePickerChange }
+  );
+
 /**
  * The shared DatePicker (02-UI-SPEC.md, per-control item 10; D-04, D-07, D-08). On desktop it is
  * React Aria's DatePicker: day, month and year segments typed in the Date format preference's
@@ -120,8 +128,11 @@ interface Props {
  */
 export function DatePicker(props: Props) {
   const {
-    value,
+    value: controlledValue,
+    defaultValue,
     onChange,
+    onCommit,
+    name,
     label,
     optional,
     optionalHint = false,
@@ -139,9 +150,20 @@ export function DatePicker(props: Props) {
     hideLabel = false,
     className = 'w-full',
   } = props;
+  const [selected, setSelected] = useState(defaultValue ?? '');
+  const value = controlledValue ?? selected;
+  const change: DatePickerChange = (next) => {
+    if (controlledValue === undefined) setSelected(next);
+    onChange?.(next);
+  };
   const isPhone = useIsPhone();
   const format = usePreferencesStore((s) => s.dateFormat);
   const groupRef = useRef<HTMLDivElement>(null);
+  const pendingCommit = useRef<string | undefined>(undefined);
+  const commit = (next: string) => {
+    pendingCommit.current = undefined;
+    onCommit?.(next);
+  };
   // Set when the field is left half-typed; a complete date or the next blur re-checks it
   const [halfTyped, setHalfTyped] = useState(false);
   // The same check as each segment is edited. React Aria gives no value for a half-typed date,
@@ -194,6 +216,11 @@ export function DatePicker(props: Props) {
     return (
       <NativePicker
         {...props}
+        value={value}
+        onChange={(next) => {
+          change(next);
+          commit(next);
+        }}
         type="date"
         className={className}
         error={invalid ? error : undefined}
@@ -204,6 +231,7 @@ export function DatePicker(props: Props) {
     <I18nProvider locale={segmentLocale(format)}>
       <AriaDatePicker
         id={id}
+        name={name}
         value={day}
         // A CalendarDate writes itself as a real YYYY-MM-DD day; a cleared one is null
         onChange={(d) => {
@@ -212,13 +240,23 @@ export function DatePicker(props: Props) {
             setDraftHalf(false);
             hold(d.toString());
           }
-          onChange(d ? d.toString() : '');
+          const next = d ? d.toString() : '';
+          change(next);
+          if (onCommit) {
+            const active = document.activeElement;
+            // Keyboard entry can briefly be a different complete date (e.g. 2 before 24).
+            if (active?.hasAttribute('data-type') && groupRef.current?.contains(active))
+              pendingCommit.current = next;
+            else commit(next);
+          }
         }}
         // Leaving the field is when a half-typed date is named (the "partial" state)
         onFocusChange={(focused) => {
           if (!focused) {
-            setHalfTyped(isHalfTyped(groupRef.current));
+            const half = isHalfTyped(groupRef.current);
+            setHalfTyped(half);
             recheckDraft();
+            if (!half && pendingCommit.current !== undefined) commit(pendingCommit.current);
           }
         }}
         minValue={min ?? undefined}
@@ -260,7 +298,10 @@ export function DatePicker(props: Props) {
               aria-label={`Clear ${subject}`}
               // Not a calendar slot: it empties the field instead of opening the calendar
               slot={null}
-              onPress={() => onChange('')}
+              onPress={() => {
+                change('');
+                commit('');
+              }}
               className={fieldSize === 'sm' ? pickerIconButtonSm : pickerIconButton}
             >
               <X size={14} aria-hidden />
@@ -321,7 +362,8 @@ export function DatePicker(props: Props) {
                       setHalfTyped(false);
                       setDraftHalf(false);
                       hold(todayIso());
-                      onChange(todayIso());
+                      change(todayIso());
+                      commit(todayIso());
                       close();
                     }}
                     className={pickerShortcutClass}
@@ -341,8 +383,7 @@ export function DatePicker(props: Props) {
 /** What the phone branch takes: a picker's own props, less the desktop-only ones */
 type NativeProps = Pick<
   Props,
-  | 'value'
-  | 'onChange'
+  | 'name'
   | 'label'
   | 'optionalHint'
   | 'minValue'
@@ -358,6 +399,8 @@ type NativeProps = Pick<
 > & {
   /** A day (YYYY-MM-DD) or a month (YYYY-MM) */
   type: 'date' | 'month';
+  value: string;
+  onChange: DatePickerChange;
   /** The error line to show, already chosen by the picker; given only while invalid */
   error: ReactNode;
 };
@@ -378,6 +421,7 @@ export function nativeValue(type: 'date' | 'month', raw: string): string {
  */
 export function NativePicker({
   type,
+  name,
   value,
   onChange,
   label,
@@ -409,6 +453,7 @@ export function NativePicker({
         <input
           type={type}
           id={id}
+          name={name}
           value={value}
           min={minValue}
           max={maxValue}

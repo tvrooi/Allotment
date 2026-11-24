@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-import { Select } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { useMemo, useState } from 'react';
@@ -209,21 +209,19 @@ export default function SummaryStats({ currentMonth, section = 'all' }: Props) {
                   </button>
                 ) : (
                   <Select
-                    compact
+                    fieldSize="sm"
                     aria-label="Savings rate goal"
-                    value={savingsGoal}
-                    onChange={(e) => {
-                      setSavingsGoal(Number(e.target.value));
+                    value={String(savingsGoal)}
+                    onChange={(value) => {
+                      setSavingsGoal(Number(value));
                       setEditingGoal(false);
                     }}
-                    className={`w-auto ${desktopHierarchy ? 'order-last self-start mt-2' : ''}`}
-                  >
-                    {GOAL_OPTIONS.map((g) => (
-                      <option key={g} value={g}>
-                        {g}% goal
-                      </option>
-                    ))}
-                  </Select>
+                    className={`w-auto [&_button:not(:focus-visible)]:border-text-tertiary/75 [&_select:not(:focus-visible)]:border-text-tertiary/75 ${desktopHierarchy ? 'order-last self-start mt-2' : ''}`}
+                    options={GOAL_OPTIONS.map((goal) => ({
+                      value: String(goal),
+                      label: `${goal}% goal`,
+                    }))}
+                  />
                 )}
               </div>
               {rate !== null ? (

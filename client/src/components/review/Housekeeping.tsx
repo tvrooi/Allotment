@@ -11,7 +11,7 @@ import { useUndoStore } from '../../store/undoStore';
 import { formatCurrency } from '../../utils/currency';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { CATEGORIES_PATH, connectedBanksLink } from '../../utils/movedSections';
 
 // Review → Tidy up: setup problems that quietly make a budget less useful. Each one is fixed
@@ -169,9 +169,6 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
       );
     },
   });
-  const options = groups.flatMap((g) =>
-    g.categories.filter((c) => !c.hidden).map((c) => ({ ...c, group: g.name })),
-  );
   return (
     <div className="text-sm">
       <p className="font-medium text-text">Movements to savers that aren't in Allotment</p>
@@ -188,18 +185,15 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
               {formatCurrency(s.net)}
             </span>
             <span className="w-52">
-              <Select
-                aria-label={`Category for ${s.name}`}
-                value={choice[s.name] ?? ''}
-                onChange={(e) => setChoice((c) => ({ ...c, [s.name]: e.target.value }))}
-              >
-                <option value="">Choose a category</option>
-                {options.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.group}: {c.name}
-                  </option>
-                ))}
-              </Select>
+              <CategorySelectButton
+                label={`Category for ${s.name}`}
+                placeholder="Choose a category"
+                value={choice[s.name] ?? null}
+                onChange={(id) => setChoice((c) => ({ ...c, [s.name]: id ?? '' }))}
+                groups={groups}
+                allowNone={false}
+                allowCreate={false}
+              />
             </span>
             <Button
               size="sm"

@@ -1,5 +1,14 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  typeAmount,
+  chooseOption,
+  setToggle,
+  fillDate,
+} from './fixtures';
 
 /**
  * The page groups its sections in tabs (da18c99): Overview (balances, recording), Bills,
@@ -39,17 +48,20 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
   await page.getByRole('button', { name: 'Expense or repayment' }).click();
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Shared dinner');
-  await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
-  await event.getByLabel('Amount (AUD)').fill('120.00');
-  await event.getByLabel('Paid by').selectOption({ label: 'Me' });
-  await event.getByLabel('Existing bank payment (optional)').selectOption(payment.id);
+  await fillDate(event, 'Date', '2026-10-21');
+  await typeAmount(event.getByLabel('Amount (AUD)'), '120.00');
+  await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
+  const paymentField = event.getByRole('combobox', { name: 'Existing bank payment (optional)' });
+  await paymentField.evaluate((field) => field.scrollIntoView({ block: 'center' }));
+  await paymentField.fill('Dinner');
+  await page.getByRole('option', { name: /Dinner/ }).click();
   await event.getByRole('button', { name: 'Save event' }).click();
   await openTab(page, 'Activity');
   await expect(page.getByRole('heading', { name: /My expense shares:.*60/ })).toBeVisible();
-  await page.getByLabel('Report scope').selectOption('household');
+  await chooseOption(page.getByRole('button', { name: /Report scope/ }), 'Household');
   await expect(page.getByRole('heading', { name: /Household spending:.*120/ })).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel('Report scope')).toHaveValue('household');
+  await expect(page.getByRole('button', { name: /Report scope/ })).toContainText('Household');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export this statement' }).click();
   expect((await download).suggestedFilename()).toBe('household-household-statement.json');
@@ -121,7 +133,7 @@ test('shares a payment with the household in one step, with the default split', 
   await open(page, '/household');
   await openTab(page, 'Settings');
   const sharing = page.getByRole('region', { name: 'Sharing' });
-  await sharing.getByLabel('Split').selectOption('percentage');
+  await chooseOption(sharing.getByRole('button', { name: /Split/ }), 'Percentages');
   await sharing.getByLabel("Me's percentage").fill('40');
   await sharing.getByLabel("Juno's percentage").fill('30');
   await sharing.getByLabel("Zephyr's percentage").fill('30');
@@ -379,7 +391,7 @@ test('a payment to someone is marked as paid ahead towards a shared expense', as
   await row.click();
   await page.getByRole('button', { name: 'Paid ahead for a shared expense' }).click();
   const dialog = page.getByRole('dialog', { name: 'Paid ahead for a shared expense' });
-  await dialog.getByRole('combobox', { name: 'Paid to' }).selectOption({ label: 'Juno' });
+  await chooseOption(dialog.getByRole('combobox', { name: 'Paid to' }), 'Juno');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(toast).toContainText('Paid ahead to Juno.');
@@ -628,8 +640,8 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   // No household account: the pool figures stay out of the way
   await expect(page.getByText('Household account figures')).toHaveCount(0);
   await recurring.getByRole('button', { name: 'Add recurring bills' }).click();
-  await recurring.getByLabel('Electricity (OVO)').check();
-  await recurring.getByLabel('Internet (Superloop)').check();
+  await setToggle(recurring.getByRole('checkbox', { name: 'Electricity (OVO)' }));
+  await setToggle(recurring.getByRole('checkbox', { name: 'Internet (Superloop)' }));
   await recurring.getByRole('button', { name: 'Share 2 with household' }).click();
   await expect(recurring.getByRole('listitem')).toHaveCount(2);
   const power = recurring.getByRole('listitem').filter({ hasText: 'Electricity (OVO)' });
@@ -703,7 +715,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   const net = recurring.getByRole('listitem').filter({ hasText: 'Internet (Superloop)' });
   await expect(net).toContainText("household's default split");
   await net.getByRole('button', { name: 'Change split' }).click();
-  await net.getByLabel('Split').selectOption('percentage');
+  await chooseOption(net.getByRole('button', { name: /Split/ }), 'Percentages');
   await net.getByLabel("Me's percentage").fill('50');
   await net.getByLabel("Samantha's percentage").fill('25');
   await net.getByLabel("Jo's percentage").fill('25');
@@ -717,7 +729,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   expect(entry.shares.map((s: any) => s.amount)).toEqual([5000, 2500, 2500]);
 
   // Automatic sharing of new payments
-  await net.getByLabel('Share new payments automatically').click();
+  await setToggle(net.getByRole('checkbox', { name: 'Share new payments automatically' }));
   await expect(net.getByLabel('Share new payments automatically')).toBeChecked();
   await expect(net).toContainText('(from ');
   const next = await api.createTransaction({
@@ -733,7 +745,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   const bills = page.getByRole('heading', { name: 'One-off bills' }).locator('..');
   await bills.getByRole('button', { name: 'Edit Council rates' }).click();
   await bills.getByLabel('Bill name').first().fill('Council rates Q2');
-  await bills.getByLabel('Total', { exact: true }).fill('310.00');
+  await typeAmount(bills.getByLabel('Total', { exact: true }), '310.00');
   await bills.getByRole('button', { name: 'Save bill' }).click();
   await expect(bills).toContainText('Council rates Q2');
   await expect(bills).toContainText(/A?\$310/);
@@ -779,12 +791,17 @@ test('a rent with fixed amounts from the household account shows what each owes 
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   const bill = recurring.getByRole('listitem').filter({ hasText: 'Rent' });
   await bill.getByRole('button', { name: 'Change split' }).click();
-  await bill.getByLabel('Split').selectOption('exact');
-  await bill.getByLabel("Me's amount").fill('1200');
-  await bill.getByLabel("Juno's amount").fill('1000');
-  await bill.getByLabel("Zephyr's amount").fill('700');
+  await chooseOption(
+    bill.getByRole('button', { name: /Split/ }),
+    "Fixed amounts (for example each person's rent)",
+  );
+  const myAmount = bill.getByLabel("Me's amount");
+  await typeAmount(myAmount, '1200');
+  await expect(myAmount).toHaveValue(/1,200/);
+  await typeAmount(bill.getByLabel("Juno's amount"), '1000');
+  await typeAmount(bill.getByLabel("Zephyr's amount"), '700');
   await expect(bill).toContainText(/expected to be A?\$3,000/);
-  await bill.getByLabel("Zephyr's amount").fill('800');
+  await typeAmount(bill.getByLabel("Zephyr's amount"), '800');
   await expect(bill).toContainText(/Adds up to A?\$3,000\./);
   await bill.getByRole('button', { name: 'Save split' }).click();
   await expect(bill).toContainText(/Me A?\$1,200, Juno A?\$1,000, Zephyr A?\$800/);
@@ -874,7 +891,7 @@ test('edits an entry in place, and the activity log keeps what was changed and r
   const dialog = page.getByRole('dialog', { name: 'Edit entry' });
   await dialog.getByLabel('Description').fill('Groceries and bread');
   await typeAmount(dialog.getByLabel('Amount', { exact: true }), '96.00');
-  await dialog.getByLabel('Split', { exact: true }).selectOption('equal');
+  await chooseOption(dialog.getByRole('button', { name: /Split/ }), 'Equal');
   await dialog.getByRole('button', { name: 'Save changes' }).click();
   await expect(dialog).toHaveCount(0);
   const history = page
@@ -954,7 +971,7 @@ test('breaks household spending down by month, person and category', async ({ pa
   await expect(section.getByRole('row', { name: /^Groceries / })).toContainText('$90');
   await expect(section.getByRole('row', { name: /^Uncategorised / })).toContainText('$60');
   // A date range narrows all three
-  await page.getByLabel('From').fill('2026-10-01');
+  await fillDate(page, 'From', '2026-10-01');
   await expect(section.getByRole('row', { name: /^Groceries / })).toHaveCount(0);
   await expect(month('Sep 26')).toHaveCount(0);
   await phoneWidth(page);
@@ -977,17 +994,17 @@ test('renames a household and chooses which one opens first', async ({ page }) =
   await create.getByLabel('People, one per line; put yourself first').fill('Me\nSam');
   await create.getByRole('button', { name: 'Create household', exact: true }).click();
   const picker = page.getByRole('combobox', { name: 'Household', exact: true });
-  await expect(picker.locator('option:checked')).toHaveText('Beach house');
+  await expect(picker).toHaveValue('Beach house');
 
   await page.getByRole('button', { name: 'Edit household', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Edit household' });
   await edit.getByLabel('Name').fill('Coast house');
-  await edit.getByLabel('Open this household first').check();
+  await setToggle(edit.getByRole('checkbox', { name: 'Open this household first' }));
   await edit.getByRole('button', { name: 'Save' }).click();
   await expect(edit).toBeHidden();
 
   await open(page, '/household');
-  await expect(picker.locator('option:checked')).toHaveText('Coast house');
+  await expect(picker).toHaveValue('Coast house');
 });
 
 test('reconciles household balances to zero, and removing the adjustments undoes it', async ({
@@ -1001,9 +1018,9 @@ test('reconciles household balances to zero, and removing the adjustments undoes
   await page.getByRole('button', { name: 'Expense or repayment' }).click();
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Groceries');
-  await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
-  await event.getByLabel('Amount (AUD)').fill('80.00');
-  await event.getByLabel('Paid by').selectOption({ label: 'Me' });
+  await fillDate(event, 'Date', '2026-10-21');
+  await typeAmount(event.getByLabel('Amount (AUD)'), '80.00');
+  await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
   await event.getByRole('button', { name: 'Save event' }).click();
   // People & balances; the band above the tabs repeats the figure
   const people = page.getByRole('tabpanel', { name: 'Overview' });
@@ -1267,4 +1284,63 @@ test('Fix round 1: all examples use the budget currency', async ({ page, api }) 
     await expect(example).toContainText('€');
     await expect(example).not.toContainText('A$');
   }
+});
+
+test('the record form saves a formatted expense in cents', async ({ page, api }) => {
+  const household = await api.call('POST', '/households', {
+    name: 'Home',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  await page.getByRole('button', { name: 'Expense or repayment' }).click();
+  const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
+  await event.getByLabel('Description', { exact: true }).fill('Appliance');
+  const amount = event.getByRole('textbox', { name: 'Amount (AUD)' });
+  await typeAmount(amount, '-12.34');
+  await event.getByRole('button', { name: 'Save event' }).click();
+  await expect(page.getByText('Enter amounts with at most two decimal places')).toBeVisible();
+  expect((await api.call('GET', `/households/${household.group.id}`)).events).toHaveLength(0);
+
+  await typeAmount(amount, '1234.56');
+  await expect(amount).toHaveValue(/1,234\.56/);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith(`/households/${household.group.id}/events`),
+  );
+  await event.getByRole('button', { name: 'Save event' }).click();
+  expect((await saved).status()).toBe(201);
+  const state = await api.call('GET', `/households/${household.group.id}`);
+  expect(state.events).toEqual(
+    expect.arrayContaining([expect.objectContaining({ description: 'Appliance', amount: 123456 })]),
+  );
+});
+
+test('adding a bill saves the formatted total in cents', async ({ page, api }) => {
+  const pool = await api.createAccount('Joint');
+  const household = await api.call('POST', '/households', {
+    name: 'Home',
+    currency: 'AUD',
+    accountId: pool.id,
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  await openTab(page, 'Bills');
+  const form = page.getByRole('heading', { name: 'Add a bill' }).locator('..');
+  await form.getByLabel('Bill name').fill('Council rates');
+  await fillDate(form, 'Due date', isoDay());
+  const total = form.getByRole('textbox', { name: 'Estimated / billed total' });
+  await typeAmount(total, '1234.56');
+  await expect(total).toHaveValue(/1,234\.56/);
+  await form.getByRole('button', { name: 'Add bill', exact: true }).click();
+  await expect(page.getByText('Council rates', { exact: true })).toBeVisible();
+  const state = await api.call('GET', `/households/${household.group.id}`);
+  expect(state.bills).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ description: 'Council rates', amount: 123456 }),
+    ]),
+  );
 });

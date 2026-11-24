@@ -1,3 +1,4 @@
+import { Input } from '../ui/Input';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Loader2, Lock } from 'lucide-react';
@@ -250,8 +251,6 @@ function PasswordForm({
     }
   }
 
-  const inputClass =
-    'w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';
   const labelClass = 'block text-sm font-medium text-text-secondary mb-1';
   const linkClass = 'text-xs text-brand-600 hover:text-brand-700 font-medium';
   const { host, hostname, protocol } = window.location;
@@ -345,13 +344,12 @@ function PasswordForm({
             <label htmlFor="name" className={labelClass}>
               {isSetup ? 'Your name' : 'Name'}
             </label>
-            <input
+            <Input
               id="name"
               autoComplete="username"
               autoFocus={!isSetup}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={inputClass}
             />
           </div>
         )}
@@ -360,7 +358,7 @@ function PasswordForm({
             <label htmlFor="setup-code" className={labelClass}>
               {isSetup ? 'Setup code' : mode === 'invite' ? 'Invitation code' : 'Code'}
             </label>
-            <input
+            <Input
               id="setup-code"
               autoComplete="one-time-code"
               spellCheck={false}
@@ -380,7 +378,7 @@ function PasswordForm({
                 }
               }}
               aria-describedby={isSetup ? 'setup-code-help' : undefined}
-              className={`${inputClass} font-mono uppercase`}
+              className="w-full font-mono uppercase"
             />
             {isSetup && <SetupCodeHelp id="setup-code-help" hostKind={hostKind} />}
           </div>
@@ -390,14 +388,13 @@ function PasswordForm({
             <label htmlFor="password" className={labelClass}>
               {choosing ? 'New password' : 'Password'}
             </label>
-            <input
+            <Input
               id="password"
               type="password"
               autoComplete={choosing ? 'new-password' : 'current-password'}
               autoFocus={!isSetup && !needsName}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
             />
           </div>
         )}
@@ -406,13 +403,12 @@ function PasswordForm({
             <label htmlFor="confirm" className={labelClass}>
               Confirm password
             </label>
-            <input
+            <Input
               id="confirm"
               type="password"
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className={inputClass}
             />
           </div>
         )}

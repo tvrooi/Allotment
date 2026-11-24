@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { chooseOption } from '../fixtures';
-import { openGallery, specimen } from './gallery';
+import { chooseOption, fillDate, setToggle, typeAmount } from '../fixtures';
+import { expectScreenshot, openGallery, PIXELS, specimen } from './gallery';
 
 // The shared Select in the controls gallery: the WAI-ARIA listbox keyboard pattern on desktop,
 // zero, one and many options, the read-only and disabled states, and the phone's own picker
@@ -221,3 +221,50 @@ for (const width of [1280, 390] as const)
     if (width === 390) await expect(field).toHaveValue('monthly');
     else await expect(field).toContainText('Monthly');
   });
+
+for (const width of [1280, 390]) {
+  test(`named controls submit the current option keys and amount at ${width} px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/dev/controls?probe=forms');
+    const form = page.getByRole('form', { name: 'Named form controls' });
+    const read = () =>
+      form.evaluate((el) => Object.fromEntries(new FormData(el as HTMLFormElement)));
+    expect(await read()).toMatchObject({ colour: 'green', frequency: 'monthly', amount: '12.34' });
+    const swatch = form.getByRole(width === 390 ? 'combobox' : 'button', {
+      name: 'Colour for Food',
+    });
+    await chooseOption(swatch, 'Red');
+    const frequency = form.getByRole('combobox', { name: 'Frequency' });
+    await frequency.fill('week');
+    await page.getByRole('option', { name: 'Weekly' }).click();
+    const amount = form.getByRole('textbox', { name: 'Amount' });
+    await typeAmount(amount, '5.01');
+    expect(await read()).toMatchObject({ colour: 'red', frequency: 'weekly', amount: '5.01' });
+    await amount.click();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.press('Backspace');
+    await form.getByRole('button', { name: 'Clear Frequency' }).click();
+    expect(await read()).toMatchObject({
+      frequency: '',
+      amount: '',
+      dueDate: '2026-10-21',
+      isDefault: 'on',
+    });
+    expect(await read()).not.toHaveProperty('advance');
+    await fillDate(form, 'Due date', '2026-10-22');
+    await setToggle(form.getByRole('checkbox', { name: 'Advance' }));
+    await setToggle(form.getByRole('checkbox', { name: 'Default household' }), false);
+    expect(await read()).toMatchObject({ dueDate: '2026-10-22', advance: 'yes' });
+    expect(await read()).not.toHaveProperty('isDefault');
+  });
+}
+
+test('the swatch trigger matches its baseline', async ({ page }) => {
+  test.skip(!PIXELS, 'Linux baselines; on macOS run them with e2e/gallery-baselines.sh');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/dev/controls?probe=forms');
+  await expectScreenshot(page.getByRole('button', { name: 'Colour for Food' }), 'select-swatch');
+});

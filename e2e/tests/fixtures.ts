@@ -239,7 +239,9 @@ export async function chooseOption(field: Locator, name: string) {
     return;
   }
   await field.click();
-  const list = field.page().getByRole('listbox');
+  const page = field.page();
+  const option = page.getByRole('option', { name, exact: true });
+  const list = page.getByRole('listbox').filter({ has: option });
   await list.getByRole('option', { name, exact: true }).click();
   await expect(list).toHaveCount(0);
 }

@@ -1,3 +1,4 @@
+import { chooseOption, setToggle } from '../fixtures';
 import fs from 'fs';
 import { test, expect, type Page } from '@playwright/test';
 import { SERVER_PORT } from '../../ports';
@@ -230,7 +231,10 @@ test('an organise token proposes a rule that waits for the owner to turn it on',
   await owner.goto(`${baseURL}/settings?tab=server`);
   const section = owner.getByRole('heading', { name: 'Access tokens' }).locator('..');
   await section.getByPlaceholder('e.g. Claude').fill('Organiser');
-  await section.getByLabel('Access').selectOption('organise');
+  await chooseOption(
+    section.getByRole('button', { name: /Access/ }),
+    'Read, categorise and organise',
+  );
   await section.getByRole('button', { name: 'Create token' }).click();
   const token = (await section.getByRole('status').locator('code').first().textContent())!;
   const api = await playwright.request.newContext({
@@ -493,7 +497,7 @@ test('the offline copy can be turned off, and signing out deletes it', async ({ 
   const keep = owner.getByRole('checkbox', { name: /Keep a copy of my budget on this device/ });
   await expect(keep).toBeChecked();
   await expect.poll(() => offlineCopy(owner)).not.toBeNull();
-  await keep.uncheck();
+  await setToggle(keep, false);
   await expect.poll(() => offlineCopy(owner)).toBeNull();
   // Nothing is saved while it's off, even as data loads
   await owner.goto(`${baseURL}/budget`);
@@ -502,7 +506,7 @@ test('the offline copy can be turned off, and signing out deletes it', async ({ 
   expect(await offlineCopy(owner)).toBeNull();
 
   await owner.goto(`${baseURL}/settings?tab=server`);
-  await keep.check();
+  await setToggle(keep);
   await owner.goto(`${baseURL}/budget`);
   await expect.poll(() => offlineCopy(owner)).not.toBeNull();
 

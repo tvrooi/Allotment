@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { setToggle, test, expect, open, isoDay } from './fixtures';
 
 for (const phone of [false, true]) {
   test(`review groups repeated payees within personal accounts and undoes the whole group${phone ? ' on a phone' : ''}`, async ({
@@ -134,7 +134,7 @@ for (const phone of [false, true]) {
     await open(page, '/review');
     await page.getByRole('button', { name: 'Sort repeated payees together', exact: true }).click();
     const group = page.getByRole('region', { name: 'Sort repeated payees', exact: true });
-    await group.getByLabel('Also apply to future transactions').check();
+    await setToggle(group.getByRole('checkbox', { name: 'Also apply to future transactions' }));
     await group.getByRole('button', { name: 'Category for Regular shop', exact: true }).click();
     await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
     await page.keyboard.press('Enter');
@@ -173,7 +173,7 @@ for (const phone of [false, true]) {
     await open(page, '/review');
     await page.getByRole('button', { name: 'Sort repeated payees together', exact: true }).click();
     const group = page.getByRole('region', { name: 'Sort repeated payees', exact: true });
-    await group.getByLabel('Also apply to future transactions').check();
+    await setToggle(group.getByRole('checkbox', { name: 'Also apply to future transactions' }));
     await page.route('**/api/transactions/bulk', (route) =>
       route.request().postDataJSON().preview
         ? route.continue()

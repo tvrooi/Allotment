@@ -1,4 +1,5 @@
-import { useRef, useState, useId } from 'react';
+import { DatePicker } from '../ui/DatePicker';
+import { useRef, useState } from 'react';
 import { GuideLink } from '../guide/GuideLink';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -23,7 +24,6 @@ const download = (url: string) =>
   IS_DEMO ? void downloadFromApi(url) : void (window.location.href = url);
 
 export function DataExport() {
-  const fieldId = useId();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const decimalComma = decimalSeparator(useAmountStyle().format) === ',';
@@ -132,34 +132,10 @@ export function DataExport() {
         </div>
         <div className="flex items-end gap-3">
           <div>
-            <label
-              htmlFor={`${fieldId}-from`}
-              className="block text-xs font-medium text-text-tertiary mb-1"
-            >
-              From
-            </label>
-            <input
-              id={`${fieldId}-from`}
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-            />
+            <DatePicker label="From" value={from} onChange={setFrom} optional />
           </div>
           <div>
-            <label
-              htmlFor={`${fieldId}-to`}
-              className="block text-xs font-medium text-text-tertiary mb-1"
-            >
-              To
-            </label>
-            <input
-              id={`${fieldId}-to`}
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-            />
+            <DatePicker label="To" value={to} onChange={setTo} optional />
           </div>
           <Button onClick={downloadCsv} size="sm">
             <Download size={14} /> Download CSV

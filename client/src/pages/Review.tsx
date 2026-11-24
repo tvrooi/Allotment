@@ -15,7 +15,7 @@ import { GuideLink } from '../components/guide/GuideLink';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
 import { Button, ButtonLink } from '../components/ui/Button';
-import { Select } from '../components/ui/Input';
+import { Combobox } from '../components/ui/Combobox';
 import { MoneyMoves } from '../components/budget/MoneyMoves';
 import { FundTargets } from '../components/budget/FundTargets';
 import { formatCurrency } from '../utils/currency';
@@ -494,19 +494,21 @@ function NeedsAttention({ review }: { review: api.BudgetReview }) {
         )}
         {review.uncategorisedCount > 0 && <Uncategorised review={review} />}
         {review.groups.length > 1 && (
-          <label className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
-            Category details
-            <span className="w-48 max-md:w-full">
-              <Select value={group} onChange={(e) => setGroup(e.target.value)}>
-                <option value="">All groups</option>
-                {review.groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </Select>
-            </span>
-          </label>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+            <span>Category details</span>
+            <Combobox
+              aria-label="Category details"
+              fieldSize="sm"
+              className="w-48 max-md:w-full"
+              value={group || 'all'}
+              onChange={(id) => setGroup(id === 'all' ? '' : id)}
+              menuTrigger="focus"
+              items={[
+                { value: 'all', label: 'All groups' },
+                ...review.groups.map((g) => ({ value: g.id, label: g.name })),
+              ]}
+            />
+          </div>
         )}
         {group && (
           <p className="text-xs text-text-secondary">

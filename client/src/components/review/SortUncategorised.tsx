@@ -1,3 +1,4 @@
+import { Checkbox } from '../ui/Checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { getAllAccounts } from '../../api/accounts';
 import { personalPayeeSelection } from '../../utils/payeeSelection';
@@ -268,15 +269,13 @@ export function SortUncategorised({
       {!reviewMode && salary.data && <SalaryOffer salary={salary.data} future={future} />}
       {rows.length > 0 && (
         <>
-          <label className="flex items-center gap-2 text-sm text-text min-h-11 md:min-h-0">
-            <input
-              type="checkbox"
-              checked={future}
-              disabled={!canSave || sort.isPending}
-              onChange={(e) => setFuture(e.target.checked)}
-            />
+          <Checkbox
+            checked={future}
+            disabled={!canSave || sort.isPending}
+            onCheckedChange={setFuture}
+          >
             Also apply to future transactions
-          </label>
+          </Checkbox>
           <SavingPausedHint />
           {reviewMode && (
             <p className="text-xs text-text-secondary">

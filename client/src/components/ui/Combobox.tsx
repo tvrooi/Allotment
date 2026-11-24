@@ -28,9 +28,11 @@ type Props = LabelNames & {
   /** Flat options, headed groups, or both, in the order given (the Select's option shapes) */
   items: readonly (ListOption | ListGroup)[];
   /** The chosen option's value, or '' for none */
-  value: string;
+  value?: string;
+  defaultValue?: string;
+  name?: string;
   /** An option's own value, or '' when the field is emptied */
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   /** The field's text, for a caller that owns it; React Aria keeps it otherwise */
   inputValue?: string;
   onInputChange?: (text: string) => void;
@@ -113,7 +115,9 @@ function NoMatches() {
 export function Combobox(props: Props) {
   const {
     items,
-    value,
+    value: controlledValue,
+    defaultValue = '',
+    name,
     onChange,
     inputValue,
     onInputChange,
@@ -138,6 +142,12 @@ export function Combobox(props: Props) {
     className = 'w-full',
     id,
   } = props;
+  const [selected, setSelected] = useState(defaultValue);
+  const value = controlledValue ?? selected;
+  const change = (next: string) => {
+    if (controlledValue === undefined) setSelected(next);
+    onChange?.(next);
+  };
   const { contains } = useFilter({ sensitivity: 'base' });
   const inputRef = useRef<HTMLInputElement>(null);
   // D-12: whether the list was open when a key came in, read before React Aria handles the key
@@ -150,7 +160,7 @@ export function Combobox(props: Props) {
     optional && !isDisabled && !isReadOnly && (value !== '' || (inputValue ?? '') !== '');
   const ownField = fieldClassName !== undefined;
   const clear = () => {
-    onChange('');
+    change('');
     onInputChange?.('');
     inputRef.current?.focus();
   };
@@ -158,9 +168,11 @@ export function Combobox(props: Props) {
   return (
     <AriaComboBox
       id={id}
+      name={name}
+      formValue="key"
       aria-label={props['aria-label']}
       selectedKey={value === '' ? null : value}
-      onSelectionChange={(key) => onChange(key == null ? '' : String(key))}
+      onSelectionChange={(key) => change(key == null ? '' : String(key))}
       inputValue={inputValue}
       onInputChange={onInputChange}
       onOpenChange={(open) => {

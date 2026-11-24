@@ -2,7 +2,7 @@ import { generateKeyPairSync, randomBytes } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { test, expect, open } from './fixtures';
+import { chooseOption, test, expect, open } from './fixtures';
 import { DESKTOP_PORT, ENABLE_BANKING_MOCK_PORT } from '../ports';
 import { MOCK_IBAN } from '../mockEnableBanking';
 
@@ -54,7 +54,7 @@ test('connects a European bank, syncs it, reconnects and disconnects', async ({
 
     // Saving opens the connect dialog
     const dialog = page.getByRole('dialog', { name: 'Connect a European bank' });
-    await dialog.getByLabel('Country').selectOption('FI');
+    await chooseOption(dialog.getByRole('button', { name: /Country/ }), 'Finland');
     await dialog.getByRole('option', { name: 'Mock Bank' }).click();
     const bankPage = context.waitForEvent('page');
     await dialog.getByRole('button', { name: 'Log in at your bank' }).click();
@@ -66,7 +66,7 @@ test('connects a European bank, syncs it, reconnects and disconnects', async ({
     await expect(
       dialog.getByText('Your last bank statement for this account went here.'),
     ).toBeVisible();
-    await expect(dialog.getByLabel(/^Account for /)).toHaveValue(account.id);
+    await expect(dialog.getByRole('combobox', { name: /^Account for / })).toHaveValue(account.name);
     await dialog.getByRole('button', { name: 'Save and sync' }).click();
     await expect(dialog.getByText('Brought in 2 transactions.', { exact: false })).toBeVisible();
     await expect(dialog.getByText(/1 you already had/)).toBeVisible();

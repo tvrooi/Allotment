@@ -3,8 +3,10 @@ import {
   expect,
   open,
   isoDay,
+  fillDate,
   thisMonth,
   typeAmount,
+  setToggle,
   categoryOption,
   chooseOption,
 } from './fixtures';
@@ -139,7 +141,15 @@ test('a purchase without a rate is flagged until one is added', async ({ page, a
   await expect(rateCurrency).toHaveAttribute('aria-haspopup', 'listbox');
   await chooseOption(rateCurrency, 'GBP · British Pound');
   await page.getByRole('textbox', { name: /1 GBP in EUR/ }).fill('1,25');
-  await page.getByRole('button', { name: 'Add rate' }).click();
+  const addRate = rateForm.getByRole('button', { name: 'Add rate' });
+  const day = rateForm.getByRole('group', { name: 'Day' }).locator('[data-type="day"]');
+  await day.click();
+  for (let i = 0; i < 4 && (await day.getAttribute('data-placeholder')) === null; i++)
+    await day.press('Backspace');
+  await expect(day).toHaveAttribute('data-placeholder', 'true');
+  await expect(addRate).toBeDisabled();
+  await fillDate(rateForm, 'Day', isoDay());
+  await addRate.click();
   await expect(page.getByText('1 GBP = 1.25 EUR', { exact: true })).toBeVisible();
 
   await open(page, '/budget');
@@ -162,7 +172,7 @@ test('ECB rates download only when turned on', async ({ page, api }) => {
 
   await open(page, '/settings?tab=currencies');
   const download = page.getByRole('checkbox', { name: 'Download ECB reference rates' });
-  await download.click();
+  await setToggle(download);
   await expect(download).toBeChecked();
   await page.getByRole('button', { name: 'Download now' }).click();
   await expect(page.getByText('1 PLN = 0.235294 EUR')).toBeVisible();

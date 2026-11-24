@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, chooseOption, fillDate } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -297,18 +297,32 @@ test('links Up to an account that already has history, from a cut-over date', as
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
   await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-  await dialog.getByLabel('Set up Up Everyday').selectOption('link');
-  await dialog.getByLabel('Link Up Everyday to account').selectOption(old.id);
+  await chooseOption(
+    dialog.getByRole('button', { name: /Set up Up Everyday/ }),
+    'Link an existing account',
+  );
+  await chooseOption(
+    dialog.getByRole('combobox', { name: 'Link Up Everyday to account' }),
+    old.name,
+  );
   // Defaults to the day after the newest existing transaction, and says what that means
   const next = new Date(newest + 'T00:00:00Z');
   next.setUTCDate(next.getUTCDate() + 1);
-  await expect(dialog.getByLabel('Cut-over date for Up Everyday')).toHaveValue(
-    next.toISOString().slice(0, 10),
-  );
+  const cutoverField = dialog.getByRole('group', { name: 'Cut-over date for Up Everyday' });
+  const [year, month, day] = next.toISOString().slice(0, 10).split('-');
+  await expect(cutoverField.locator('[data-type="year"]')).toHaveText(year);
+  await expect(cutoverField.locator('[data-type="month"]')).toHaveText(month);
+  const daySegment = cutoverField.locator('[data-type="day"]');
+  await expect(daySegment).toHaveText(day);
   await expect(dialog).toContainText('stays as it is');
   await expect(dialog).toContainText('onwards are imported');
-  await dialog.getByLabel('Cut-over date for Up Everyday').fill(cutover);
-  await dialog.getByLabel('Set up Up Saver').selectOption('skip');
+  await daySegment.click();
+  for (let i = 0; i < 4 && (await daySegment.getAttribute('data-placeholder')) === null; i++)
+    await daySegment.press('Backspace');
+  await expect(daySegment).toHaveAttribute('data-placeholder', 'true');
+  await expect(dialog.getByRole('button', { name: 'Save & Sync' })).toBeDisabled();
+  await fillDate(dialog, 'Cut-over date for Up Everyday', cutover);
+  await chooseOption(dialog.getByRole('button', { name: /Set up Up Saver/ }), 'Skip this account');
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText(/Imported \d+ transactions\./)).toBeVisible();
   await dialog.getByRole('button', { name: /^(Skip for now|Done)$/ }).click();
@@ -422,12 +436,16 @@ test('the recommended order works on a fresh budget: YNAB import, then link Up t
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
   await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-  const link = dialog.getByLabel('Set up Up Everyday').locator('option[value="link"]');
-  await expect(link).toBeEnabled();
-  await dialog.getByLabel('Set up Up Everyday').selectOption('link');
-  await dialog.getByLabel('Link Up Everyday to account').selectOption(everyday.id);
-  await expect(dialog.getByLabel('Cut-over date for Up Everyday')).toBeVisible();
-  await dialog.getByLabel('Set up Up Saver').selectOption('skip');
+  await chooseOption(
+    dialog.getByRole('button', { name: /Set up Up Everyday/ }),
+    'Link an existing account',
+  );
+  await chooseOption(
+    dialog.getByRole('combobox', { name: 'Link Up Everyday to account' }),
+    everyday.name,
+  );
+  await expect(dialog.getByRole('group', { name: 'Cut-over date for Up Everyday' })).toBeVisible();
+  await chooseOption(dialog.getByRole('button', { name: /Set up Up Saver/ }), 'Skip this account');
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText(/Imported \d+ transactions\./)).toBeVisible();
   expect((await api.accounts()).filter((a) => a.name.includes('Everyday'))).toHaveLength(1);

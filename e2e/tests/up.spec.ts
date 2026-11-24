@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, chooseOption } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -15,7 +15,7 @@ test('connects Up, imports settled history, resyncs and disconnects', async ({ p
   await dialog.screenshot({ path: test.info().outputPath('up-connect.png') });
   await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-  await expect(dialog.getByLabel('Set up Up Everyday')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /Set up Up Everyday/ })).toBeVisible();
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText('Imported 3 transactions.')).toBeVisible();
   // Two payees have no category yet, so the first-import step offers to sort them (or skip)
@@ -32,8 +32,12 @@ test('connects Up, imports settled history, resyncs and disconnects', async ({ p
   await page.getByRole('button', { name: 'Reconnect / choose accounts' }).click();
   await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-  await expect(dialog.getByLabel('Set up Up Everyday')).toHaveValue('link');
-  await expect(dialog.getByLabel('Link Up Everyday to account')).toHaveValue(everyday.id);
+  await expect(dialog.getByRole('button', { name: /Set up Up Everyday/ })).toContainText(
+    'Link an existing account',
+  );
+  await expect(dialog.getByRole('combobox', { name: 'Link Up Everyday to account' })).toHaveValue(
+    everyday.name,
+  );
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText('Imported 0 transactions.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Done' }).click();
@@ -80,8 +84,8 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   const before = await api.transactions();
   await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
-  await expect(page.getByLabel('Background sync')).toHaveValue('0');
-  await page.getByLabel('Background sync').selectOption('15');
+  await expect(page.getByRole('button', { name: /Background sync/ })).toContainText('Off');
+  await chooseOption(page.getByRole('button', { name: /Background sync/ }), 'Every 15 minutes');
   await expect(page.getByText('Next background attempt:', { exact: false })).toBeVisible();
   expect(
     ((await api.call('GET', '/up/connection')) as { pollIntervalMinutes: number })
@@ -99,7 +103,10 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   ).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('up-review-desktop.png') });
   expect(await api.transactions()).toEqual(before);
-  await page.getByLabel('Background sync').selectOption('0');
+  await chooseOption(
+    page.getByRole('button', { name: /Background sync/ }),
+    'Off · startup and manual only',
+  );
   await expect(page.getByText('Next background attempt:', { exact: false })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Up', exact: true }).click();

@@ -18,6 +18,9 @@ export function readMoneyText(text: string, style: AmountStyle, expression = fal
 }
 
 interface BaseProps {
+  defaultValue?: number | null;
+  name?: string;
+  disabled?: boolean;
   placeholder?: string;
   className?: string;
   allowNegative?: boolean;
@@ -51,13 +54,17 @@ type Props = BaseProps &
   (
     | { nullable?: false; value: number; onChange: (cents: number) => void }
     | { nullable: true; value: number | null; onChange: (cents: number | null) => void }
+    | { nullable?: never; value?: undefined; onChange?: never }
   );
 
 export const CurrencyInput = forwardRef<HTMLInputElement, Props>(function CurrencyInput(
   {
-    value,
+    value: controlledValue,
+    defaultValue = null,
     onChange,
-    nullable = false,
+    nullable = controlledValue === undefined,
+    name,
+    disabled,
     placeholder,
     className = '',
     allowNegative = false,
@@ -78,6 +85,12 @@ export const CurrencyInput = forwardRef<HTMLInputElement, Props>(function Curren
   },
   ref,
 ) {
+  const [committed, setCommitted] = useState(defaultValue);
+  const value = controlledValue === undefined ? committed : controlledValue;
+  const commit = (next: number | null) => {
+    if (controlledValue === undefined) setCommitted(next);
+    (onChange as ((cents: number | null) => void) | undefined)?.(next);
+  };
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState('');
   // Explicit-commit (commitOnBlur={false}) drafts stay visible and editable across blur/refocus
@@ -179,12 +192,12 @@ export const CurrencyInput = forwardRef<HTMLInputElement, Props>(function Curren
     if (!readOnly) {
       if (commitOnBlur && nullable && raw.trim() === '') {
         setInvalid(false);
-        (onChange as (cents: number | null) => void)(null);
+        commit(null);
       } else if (commitOnBlur) {
         const cents = readMoneyText(raw, style, expression);
         setInvalid(cents === null);
         if (cents !== null) {
-          onChange(allowNegative ? cents : Math.abs(cents));
+          commit(allowNegative ? cents : Math.abs(cents));
         }
       } else {
         setInvalid(!readable);
@@ -201,6 +214,18 @@ export const CurrencyInput = forwardRef<HTMLInputElement, Props>(function Curren
       : value === null || (!nullable && amount === 0)
         ? ''
         : formatAmount(amount, style);
+  const submitted =
+    focused || invalid || hasDraft
+      ? raw.trim() === ''
+        ? null
+        : readMoneyText(raw, style, expression)
+      : value;
+  const formStyle = { ...style, format: 'dot' } as const;
+  const formValue =
+    submitted == null
+      ? ''
+      : (submitted < 0 && allowNegative ? '-' : '') +
+        (amountToInput(submitted, formStyle) || amountPlaceholder(formStyle));
   return (
     <>
       <input
@@ -215,6 +240,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, Props>(function Curren
         onChange={handleChange}
         onKeyDown={onKeyDown}
         readOnly={readOnly}
+        disabled={disabled}
         placeholder={placeholder ?? amountPlaceholder(style)}
         aria-label={ariaLabel}
         aria-busy={ariaBusy}
@@ -227,6 +253,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, Props>(function Curren
             : 'border-border focus:border-brand-600 focus:ring-brand-600'
         } ${className}`}
       />
+      {name != null && <input type="hidden" name={name} value={formValue} disabled={disabled} />}
       {invalid && (
         <p id={hintId} role="alert" className="mt-1 basis-full text-xs text-negative">
           {UNREADABLE_AMOUNT}

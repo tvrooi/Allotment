@@ -1,3 +1,5 @@
+import { Input } from '../ui/Input';
+import { Radio, RadioGroup } from '../ui/RadioGroup';
 import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellRing, Loader2, UserPlus, Users } from 'lucide-react';
@@ -9,9 +11,6 @@ import { Button } from '../ui/Button';
 // password codes go (their phone, email or both); the administrator adds people and lets them back in. Nobody can open
 // anyone else's budget from here: invitation and reset codes only let that person choose a
 // password.
-
-const inputClass =
-  'w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';
 
 export function PeopleSettings({ status }: { status: AuthStatus }) {
   return (
@@ -107,25 +106,19 @@ function ChannelChoice({
   disabled: boolean;
   onChange: (c: CodeChannel) => void;
 }) {
-  const name = useId();
   return (
-    <fieldset className="mt-4">
-      <legend className="text-xs font-medium text-text-secondary">{legend}</legend>
-      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text">
-        {(['phone', 'email', 'both'] as const).map((c) => (
-          <label key={c} className="inline-flex items-center gap-1.5">
-            <input
-              type="radio"
-              name={name}
-              checked={value === c}
-              disabled={disabled}
-              onChange={() => onChange(c)}
-            />
-            {c === 'phone' ? 'My phone' : c === 'email' ? 'My email' : 'Both'}
-          </label>
-        ))}
-      </div>
-    </fieldset>
+    <RadioGroup
+      label={legend}
+      value={value}
+      onChange={(choice) => onChange(choice as CodeChannel)}
+      isDisabled={disabled}
+      orientation="horizontal"
+      className="mt-4"
+    >
+      <Radio value="phone">My phone</Radio>
+      <Radio value="email">My email</Radio>
+      <Radio value="both">Both</Radio>
+    </RadioGroup>
   );
 }
 
@@ -247,7 +240,7 @@ function DestinationField({
             confirm.mutate();
           }}
         >
-          <input
+          <Input
             aria-label={`Code sent to ${destination === 'phone' ? 'your phone' : 'your email'}`}
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -255,7 +248,7 @@ function DestinationField({
             maxLength={6}
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className={`${inputClass} font-mono flex-1 min-w-0`}
+            className="font-mono flex-1 min-w-0"
           />
           <Button type="submit" variant="secondary" disabled={confirm.isPending || !code.trim()}>
             Confirm
@@ -282,7 +275,7 @@ function DestinationField({
               if (value.trim()) send.mutate();
             }}
           >
-            <input
+            <Input
               aria-label={d.input}
               type={destination === 'email' ? 'email' : 'text'}
               autoComplete={destination === 'email' ? 'email' : 'off'}
@@ -290,7 +283,7 @@ function DestinationField({
               spellCheck={false}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              className={`${inputClass} font-mono flex-1 min-w-0`}
+              className="font-mono flex-1 min-w-0"
             />
             <Button type="submit" variant="secondary" disabled={send.isPending || !value.trim()}>
               Send code
@@ -409,13 +402,12 @@ function People() {
           if (name.trim()) add.mutate();
         }}
       >
-        <input
+        <Input
           aria-label="New person's name"
           placeholder="Name"
           maxLength={60}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className={inputClass}
         />
         <Button type="submit" disabled={add.isPending || !name.trim()}>
           <UserPlus size={14} /> Add person

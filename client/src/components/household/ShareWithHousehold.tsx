@@ -12,7 +12,7 @@ import { useUndoStore } from '../../store/undoStore';
 import { inBatches } from '../../utils/batches';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
 import type { TransactionQueryParams } from '../../types';
 
 // "Share with household": records payments as shared household expenses with the household's
@@ -210,17 +210,13 @@ export function ShareWithHousehold({
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Share with household" size="sm">
         <div className="space-y-3 text-sm">
           {groups.length > 1 && (
-            <Select
+            <Combobox
               aria-label="Household"
               value={chosen.id}
-              onChange={(e) => setGroupId(e.target.value)}
-            >
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </Select>
+              onChange={setGroupId}
+              menuTrigger="focus"
+              items={groups.map((group) => ({ value: group.id, label: group.name }))}
+            />
           )}
           <p className="text-text-secondary">
             {transactionId

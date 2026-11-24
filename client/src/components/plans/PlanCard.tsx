@@ -4,11 +4,12 @@ import { Check, ChevronDown, ChevronRight, Undo2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { Input } from '../ui/Input';
+import { DatePicker } from '../ui/DatePicker';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { Private } from '../ui/Private';
-import { CategorySelect } from '../transactions/CategorySelect';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { useCategories } from '../../hooks/useCategories';
 import { useCanSave } from '../../hooks/useConnection';
 import {
@@ -197,61 +198,63 @@ function EditInstalments({
   const open = plan.instalments.filter((i) => i.status !== 'paid');
   const [rows, setRows] = useState(open.map((i) => ({ ...i })));
   const update = useUpdatePlan();
+  const { allValid, report } = useAmountValidity();
   const canSave = useCanSave();
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-text-tertiary">
-        Match what {plan.providerName} shows, so each bank payment links.
-      </p>
-      {rows.map((r, idx) => (
-        <div key={r.id} className="flex items-center gap-2 text-sm">
-          <span className="w-14 text-text-tertiary">
-            {r.seq} of {plan.instalments.length}
-          </span>
-          <div className="w-40">
-            <Input
-              type="date"
-              aria-label={`Payment ${r.seq} date`}
-              value={r.dueDate}
-              onChange={(e) =>
-                setRows((rs) =>
-                  rs.map((x, j) => (j === idx ? { ...x, dueDate: e.target.value } : x)),
-                )
-              }
-            />
+    <AmountFields report={report}>
+      <div className="space-y-2">
+        <p className="text-xs text-text-tertiary">
+          Match what {plan.providerName} shows, so each bank payment links.
+        </p>
+        {rows.map((r, idx) => (
+          <div key={r.id} className="flex items-center gap-2 text-sm">
+            <span className="w-14 text-text-tertiary">
+              {r.seq} of {plan.instalments.length}
+            </span>
+            <div className="w-40">
+              <DatePicker
+                label={`Payment ${r.seq} date`}
+                hideLabel
+                fieldSize="sm"
+                value={r.dueDate}
+                onChange={(dueDate) =>
+                  setRows((rs) => rs.map((x, j) => (j === idx ? { ...x, dueDate } : x)))
+                }
+              />
+            </div>
+            <div className="w-32">
+              <CurrencyInput
+                aria-label={`Payment ${r.seq} amount`}
+                value={r.amount}
+                onChange={(amount) =>
+                  setRows((rs) => rs.map((x, j) => (j === idx ? { ...x, amount } : x)))
+                }
+              />
+            </div>
           </div>
-          <div className="w-32">
-            <CurrencyInput
-              aria-label={`Payment ${r.seq} amount`}
-              value={r.amount}
-              onChange={(amount) =>
-                setRows((rs) => rs.map((x, j) => (j === idx ? { ...x, amount } : x)))
-              }
-            />
-          </div>
+        ))}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            disabled={!canSave || !allValid || rows.some((row) => !row.dueDate) || update.isPending}
+            onClick={() =>
+              update.mutate(
+                {
+                  id: plan.id,
+                  instalments: rows.map(({ id, dueDate, amount }) => ({ id, dueDate, amount })),
+                },
+                { onSuccess: onDone, onError },
+              )
+            }
+          >
+            Save payments
+          </Button>
+          <Button size="sm" variant="secondary" onClick={onDone}>
+            Cancel
+          </Button>
         </div>
-      ))}
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          disabled={!canSave || update.isPending}
-          onClick={() =>
-            update.mutate(
-              {
-                id: plan.id,
-                instalments: rows.map(({ id, dueDate, amount }) => ({ id, dueDate, amount })),
-              },
-              { onSuccess: onDone, onError },
-            )
-          }
-        >
-          Save payments
-        </Button>
-        <Button size="sm" variant="secondary" onClick={onDone}>
-          Cancel
-        </Button>
       </div>
-    </div>
+    </AmountFields>
   );
 }
 
@@ -269,6 +272,7 @@ function AdjustModal({
   const refund = usePlanAdjustment('refund');
   const fee = usePlanAdjustment('fee');
   const canSave = useCanSave();
+  const { allValid, report } = useAmountValidity();
   const [date, setDate] = useState(today);
   const [amount, setAmount] = useState(0);
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -292,49 +296,50 @@ function AdjustModal({
       title={kind === 'fee' ? `Late fee for ${plan.merchant}` : `Refund from ${plan.merchant}`}
       size="sm"
     >
-      <form
-        className="space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!kind || amount <= 0) return;
-          mutation.mutate(
-            { planId: plan.id, date, amount, categoryId },
-            {
-              onSuccess: onClose,
-              onError: (err) => setError(err instanceof Error ? err.message : 'Could not save'),
-            },
-          );
-        }}
-      >
-        <p className="text-sm text-text-secondary">
-          {kind === 'fee'
-            ? `Added to the next payment, as ${plan.providerName} collects it.`
-            : 'Takes the last payments down first, as the provider does. Reports count it against what you bought.'}
-        </p>
-        <CurrencyInput value={amount} onChange={setAmount} aria-label="Amount" />
-        <Input
-          type="date"
-          aria-label="Date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-        <div className="rounded-md border border-border px-3 py-2.5 bg-surface">
-          <CategorySelect
+      <AmountFields report={report}>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!kind || !allValid || !date || amount <= 0) return;
+            mutation.mutate(
+              { planId: plan.id, date, amount, categoryId },
+              {
+                onSuccess: onClose,
+                onError: (err) => setError(err instanceof Error ? err.message : 'Could not save'),
+              },
+            );
+          }}
+        >
+          <p className="text-sm text-text-secondary">
+            {kind === 'fee'
+              ? `Added to the next payment, as ${plan.providerName} collects it.`
+              : 'Takes the last payments down first, as the provider does. Reports count it against what you bought.'}
+          </p>
+          <CurrencyInput value={amount} onChange={setAmount} aria-label="Amount" />
+          <DatePicker label="Date" hideLabel value={date} onChange={setDate} />
+          <CategorySelectButton
             value={categoryId}
             onChange={setCategoryId}
             groups={purchaseGroups(groups)}
+            includeHidden
+            allowCreate={false}
+            allowNone
           />
-        </div>
-        {error && <p className="text-sm text-negative">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={amount <= 0 || !canSave || mutation.isPending}>
-            {kind === 'fee' ? 'Add fee' : 'Record refund'}
-          </Button>
-        </div>
-      </form>
+          {error && <p className="text-sm text-negative">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={amount <= 0 || !date || !allValid || !canSave || mutation.isPending}
+            >
+              {kind === 'fee' ? 'Add fee' : 'Record refund'}
+            </Button>
+          </div>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }

@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, setToggle, fillDate, typeAmount } from './fixtures';
 
 // Receipts and tax deductions (docs/RECEIPTS-AND-TAX.md). A made-up file and mock data only.
 
@@ -20,9 +20,17 @@ test('a receipt is attached, claimed and listed for tax time; the inbox matches 
     amount: -4_999,
     payeeName: 'Officeworks',
   });
+  const month = isoDay(-40).slice(0, 7);
+  const receiptDay = `${month}-24`;
+  const earlier = await api.createTransaction({
+    accountId: card.id,
+    date: `${month}-02`,
+    amount: -650,
+    payeeName: 'Other cafe',
+  });
   const coffee = await api.createTransaction({
     accountId: card.id,
-    date: isoDay(),
+    date: receiptDay,
     amount: -650,
     payeeName: 'Cafe',
   });
@@ -35,8 +43,8 @@ test('a receipt is attached, claimed and listed for tax time; the inbox matches 
   await panel.getByLabel('Add a receipt: choose files').setInputFiles(receipt('officeworks.pdf'));
   await expect(panel.getByText('officeworks.pdf')).toBeVisible();
 
-  await panel.getByLabel('Claim as a tax deduction').check();
-  await expect(panel.getByLabel('Tax return label')).toHaveValue('D5');
+  await setToggle(panel.getByRole('checkbox', { name: 'Claim as a tax deduction' }));
+  await expect(panel.getByRole('button', { name: /Tax return label/ })).toContainText('D5');
   await panel.getByLabel('Work use percent').fill('50');
   await panel.getByLabel('Work use percent').blur();
   await expect(panel.getByText(/^Claim \$25(\.00)?$/)).toBeVisible();
@@ -57,11 +65,13 @@ test('a receipt is attached, claimed and listed for tax time; the inbox matches 
     .getByLabel('Add receipts to the inbox: choose files')
     .setInputFiles(receipt('cafe.pdf'));
   const item = page.getByRole('listitem', { name: 'Receipt cafe.pdf' });
-  await item.getByLabel('Receipt date').fill(isoDay());
-  await item.getByLabel('Receipt total').fill('6.50');
-  await item.getByLabel('Receipt total').blur();
+  await typeAmount(item.getByLabel('Receipt total'), '6.50');
+  await fillDate(item, 'Receipt date', receiptDay);
+  // Moving past the date commits the whole edit. The first day digit could match the other cafe.
+  await item.getByLabel('Receipt total').focus();
   // Same amount and day: matched as soon as its details are saved, so it leaves the inbox
   await expect(page.getByText('The inbox is empty.')).toBeVisible();
   const attached = await api.call('GET', `/receipts?transactionId=${coffee.id}`);
   expect(attached).toHaveLength(1);
+  expect(await api.call('GET', `/receipts?transactionId=${earlier.id}`)).toHaveLength(0);
 });

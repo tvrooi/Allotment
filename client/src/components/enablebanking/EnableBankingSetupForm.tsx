@@ -1,3 +1,4 @@
+import { Input } from '../ui/Input';
 import { useState } from 'react';
 import {
   AlertTriangle,
@@ -20,9 +21,6 @@ import { GuideLink } from '../guide/GuideLink';
 import type { EnableBankingConfigureResult } from '../../types';
 
 const CONTROL_PANEL_URL = 'https://enablebanking.com/cp/applications';
-
-const inputClass =
-  'w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';
 
 /** The redirect URL to register in the Enable Banking application, with a copy button. */
 export function RedirectUrlField({ url }: { url: string }) {
@@ -221,7 +219,7 @@ export function EnableBankingSetupForm({
         <label htmlFor="eb-app-id" className="block text-xs font-medium text-text-tertiary mb-1">
           Application ID
         </label>
-        <input
+        <Input
           id="eb-app-id"
           type="text"
           value={applicationId}
@@ -229,7 +227,7 @@ export function EnableBankingSetupForm({
           placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6"
           autoComplete="off"
           spellCheck={false}
-          className={`${inputClass} font-mono`}
+          className="font-mono"
         />
       </div>
       <div>

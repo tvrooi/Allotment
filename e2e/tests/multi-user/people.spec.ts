@@ -1,3 +1,4 @@
+import { setToggle } from '../fixtures';
 import fs from 'fs';
 import { test, expect, type Page } from '@playwright/test';
 import { caughtMail } from '../../mailCatcher';
@@ -155,8 +156,20 @@ test("two people combine their households and see each other's entries", async (
   // Combining lives in the household's Settings tab (da18c99)
   await owner.getByRole('tab', { name: 'Settings', exact: true }).click();
   const ask = owner.getByRole('region', { name: 'Combine with another Allotment user' });
-  await ask.getByLabel('Combine with').selectOption({ label: 'Edward' });
-  await ask.getByLabel('Who they are in this household').selectOption({ label: 'Edward' });
+  const otherUser = ask.getByRole('combobox', { name: 'Combine with' });
+  await otherUser.click();
+  await otherUser.fill('Edward');
+  await expect(owner.getByRole('option', { name: 'Edward', exact: true })).toBeVisible();
+  await owner.keyboard.press('ArrowDown');
+  await owner.keyboard.press('Enter');
+  await expect(otherUser).toHaveValue('Edward');
+  const otherPerson = ask.getByRole('combobox', { name: 'Who they are in this household' });
+  await otherPerson.click();
+  await otherPerson.fill('Edward');
+  await expect(owner.getByRole('option', { name: 'Edward', exact: true })).toBeVisible();
+  await owner.keyboard.press('ArrowDown');
+  await owner.keyboard.press('Enter');
+  await expect(otherPerson).toHaveValue('Edward');
   await ask.getByRole('button', { name: 'Ask to combine' }).click();
   await expect(ask.getByText('Waiting for Edward to accept.')).toBeVisible();
 
@@ -165,7 +178,13 @@ test("two people combine their households and see each other's entries", async (
   await partner.getByRole('tab', { name: 'Settings', exact: true }).click();
   const accept = partner.getByRole('region', { name: 'Combine with another Allotment user' });
   await expect(accept.getByText('Tristan asked to combine')).toBeVisible();
-  await accept.getByLabel('Who Tristan is in Our place').selectOption({ label: 'Tristan' });
+  const localPerson = accept.getByRole('combobox', { name: 'Who Tristan is in Our place' });
+  await localPerson.click();
+  await localPerson.fill('Tristan');
+  await expect(partner.getByRole('option', { name: 'Tristan', exact: true })).toBeVisible();
+  await partner.keyboard.press('ArrowDown');
+  await partner.keyboard.press('Enter');
+  await expect(localPerson).toHaveValue('Tristan');
   await accept.getByRole('button', { name: 'Combine with Our place' }).click();
   await expect(accept.getByText('Combined with Tristan.')).toBeVisible();
 
@@ -232,7 +251,7 @@ test('a person adds an email address with its code, gets reminders there, and re
   // Bill reminders from his budget go there too, through the gateway: no service to name
   const reminders = partner.getByRole('region', { name: 'Reminders' });
   await expect(reminders.getByLabel('Notify service')).toHaveCount(0);
-  await reminders.getByLabel(/Send reminders/).check();
+  await setToggle(reminders.getByRole('checkbox', { name: 'Send reminders' }));
   await reminders.getByRole('button', { name: 'Save' }).click();
   await expect(reminders.getByRole('status')).toContainText('Saved.');
   await reminders.getByRole('button', { name: 'Send a test' }).click();

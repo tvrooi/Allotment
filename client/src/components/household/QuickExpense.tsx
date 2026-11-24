@@ -7,7 +7,8 @@ import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
-import { Input, Select } from '../ui/Input';
+import { Input } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
 import { Slider } from '../ui/Slider';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { latestExpenses, type LedgerEntry } from './latestExpenses';
@@ -121,16 +122,16 @@ export function QuickExpense({
           <label htmlFor="quick-expense-amount">Amount</label>
           <CurrencyInput id="quick-expense-amount" value={amount} onChange={setAmount} />
         </div>
-        <label className={label}>
-          Paid by
-          <Select value={payerId} onChange={(e) => setPayerId(e.target.value)}>
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.isSelf ? `${p.name} (me)` : p.name}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <Combobox
+          label="Paid by"
+          value={payerId}
+          onChange={setPayerId}
+          menuTrigger="focus"
+          items={people.map((person) => ({
+            value: person.id,
+            label: person.isSelf ? `${person.name} (me)` : person.name,
+          }))}
+        />
         <Button
           type="submit"
           disabled={!ready || !canSave || add.isPending}

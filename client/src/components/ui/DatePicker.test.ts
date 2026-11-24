@@ -32,7 +32,7 @@ const render = (props: Partial<Props> = {}) =>
       value: '2026-11-16',
       onChange: noop,
       ...props,
-    }),
+    } as Props),
   );
 
 /** The trigger group's opening tag */
@@ -242,5 +242,27 @@ describe('nativeValue', () => {
       expect(nativeValue('month', raw)).toBe('');
     for (const raw of ['16/11/2026', '2026-02-30', '2026-11'])
       expect(nativeValue('date', raw)).toBe('');
+  });
+});
+
+describe('named form dates', () => {
+  it.each([false, true])('supplies the ISO default with phone=%s', (phone) => {
+    screen.phone = phone;
+    const html = render({
+      name: 'dueDate',
+      value: undefined,
+      defaultValue: '2026-10-21',
+    } as Partial<Props>);
+    expect(html).toMatch(/<input[^>]*name="dueDate"[^>]*value="2026-10-21"/);
+  });
+
+  it('supplies an empty optional date', () => {
+    const html = render({
+      name: 'dueDate',
+      value: undefined,
+      defaultValue: '',
+      optional: true,
+    } as Partial<Props>);
+    expect(html).toMatch(/<input[^>]*name="dueDate"[^>]*value=""/);
   });
 });

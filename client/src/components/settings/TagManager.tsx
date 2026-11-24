@@ -1,3 +1,4 @@
+import { Select } from '../ui/Select';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -48,21 +49,19 @@ export function TagManager() {
         <ul className="divide-y divide-border-light border border-border-light rounded-lg">
           {tags.map((t) => (
             <li key={t.id} className="flex items-center gap-3 px-3 py-2">
-              <label className="relative h-4 w-4 shrink-0 cursor-pointer">
-                <span className="sr-only">Colour for {t.name}</span>
-                <select
-                  value={t.color}
-                  onChange={(e) => update.mutate({ id: t.id, color: e.target.value })}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                >
-                  {[...new Set([t.color, ...COLORS])].map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <span className="block h-4 w-4 rounded-full" style={{ backgroundColor: t.color }} />
-              </label>
+              <Select
+                aria-label={`Colour for ${t.name}`}
+                className="w-fit shrink-0"
+                value={t.color}
+                onChange={(color) => update.mutate({ id: t.id, color })}
+                options={[...new Set([t.color, ...COLORS])].map((value) => ({
+                  value,
+                  label: value,
+                }))}
+                swatch={(color) => (
+                  <span className="block size-4 rounded-full" style={{ backgroundColor: color }} />
+                )}
+              />
               <span className="flex-1 min-w-0 truncate text-sm text-text">{t.name}</span>
               <Link
                 to={transactionsLink({ tagIds: [t.id], datePreset: 'all' })}

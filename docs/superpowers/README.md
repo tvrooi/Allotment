@@ -27,19 +27,19 @@ reference and nothing reads it now.
 - The repository rules in `CLAUDE.md` / `AGENTS.md` (branches, verification, releases, invariants)
   outrank anything in a plan.
 
-## Where things stand (23 November 2026)
+## Where things stand (24 November 2026)
 
 Milestone **v1.0 Redesign finish** on branch `redesign`. Spec:
 [specs/2026-11-14-redesign-finish-design.md](specs/2026-11-14-redesign-finish-design.md).
 
-| Phase                              | State                                                                                                                                                            |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Settings split and good moments | Done 16 Nov 2026                                                                                                                                                 |
-| 2. Shared form controls            | All 20 plans done                                                                                                                                                |
-| 3. Screens on shared controls      | All plans done; UAT 03 round 2's PR (up.180) is open for the owner: [plans/2026-11-23-uat-03-round-2-close-out.md](plans/2026-11-23-uat-03-round-2-close-out.md) |
-| 4. Remaining screens and the guard | Planned, not started: [plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md](plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md)               |
+| Phase                              | State                                                                                                                                                                                  |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Settings split and good moments | Done 16 Nov 2026                                                                                                                                                                       |
+| 2. Shared form controls            | All 20 plans done                                                                                                                                                                      |
+| 3. Screens on shared controls      | All plans done; UAT 03 round 2's PR (up.180) is open for the owner: [plans/2026-11-23-uat-03-round-2-close-out.md](plans/2026-11-23-uat-03-round-2-close-out.md)                       |
+| 4. Remaining screens and the guard | G4 stacks on #283 as a draft. G5 follows after G4 merges. [plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md](plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md) |
 
-Phase 4 starts after the owner merges the UAT 03 round 2 PR and re-runs UAT tests 1 and 2.
+The owner still needs to re-run UAT 03 tests 1 and 2.
 The backlog for later milestones is at the end of
 [gsd-records/ROADMAP.md](gsd-records/ROADMAP.md#backlog-later-milestones-not-scheduled), with
 IDs in [gsd-records/REQUIREMENTS.md](gsd-records/REQUIREMENTS.md).
