@@ -202,12 +202,15 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   on MonthPicker's `MonthGrid` inside React Aria's dialog, with two native month inputs (From and
   To) on phones and its props unchanged. Its three users are `reports/DateRangeControl.tsx`,
   `reports/ReportBuilderSidebar.tsx` and `pages/CashFlow.tsx`.
-- What has not moved yet: Phase 4 is next, after the owner merges the UAT 03 fixes and re-runs UAT
-  tests 1 and 2 (G3 is merged). G4 moves Settings
-  (with `settings/DataExport.tsx`), the bank connection sections (`ConnectedBanks`) and the shelved
-  and split-candidate pages (Review, Cash flow, Household, Tax); G5 adds the lint rule and removes
-  the native `Select` in `ui/Input.tsx` and `CategorySelect.tsx` (it stays until Payment plans
-  move).
+- G4 (up.181, branch `feat/phase-04-g4`, stacked on #283) moves Settings, Connected banks,
+  sign-in, Command Palette, Dashboard, Payment plans, Review, Tax and Household. Cash flow already
+  uses MonthRangePicker. Named Select, Combobox, CurrencyInput, DatePicker and Checkbox fields
+  preserve Household's form values. Tags use Select's swatch trigger. Receipt date segments
+  save when the user leaves the field. The source scan in `utils/noNumberInput.test.ts` checks
+  there are no native number fields.
+- G5, after G4 merges, adds the raw form control lint rule, removes the old native Select export
+  in `ui/Input.tsx`, and updates the shared control guidance. The owner's UAT 03 tests 1 and 2,
+  real iPhone and VoiceOver pass, and password-manager check remain open.
 
 ## Next up (issues)
 
@@ -236,8 +239,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - Pickers (Wave G1, #267, replacing Wave E's short-list rule): categories use `CategoryPicker`,
   payees use `PayeeCombobox`, a fixed list uses `Select` (`components/ui/Select.tsx`), and a list
   the user grows uses `Combobox`; phones get native select, date and month controls. A bounded
-  number uses `NumberField`, money `CurrencyInput` (D-14). The G2 and G3 screens are on this; the
-  rest move in Phase 4, and until a screen moves it keeps the native `Select` in `ui/Input.tsx`.
+  number uses `NumberField`, money `CurrencyInput` (D-14). G2, G3 and G4 use these controls. G5 removes the old native `Select` in `ui/Input.tsx`.
 - The register's selection (owner, 21 November 2026, UAT tests 1 and 2): transactions are selected
   one by one or all at once and changed from the right-click menu, with no edit dialog. Owner
   decision A, given during planning on 21 November 2026: the calm phone category list (no
@@ -292,7 +294,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - `E2E_SKIP_BUILD=1` reuses the last client build; run once without it after changing UI text.
 - Global CSS in `index.css` must sit in an `@layer`, or it beats every Tailwind utility. The
   global `:focus-visible` outline is in `@layer base`, so a control's own ring wins; a control
-  without one (ContextMenu, ServerStatus, a bare CategorySelect) must draw its own.
+  without one (ContextMenu or ServerStatus) must draw its own.
 - A label over a group of controls (radio group, date segments) must be a `span`, not a `label`:
   a `label` element names only one control.
 - `CategoryPicker` and `PayeeCombobox` are wrappers over `ui/Combobox.tsx`: change list keyboard

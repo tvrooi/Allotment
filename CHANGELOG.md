@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0-up.181
+
+- **Shared form controls across the remaining screens (#267).** Settings, Connected banks, sign-in, search, Dashboard, Pay later, Review, Tax time and Household use the shared pickers and fields. Phones use their native pickers for fixed lists and dates. Welcome keeps its existing switches, Cash flow keeps its month range, and the working-from-home rate still accepts fractional cents per hour.
+- **Payment plans validate the number of payments before saving.** The new field accepts 1 to 60 whole payments and keeps existing linked payments in the plan. Purchases and adjustments use the shared category picker.
+- **Money fields display formatted amounts.** Priorities covers the essentials estimate, comfort target and reserve minimum. Review covers the usual deposit amount. Household covers expense and refund amounts, fixed shares, one-off bill totals, personal shares and reserves. Amounts still save in minor units.
+
 ## 0.2.0-up.180
 
 - **Selected transactions show by colour, and the list stays put.** In the register, Select no longer puts a checkbox on every transaction. Click a row (or tap a phone card) to select it, and it turns the selected colour with a bar down its left edge; click it again to let it go. Shift+click still selects a range and Select all still takes the whole list. While you are selecting, a plain click selects instead of opening the transaction's details. The selection bar now covers the toolbar above the list instead of pushing the list down, so nothing on the screen moves when you start, change or finish a selection. Screen readers still hear each row as a checkbox named for its payee and amount, and Windows high-contrast mode marks a selected row in its own highlight colour.

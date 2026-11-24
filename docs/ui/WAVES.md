@@ -22,22 +22,23 @@ the UAT 03 fixes were prepared.
 
 ## Status
 
-| Wave                | Issues                                   | State                                                                        |
-| ------------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                      |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                    |
-| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                        |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                      |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                      |
-| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                      |
-| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                      |
-| F settings, delight | #244, #241                               | Merged, PR #273, up.174.                                                     |
-| G0 controls audit   | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.                                |
-| G1 control set      | #267 (part), #264                        | Merged, PR #277, up.175. #267 stays open.                                    |
-| G2 money screens    | #267 (part)                              | Merged, PR #278, up.176. #267 stays open.                                    |
-| G3 planning screens | #267 (part)                              | Merged, PR #279, up.177. #267 stays open.                                    |
-| UAT 03 fixes        | #267 (part)                              | Merged, PR #280, up.178.                                                     |
-| UAT 03 round 2      | #267 (part)                              | PR from `fix/uat-03-selection-colour-and-date`, up.180 prepared, not merged. |
+| Wave                 | Issues                                   | State                                                                        |
+| -------------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
+| A shell              | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                      |
+| A palette part 1     | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                    |
+| A palette part 2     | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                        |
+| B small fixes        | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                      |
+| C dashboard          | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                      |
+| D discoverability    | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                      |
+| E navigation depth   | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                      |
+| F settings, delight  | #244, #241                               | Merged, PR #273, up.174.                                                     |
+| G0 controls audit    | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.                                |
+| G1 control set       | #267 (part), #264                        | Merged, PR #277, up.175. #267 stays open.                                    |
+| G2 money screens     | #267 (part)                              | Merged, PR #278, up.176. #267 stays open.                                    |
+| G3 planning screens  | #267 (part)                              | Merged, PR #279, up.177. #267 stays open.                                    |
+| UAT 03 fixes         | #267 (part)                              | Merged, PR #280, up.178.                                                     |
+| UAT 03 round 2       | #267 (part)                              | PR from `fix/uat-03-selection-colour-and-date`, up.180 prepared, not merged. |
+| G4 remaining screens | #267 (part)                              | Draft into `redesign`, stacked on #283, up.181 prepared.                     |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -65,6 +66,7 @@ Not in any wave:
 
 ## Open PRs
 
+- Wave G4 (#267), branch `feat/phase-04-g4`, base `redesign`, up.181 prepared. It stacks on #283.
 - UAT 03 round 2 (#267), branch `fix/uat-03-selection-colour-and-date`, base `redesign`, up.180
   prepared, not merged. Selected register rows show by colour only, with no checkbox, and the
   selection bar covers the toolbar so the list never moves (G-03-4); the iPhone Date value is
@@ -87,8 +89,7 @@ Not in any wave:
 
 ## What to do next, in order
 
-1. The UAT 03 fixes (#267): the owner's review and merge of PR #280 and a re-run of UAT tests 1
-   and 2. Then G4 and G5 (Phase 4).
+1. Review PR #283 and re-run UAT 03 tests 1 and 2. Review G4 after its base lands, then start G5 once G4 merges.
 2. Triage the `needs-triage` issues above with the owner or by the routine in
    [docs/agents/triage-labels.md](../agents/triage-labels.md).
 

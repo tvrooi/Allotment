@@ -7,10 +7,11 @@ UI sessions start at [docs/ui/README.md](docs/ui/README.md) instead.
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 23 November 2026 (planning moved from GSD to Superpowers; UAT 03 round 2 paused before its PR; the UAT 03 fixes on top of Wave G3, design re-review waves on `redesign`; see `docs/ui/WAVES.md`).
+Last updated: 24 November 2026 (Wave G4 is prepared on top of UAT 03 round 2).
 
 ## State
 
+- **Wave G4** (up.181), branch `feat/phase-04-g4`, stacks on #283. The owner’s UAT 03 tests 1 and 2 are still pending.
 - **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
 - **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
 - **Unreleased on `redesign`:** up.154 to up.179 are prepared (up.180 is on an open PR) (versions and CHANGELOG entries) but not tagged.
