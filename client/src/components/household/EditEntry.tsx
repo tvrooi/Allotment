@@ -146,7 +146,6 @@ export function EditEntry({
                 onChange={setPayerId}
                 placeholder={isExpense && hasPool ? 'Household pool' : undefined}
                 optional={isExpense && hasPool}
-
                 items={people.map((person) => ({ value: person.id, label: person.name }))}
               />
               {settled && (
@@ -154,7 +153,6 @@ export function EditEntry({
                   label="Paid to"
                   value={recipientId}
                   onChange={setRecipientId}
-
                   items={people
                     .filter((person) => person.id !== payerId)
                     .map((person) => ({
@@ -197,7 +195,12 @@ export function EditEntry({
               Cancel
             </Button>
             {(!isExpense || locked) && (
-              <Button type="submit" disabled={saving || !canSave || !description.trim()}>
+              <Button
+                type="submit"
+                disabled={
+                  saving || !canSave || !description.trim() || (!locked && (!allValid || !date))
+                }
+              >
                 Save changes
               </Button>
             )}

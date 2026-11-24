@@ -1,6 +1,15 @@
 import type { Page } from '@playwright/test';
 import fs from 'fs';
-import { test, expect, open, isoDay, fillMonth, categoryOption, setToggle } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  fillMonth,
+  categoryOption,
+  setToggle,
+  fillDate,
+} from './fixtures';
 
 // Settings: preferences and the other sections. Categories and groups are managed on the Budget
 // area's Categories page (/budget/categories, #244); its tests live here with the rest.
@@ -530,4 +539,18 @@ test('the budget start keeps older history out of the envelopes', async ({ page,
   await page.getByRole('button', { name: 'Count all history' }).click();
   await expect(page.getByText('Envelopes count all history.')).toBeVisible();
   expect((await summary()).uncategorized).toBe(478_000);
+});
+
+// G4 review: a half-typed From or To still downloaded the CSV with the old range
+test('a half-typed export date holds Download CSV', async ({ page }) => {
+  await open(page, '/settings');
+  await page.getByRole('tab', { name: 'Data' }).click();
+  const download = page.getByRole('button', { name: 'Download CSV' });
+  await fillDate(page, 'From', '2026-10-01');
+  await expect(download).toBeEnabled();
+  const day = page.getByRole('group', { name: 'From', exact: true }).locator('[data-type="day"]');
+  await day.click();
+  for (let i = 0; i < 2; i++) await page.keyboard.press('Backspace');
+  await expect(day).toHaveAttribute('data-placeholder');
+  await expect(download).toBeDisabled();
 });

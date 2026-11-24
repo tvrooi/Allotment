@@ -5,6 +5,9 @@
 - **Shared form controls across the remaining screens (#267).** Settings, Connected banks, sign-in, search, Dashboard, Pay later, Review, Tax time and Household use the shared pickers and fields. Phones use their native pickers for fixed lists and dates. Welcome keeps its existing switches, Cash flow keeps its month range, and the working-from-home rate still accepts fractional cents per hour.
 - **Payment plans validate the number of payments before saving.** The new field accepts 1 to 60 whole payments and keeps existing linked payments in the plan. Purchases and adjustments use the shared category picker.
 - **Money fields display formatted amounts.** Priorities covers the essentials estimate, comfort target and reserve minimum. Review covers the usual deposit amount. Household covers expense and refund amounts, fixed shares, one-off bill totals, personal shares and reserves. Amounts still save in minor units.
+- **Half-typed dates hold the button.** Editing a household contribution or repayment, the Data tab's Download CSV and Household's Export this statement wait until a part-typed date is whole, instead of saving or exporting with the old date. The statement's From and To dates have Clear.
+- **Fix: the receipt inbox shows what the reader found.** A receipt added to the Tax time inbox shows the merchant and date once the reader has read it, without reloading the page.
+- **Fix: Paid by after switching to an advance.** In Record something else, changing a household pool expense to an advance into the pool or a repayment picks you as the payer instead of leaving Paid by empty.
 
 ## 0.2.0-up.180
 
