@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Input, Select } from './Input';
+import { Input } from './Input';
 
 type Props = Parameters<typeof Input>[0];
 const render = (props: Props = {}) => renderToStaticMarkup(createElement(Input, props));
@@ -63,13 +63,5 @@ describe('Input', () => {
     expect(cls).not.toMatch(/opacity-/);
     for (const props of [{}, { disabled: true }, { readOnly: true }, { isInvalid: true }])
       expect(render({ 'aria-label': 'Payee', ...props })).not.toMatch(/#[0-9a-f]{3,6}\b/i);
-  });
-
-  it('the native Select is still exported and renders a select', () => {
-    const html = renderToStaticMarkup(
-      createElement(Select, { 'aria-label': 'Account' }, createElement('option', null, 'Everyday')),
-    );
-    expect(html).toMatch(/^<select/);
-    expect(html).toContain('<option>Everyday</option>');
   });
 });

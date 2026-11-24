@@ -288,7 +288,9 @@ Shared Button and ButtonLink expose primary, secondary, ghost and danger variant
 
 ### Inputs and selects
 
-White/themed surfaces, md corners, 1px border and 12px horizontal padding. Focus changes the border and adds a 1px brand ring. Preserve labels, placeholder hierarchy and mobile sizing. Money entry uses the existing CurrencyInput and currency formatting utilities.
+Shared form controls (`Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`, `RadioGroup`, `Switch`, `DatePicker`, `MonthPicker`, `Label`, `Field` in `client/src/components/ui/`) are built on `react-aria-components` with `@theme` tokens: white/themed surfaces, `md` corners, 1px border, 12px horizontal padding, `h-10` (40px) default height, `h-8` (32px) compact `sm` height, and `max-md:min-h-11` (44px) with 16px text on phones (`< 768px`). Focus changes the border and adds a 1px brand-600 ring; `Select`, `DatePicker`, and `MonthPicker` render native controls under 768px. Money entry uses `CurrencyInput` (`type="text" inputMode="decimal"`, never `type="number"`), and bounded counts use `NumberField`.
+
+Picker rule: categories use `CategoryPicker`, payees use `PayeeCombobox`, fixed lists use the shared `Select`, and lists the user grows use the shared `Combobox`. ESLint rule `allotment/no-raw-form-control` (`lint/rules/no-raw-form-control.js`) fails as an error on any raw `<input>`, `<select>`, or `<textarea>` in `client/src/**/*.tsx` outside `client/src/components/ui/` (and on `type="number"`), allowing static `<input type="file">` and explicit per-entry exceptions with reasons in `lint/eslint.config.js`.
 
 ### Cards and summary tiles
 

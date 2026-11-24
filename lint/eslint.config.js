@@ -10,6 +10,14 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import globals from 'globals';
 import iconOnlyControl from './rules/icon-only-control.js';
+import noRawFormControl from './rules/no-raw-form-control.js';
+
+const allotment = {
+  rules: {
+    'icon-only-control': iconOnlyControl,
+    'no-raw-form-control': noRawFormControl,
+  },
+};
 
 export default tseslint.config(
   {
@@ -79,8 +87,23 @@ export default tseslint.config(
   {
     files: ['client/src/**/*.tsx'],
     ignores: ['**/*.test.tsx'],
-    plugins: { allotment: { rules: { 'icon-only-control': iconOnlyControl } } },
+    plugins: { allotment },
     rules: { 'allotment/icon-only-control': 'error' },
+  },
+  {
+    files: ['client/src/**/*.tsx'],
+    ignores: ['**/*.test.tsx', 'client/src/components/ui/**'],
+    plugins: { allotment },
+    rules: {
+      'allotment/no-raw-form-control': [
+        'error',
+        {
+          // Explicit D-17/D-21 native exceptions only (static <input type="file"> is allowed by attribute);
+          // each entry sits on its own line with `{ file, element, reason }`.
+          allow: [],
+        },
+      ],
+    },
   },
   {
     files: ['client/src/**/*.tsx'],
@@ -117,13 +140,12 @@ export default tseslint.config(
         },
       ],
       // A label around one of these is already joined to its control: each renders a native
-      // input or select as its first labelable element (components/ui/Input.tsx,
-      // CurrencyInput.tsx, PaydayPlan's MoneyInput, CashRunway's and Budget's AmountInput).
-      // Keep this list to components that do.
+      // input as its first labelable element (components/ui/Input.tsx, CurrencyInput.tsx,
+      // Budget's AmountInput). Keep this list to components that do.
       'jsx-a11y/label-has-associated-control': [
         'warn',
         {
-          controlComponents: ['Input', 'Select', 'CurrencyInput', 'MoneyInput', 'AmountInput'],
+          controlComponents: ['Input', 'CurrencyInput', 'AmountInput'],
           // A checkbox or radio label's text often sits in a span inside a span
           depth: 3,
         },

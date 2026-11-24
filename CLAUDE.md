@@ -208,7 +208,9 @@ change is sound, say so briefly.
 - Mutations invalidate the queries they affect. Save buttons respect the connection state
   (`useCanSave`, `<SavingPausedHint />`; `useAddTransaction()` for new transactions). Money inputs are
   `type="text" inputMode="decimal"` through `CurrencyInput`, never `type="number"`; displayed dates go
-  through `utils/dates.ts`.
+  through `utils/dates.ts`. Fields come only from `client/src/components/ui/` (lint
+  `allotment/no-raw-form-control`; categories use `CategoryPicker`, payees `PayeeCombobox`, other
+  lists the shared `Select` or `Combobox`).
 - Interactive controls have accessible names; layouts hold at 390 px with no sideways scroll; the
   demo and offline modes keep working.
 

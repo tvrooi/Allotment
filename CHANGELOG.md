@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.182
+
+- **Guard against raw form controls (#267, WAVG-09).** Added ESLint rule `allotment/no-raw-form-control` as an error over `client/src/**/*.tsx` outside `client/src/components/ui/`, blocking raw `<input>`, `<select>`, and `<textarea>` elements (except static `<input type="file">` and explicit allowlisted exceptions) as well as any `type="number"` field.
+- **Removed replaced form controls and updated docs (WAVG-10).** Removed the old native `Select` export, `compactSelectClass`, and `inputClass` from `client/src/components/ui/Input.tsx`, removed `Select` and `MoneyInput` from `jsx-a11y/label-has-associated-control` `controlComponents`, updated `DESIGN.md`, `docs/ui/MAP.md`, `docs/ui/HANDOVER-UI.md`, `CLAUDE.md`, `AGENTS.md`, `docs/ui/README.md`, and `HANDOVER.md` with the shared control set, picker rule, and lint guard, and retired `docs/ui/WAVES.md`.
+
 ## 0.2.0-up.181
 
 - **Shared form controls across the remaining screens (#267).** Settings, Connected banks, sign-in, search, Dashboard, Pay later, Review, Tax time and Household use the shared pickers and fields. Phones use their native pickers for fixed lists and dates. Welcome keeps its existing switches, Cash flow keeps its month range, and the working-from-home rate still accepts fractional cents per hour.
