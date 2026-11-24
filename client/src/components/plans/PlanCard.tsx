@@ -324,6 +324,7 @@ function AdjustModal({
             groups={purchaseGroups(groups)}
             includeHidden
             allowCreate={false}
+            allowNone
           />
           {error && <p className="text-sm text-negative">{error}</p>}
           <div className="flex justify-end gap-2">

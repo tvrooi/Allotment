@@ -51,7 +51,9 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
   await fillDate(event, 'Date', '2026-10-21');
   await typeAmount(event.getByLabel('Amount (AUD)'), '120.00');
   await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
-  await event.getByRole('combobox', { name: 'Existing bank payment (optional)' }).fill('Dinner');
+  const paymentField = event.getByRole('combobox', { name: 'Existing bank payment (optional)' });
+  await paymentField.evaluate((field) => field.scrollIntoView({ block: 'center' }));
+  await paymentField.fill('Dinner');
   await page.getByRole('option', { name: /Dinner/ }).click();
   await event.getByRole('button', { name: 'Save event' }).click();
   await openTab(page, 'Activity');
@@ -1296,10 +1298,20 @@ test('the record form saves a formatted expense in cents', async ({ page, api })
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Appliance');
   const amount = event.getByRole('textbox', { name: 'Amount (AUD)' });
+  await typeAmount(amount, '-12.34');
+  await event.getByRole('button', { name: 'Save event' }).click();
+  await expect(page.getByText('Enter amounts with at most two decimal places')).toBeVisible();
+  expect((await api.call('GET', `/households/${household.group.id}`)).events).toHaveLength(0);
+
   await typeAmount(amount, '1234.56');
   await expect(amount).toHaveValue(/1,234\.56/);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith(`/households/${household.group.id}/events`),
+  );
   await event.getByRole('button', { name: 'Save event' }).click();
-  await expect(event).toBeHidden();
+  expect((await saved).status()).toBe(201);
   const state = await api.call('GET', `/households/${household.group.id}`);
   expect(state.events).toEqual(
     expect.arrayContaining([expect.objectContaining({ description: 'Appliance', amount: 123456 })]),

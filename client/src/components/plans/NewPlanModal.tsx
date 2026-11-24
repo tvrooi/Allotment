@@ -171,6 +171,7 @@ export function NewPlanModal({ isOpen, onClose, provider, earlier, onCreated }: 
                 groups={purchaseGroups(groups)}
                 includeHidden
                 allowCreate={false}
+                allowNone
                 label="What it was for"
               />
             </div>

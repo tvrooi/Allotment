@@ -60,28 +60,28 @@ Tasks run in the listed order; "after" names the tasks that must be done first.
 
 ### Task 8: Screens with no Phase 3 parent (sign-in and others, D-13) — [04-06-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-06-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 9: Payment plans, and the last money `type="number"` (WAVG-08) — [04-07-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-07-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 10: Review and Cash flow, like for like (D-09) — [04-08-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-08-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 11: Tax, like for like — [04-09-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-09-PLAN.md) (after 1)
 
-- [ ] Done
+- [x] Done
 
 ### Task 12: Household components (seven, then five) — [04-10-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-10-PLAN.md), [04-16-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-16-PLAN.md) (after 1; 04-16 after 04-10)
 
-- [ ] 04-10 done
-- [ ] 04-16 done
+- [x] 04-10 done
+- [x] 04-16 done
 
 ### Task 13: Household page, then finish G4 — [04-11-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-11-PLAN.md), [04-12-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-12-PLAN.md) (after 2 to 12)
 
-- [ ] 04-11: `pages/Household.tsx`'s controls, region by region
+- [x] 04-11: `pages/Household.tsx`'s controls, region by region
 - [ ] 04-12: whole-tree gate, cross-screen spec, full check, docs, next `0.2.0-up.N`, the G4 PR to
       `redesign` (no merge)
 

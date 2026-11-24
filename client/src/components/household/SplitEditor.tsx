@@ -113,8 +113,11 @@ export function SplitEditor({
                 <CurrencyInput
                   aria-label={`${p.name}'s amount`}
                   currency={currency}
+                  allowNegative
                   value={exactAmount(values[p.id])}
-                  onChange={(amount) => setValues((prev) => ({ ...prev, [p.id]: amount }))}
+                  onChange={(amount) =>
+                    setValues((prev) => ({ ...prev, [p.id]: Math.max(0, amount) }))
+                  }
                 />
               ) : (
                 <Input

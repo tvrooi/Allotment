@@ -308,11 +308,11 @@ test('links Up to an account that already has history, from a cut-over date', as
   // Defaults to the day after the newest existing transaction, and says what that means
   const next = new Date(newest + 'T00:00:00Z');
   next.setUTCDate(next.getUTCDate() + 1);
-  await expect(
-    dialog
-      .getByRole('group', { name: 'Cut-over date for Up Everyday' })
-      .locator('[data-type="day"]'),
-  ).toHaveText(String(next.getUTCDate()).padStart(2, '0'));
+  const cutoverField = dialog.getByRole('group', { name: 'Cut-over date for Up Everyday' });
+  const [year, month, day] = next.toISOString().slice(0, 10).split('-');
+  await expect(cutoverField.locator('[data-type="year"]')).toHaveText(year);
+  await expect(cutoverField.locator('[data-type="month"]')).toHaveText(month);
+  await expect(cutoverField.locator('[data-type="day"]')).toHaveText(day);
   await expect(dialog).toContainText('stays as it is');
   await expect(dialog).toContainText('onwards are imported');
   await fillDate(dialog, 'Cut-over date for Up Everyday', cutover);

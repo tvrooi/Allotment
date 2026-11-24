@@ -6,7 +6,7 @@ import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Textarea } from '../components/ui/Textarea';
 import { useSearchParams } from 'react-router-dom';
 import { GuideLink } from '../components/guide/GuideLink';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
 import { useSchedules } from '../hooks/useSchedules';
@@ -165,6 +165,7 @@ function cents(value: FormDataEntryValue | null) {
 }
 export default function HouseholdPage() {
   const [params, setParams] = useSearchParams();
+  const peopleFieldId = useId();
   const cache = useQueryClient();
   const canSave = useCanSave();
   const eventFields = useAmountValidity();
@@ -345,10 +346,10 @@ export default function HouseholdPage() {
         Name
         <Input name="name" required maxLength={200} placeholder="e.g. Home" />
       </label>
-      <label className={field} htmlFor="household-people">
+      <label className={field} htmlFor={peopleFieldId}>
         People, one per line; put yourself first
         <Textarea
-          id="household-people"
+          id={peopleFieldId}
           name="people"
           rows={3}
           required
@@ -876,6 +877,7 @@ export default function HouseholdPage() {
                                 ? 'Refund amount (AUD, blank = remaining)'
                                 : 'Amount (AUD)'}
                               <CurrencyInput
+                                allowNegative
                                 name="amount"
                                 currency={state.group.currency}
                                 defaultValue={payment ? Math.abs(payment.amount) : null}
@@ -957,6 +959,7 @@ export default function HouseholdPage() {
                                       <div className="w-32">
                                         {mode === 'exact' ? (
                                           <CurrencyInput
+                                            allowNegative
                                             name={p.id}
                                             aria-label={`${p.name} share`}
                                             currency={state.group.currency}
@@ -1179,6 +1182,7 @@ export default function HouseholdPage() {
                                     <label className={field}>
                                       <span className="text-xs">Total</span>
                                       <CurrencyInput
+                                        allowNegative
                                         name="amount"
                                         currency={state.group.currency}
                                         defaultValue={b.amount}
@@ -1188,6 +1192,7 @@ export default function HouseholdPage() {
                                     <label className={field}>
                                       <span className="text-xs">My estimated share</span>
                                       <CurrencyInput
+                                        allowNegative
                                         name="personalShare"
                                         currency={state.group.currency}
                                         defaultValue={b.personalShare}
@@ -1234,6 +1239,7 @@ export default function HouseholdPage() {
                               <label className={`${field} flex-1`}>
                                 <span className="text-xs">Reserved</span>
                                 <CurrencyInput
+                                  allowNegative
                                   name="reserved"
                                   currency={state.group.currency}
                                   defaultValue={b.reserved}
@@ -1289,6 +1295,7 @@ export default function HouseholdPage() {
                             <label className={field}>
                               Estimated / billed total
                               <CurrencyInput
+                                allowNegative
                                 name="amount"
                                 currency={state.group.currency}
                                 placeholder="0.00"
@@ -1297,6 +1304,7 @@ export default function HouseholdPage() {
                             <label className={field}>
                               My estimated share
                               <CurrencyInput
+                                allowNegative
                                 name="personalShare"
                                 currency={state.group.currency}
                                 defaultValue={0}
@@ -1305,6 +1313,7 @@ export default function HouseholdPage() {
                             <label className={field}>
                               Reserve now
                               <CurrencyInput
+                                allowNegative
                                 name="reserved"
                                 currency={state.group.currency}
                                 defaultValue={0}

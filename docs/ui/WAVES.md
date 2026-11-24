@@ -38,7 +38,7 @@ the UAT 03 fixes were prepared.
 | G3 planning screens  | #267 (part)                              | Merged, PR #279, up.177. #267 stays open.                                    |
 | UAT 03 fixes         | #267 (part)                              | Merged, PR #280, up.178.                                                     |
 | UAT 03 round 2       | #267 (part)                              | PR from `fix/uat-03-selection-colour-and-date`, up.180 prepared, not merged. |
-| G4 remaining screens | #267 (part)                              | Draft into `redesign`, stacked on #283, up.181 prepared.                     |
+| G4 remaining screens | #267 (part)                              | Draft PR #284 into `redesign`, stacked on #283, up.181 prepared.             |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -66,7 +66,7 @@ Not in any wave:
 
 ## Open PRs
 
-- Wave G4 (#267), branch `feat/phase-04-g4`, base `redesign`, up.181 prepared. It stacks on #283.
+- Wave G4 (draft PR #284, #267), branch `feat/phase-04-g4`, base `redesign`, up.181 prepared. It stacks on #283.
 - UAT 03 round 2 (#267), branch `fix/uat-03-selection-colour-and-date`, base `redesign`, up.180
   prepared, not merged. Selected register rows show by colour only, with no checkbox, and the
   selection bar covers the toolbar so the list never moves (G-03-4); the iPhone Date value is
