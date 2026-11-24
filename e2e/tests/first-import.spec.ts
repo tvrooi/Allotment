@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, categoryOption, type Api } from './fixtures';
+import { setToggle, test, expect, open, isoDay, categoryOption, type Api } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -109,7 +109,7 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   ).toBeNull();
 
   // Without "future", only the existing rows move
-  await sort.getByLabel('Also apply to future transactions').uncheck();
+  await setToggle(sort.getByRole('checkbox', { name: 'Also apply to future transactions' }), false);
   // From the keyboard: type to narrow, Enter picks the first match
   await sort.getByLabel('Category for Service Victoria').click();
   await page.keyboard.type('Miscellan');

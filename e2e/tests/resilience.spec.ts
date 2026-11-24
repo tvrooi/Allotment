@@ -116,3 +116,41 @@ test('a life-event template shows the first dated shortfall without writing', as
   await expect(page.getByLabel('Shortfall')).toContainText('First shortfall');
   expect((await api.call('GET', '/review')).revision).toBe(before.revision);
 });
+
+test('an extra-income split keeps the usual amount in cents', async ({ page, api }) => {
+  const account = await api.createAccount('Pay account');
+  const income = (await api.categoryGroups()).find((group) => group.isIncome)!.categories[0];
+  const reserve = await api.category('Gifts');
+  const priorities = await api.call('GET', '/priorities');
+  await api.call('PUT', '/priorities', {
+    ...priorities,
+    purposes: [{ categoryId: reserve.id, purpose: 'flexibility' }],
+  });
+  const deposit = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: 200_000,
+    payeeName: 'Example employer',
+    categoryId: income.id,
+  });
+
+  await open(page, '/review');
+  const usual = page.getByRole('textbox', { name: 'Usual amount' });
+  await typeAmount(usual, '1234.56');
+  await expect(usual).toHaveValue(/1,234\.56/);
+  const picker = page.getByRole('combobox', { name: 'Income deposit' });
+  await picker.fill('Example employer');
+  await page.getByRole('option', { name: /Example employer/ }).click();
+  await page.getByRole('button', { name: 'Preview split' }).click();
+  const preview = page.getByRole('region', { name: 'Extra income preview' });
+  await expect(preview).toContainText('To the reserve: $382.72');
+  const submitted = page.waitForRequest((request) =>
+    request.url().endsWith('/review/income/apply'),
+  );
+  await preview.getByRole('button', { name: 'Apply split' }).click();
+  expect((await submitted).postDataJSON()).toMatchObject({
+    baseline: 123456,
+    transactionId: deposit.id,
+  });
+  await expect(page.getByText('Assigned to your reserve.', { exact: false })).toBeVisible();
+});

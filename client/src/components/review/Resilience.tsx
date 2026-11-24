@@ -1,3 +1,5 @@
+import { Combobox } from '../ui/Combobox';
+import { CurrencyInput } from '../ui/CurrencyInput';
 import { useState } from 'react';
 import { addDays, format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -6,8 +8,10 @@ import * as api from '../../api/review';
 import { useCanSave } from '../../hooks/useConnection';
 import { Card } from '../ui/Card';
 import { Button, ButtonLink } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
-import { formatCurrency, isUnreadableAmount, parseCents } from '../../utils/currency';
+import { Input } from '../ui/Input';
+import { formatCurrency } from '../../utils/currency';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { formatDay } from '../../utils/dates';
 import { FUNDING_VIEWS } from '../../utils/fundingViews';
 import { connectedBanksLink } from '../../utils/movedSections';
@@ -348,7 +352,8 @@ export function ExtraIncome({ resilience }: { resilience: api.ResilienceState })
   const candidates = useQuery({ queryKey: ['review', 'income'], queryFn: api.getIncomeCandidates });
   const reserves = resilience.flexibility.categories;
   const [transactionId, setTransaction] = useState('');
-  const [baseline, setBaseline] = useState('');
+  const [baseline, setBaseline] = useState<number | null>(null);
+  const { allValid, report } = useAmountValidity();
   const [percent, setPercent] = useState('50');
   const [categoryId, setCategory] = useState('');
   const [preview, setPreview] = useState<api.IncomePreview | null>(null);
@@ -358,10 +363,10 @@ export function ExtraIncome({ resilience }: { resilience: api.ResilienceState })
   const split = (): api.IncomeSplit | null => {
     const pct = Number(percent);
     if (!transactionId || !Number.isInteger(pct) || pct < 0 || pct > 100) return null;
-    if (baseline.trim() && isUnreadableAmount(baseline)) return null;
+    if (!allValid) return null;
     return {
       transactionId,
-      baseline: baseline.trim() ? parseCents(baseline) : 0,
+      baseline: baseline ?? 0,
       reservePercent: pct,
       categoryId: reserve,
     };
@@ -398,113 +403,113 @@ export function ExtraIncome({ resilience }: { resilience: api.ResilienceState })
   const label = 'grid gap-1 text-xs font-medium text-text-secondary';
   return (
     <Card>
-      <div className="space-y-3" aria-label="Extra income">
-        <h2 className="text-base font-semibold text-text">Extra income</h2>
-        <p className="text-xs text-text-secondary">
-          After a raise or windfall, choose how much of the extra goes to your reserve. Nothing is
-          assumed from a single large deposit: you confirm the usual amount.
-        </p>
-        <label className={label}>
-          Deposit
-          <Select
-            aria-label="Income deposit"
-            value={transactionId}
-            onChange={(e) => {
-              setTransaction(e.target.value);
-              reset();
-            }}
-          >
-            <option value="">Choose a received deposit…</option>
-            {(candidates.data ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {formatDay(t.date)} · {t.payee ?? 'Income'} · {formatCurrency(t.amount)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1">
-          <label className={label}>
-            Usual amount (0 for a windfall)
-            <Input
-              aria-label="Usual amount"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={baseline}
-              onChange={(e) => {
-                setBaseline(e.target.value);
-                reset();
-              }}
-            />
-          </label>
-          <label className={label}>
-            Share of the extra to the reserve (%)
-            <Input
-              aria-label="Reserve share percent"
-              inputMode="numeric"
-              value={percent}
-              onChange={(e) => {
-                setPercent(e.target.value);
-                reset();
-              }}
-            />
-          </label>
-        </div>
-        {reserves.length > 1 && (
-          <label className={label}>
-            Reserve category
-            <Select
-              aria-label="Reserve category"
-              value={reserve}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                reset();
-              }}
-            >
-              {reserves.map((c) => (
-                <option key={c.categoryId} value={c.categoryId}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-        )}
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={!transactionId}
-          onClick={() => run('preview')}
-        >
-          Preview split
-        </Button>
-        {preview && (
-          <div
-            role="region"
-            aria-label="Extra income preview"
-            className="bg-surface-alt rounded-lg p-3 text-xs text-text-secondary space-y-1"
-          >
-            <p>Extra over the usual amount: {formatCurrency(preview.extra)}</p>
-            <p>To the reserve: {formatCurrency(preview.proposed)}</p>
-            {preview.shortfall > 0 && (
-              <p className="text-caution">
-                {formatCurrency(preview.shortfall)} more than is ready to assign today; only{' '}
-                {formatCurrency(preview.proposed)} can be assigned.
-              </p>
-            )}
-            <p>The deposit is then used and cannot fund a payday plan as well.</p>
-            <Button size="sm" disabled={!canSave} onClick={() => run('apply')}>
-              Apply split
-            </Button>
-          </div>
-        )}
-        {message && (
-          <p
-            role={message.tone === 'error' ? 'alert' : 'status'}
-            className={`text-xs ${message.tone === 'error' ? 'text-negative' : 'text-positive'}`}
-          >
-            {message.text}
+      <AmountFields report={report}>
+        <div className="space-y-3" aria-label="Extra income">
+          <h2 className="text-base font-semibold text-text">Extra income</h2>
+          <p className="text-xs text-text-secondary">
+            After a raise or windfall, choose how much of the extra goes to your reserve. Nothing is
+            assumed from a single large deposit: you confirm the usual amount.
           </p>
-        )}
-      </div>
+          <div className={label}>
+            <span>Deposit</span>
+            <Combobox
+              aria-label="Income deposit"
+              value={transactionId}
+              onChange={(id) => {
+                setTransaction(id);
+                reset();
+              }}
+              optional
+              menuTrigger="focus"
+              placeholder="Choose a received deposit…"
+              items={(candidates.data ?? []).map((t) => ({
+                value: t.id,
+                label: `${formatDay(t.date)} · ${t.payee ?? 'Income'} · ${formatCurrency(t.amount)}`,
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1">
+            <label className={label}>
+              Usual amount (0 for a windfall)
+              <CurrencyInput
+                nullable
+                allowNegative
+                aria-label="Usual amount"
+                placeholder="0.00"
+                value={baseline}
+                onTextChange={reset}
+                onChange={setBaseline}
+              />
+            </label>
+            <label className={label}>
+              Share of the extra to the reserve (%)
+              <Input
+                aria-label="Reserve share percent"
+                inputMode="numeric"
+                value={percent}
+                onChange={(e) => {
+                  setPercent(e.target.value);
+                  reset();
+                }}
+              />
+            </label>
+          </div>
+          {reserves.length > 1 && (
+            <div className={label}>
+              <span>Reserve category</span>
+              <CategorySelectButton
+                label="Reserve category"
+                value={reserve}
+                categoryIds={reserves.map((category) => category.categoryId)}
+                allowNone={false}
+                allowCreate={false}
+                includeHidden
+                onChange={(id) => {
+                  if (!id) return;
+                  setCategory(id);
+                  reset();
+                }}
+              />
+            </div>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!transactionId}
+            onClick={() => run('preview')}
+          >
+            Preview split
+          </Button>
+          {preview && (
+            <div
+              role="region"
+              aria-label="Extra income preview"
+              className="bg-surface-alt rounded-lg p-3 text-xs text-text-secondary space-y-1"
+            >
+              <p>Extra over the usual amount: {formatCurrency(preview.extra)}</p>
+              <p>To the reserve: {formatCurrency(preview.proposed)}</p>
+              {preview.shortfall > 0 && (
+                <p className="text-caution">
+                  {formatCurrency(preview.shortfall)} more than is ready to assign today; only{' '}
+                  {formatCurrency(preview.proposed)} can be assigned.
+                </p>
+              )}
+              <p>The deposit is then used and cannot fund a payday plan as well.</p>
+              <Button size="sm" disabled={!canSave} onClick={() => run('apply')}>
+                Apply split
+              </Button>
+            </div>
+          )}
+          {message && (
+            <p
+              role={message.tone === 'error' ? 'alert' : 'status'}
+              className={`text-xs ${message.tone === 'error' ? 'text-negative' : 'text-positive'}`}
+            >
+              {message.text}
+            </p>
+          )}
+        </div>
+      </AmountFields>
     </Card>
   );
 }

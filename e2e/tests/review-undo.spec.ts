@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { categoryOption, test, expect, open, isoDay } from './fixtures';
 
 for (const phone of [false, true]) {
   test(`review categorisation can be undone and redone after the queue empties${phone ? ' on a phone' : ''}`, async ({
@@ -113,7 +113,6 @@ for (const phone of [false, true]) {
 // #245: every undoable change announces itself; Review housekeeping used to be silent
 test('categorising a saver in Review housekeeping offers Undo', async ({ page, api }) => {
   const account = await api.createAccount('Mock spending', 50_000);
-  const groceries = await api.category('Groceries');
   const moved = await api.createTransaction({
     accountId: account.id,
     date: isoDay(),
@@ -122,9 +121,8 @@ test('categorising a saver in Review housekeeping offers Undo', async ({ page, a
   });
   await open(page, '/review');
   await page.getByText('Check budget setup').click();
-  await page
-    .getByRole('combobox', { name: 'Category for Mock Splurge' })
-    .selectOption(groceries.id);
+  await page.getByRole('button', { name: /^Category for Mock Splurge:/ }).click();
+  await categoryOption(page, 'Groceries', { exact: true }).click();
   await page.getByRole('button', { name: 'Categorise', exact: true }).click();
   const toast = page.getByTestId('undo-toast');
   await expect(toast).toContainText('Categorised 1 saver transfer.');
@@ -147,9 +145,8 @@ test('a saver categorise that changes nothing offers no Undo', async ({ page, ap
   await page.getByText('Check budget setup').click();
   // Meanwhile it gets that category elsewhere, so the categorise changes nothing
   await api.call('PUT', `/transactions/${moved.id}`, { categoryId: groceries.id });
-  await page
-    .getByRole('combobox', { name: 'Category for Mock Splurge' })
-    .selectOption(groceries.id);
+  await page.getByRole('button', { name: /^Category for Mock Splurge:/ }).click();
+  await categoryOption(page, 'Groceries', { exact: true }).click();
   await page.getByRole('button', { name: 'Categorise', exact: true }).click();
   const toast = page.getByTestId('undo-toast');
   await expect(toast).toContainText('Categorised 0 saver transfers.');

@@ -95,7 +95,9 @@ for (const phone of [false, true])
     await queue.getByRole('button', { name: 'Show fewer transactions' }).click();
     await expect(queue.getByRole('button', { name: /^Category for/ })).toHaveCount(3);
     const filter = page.getByRole('combobox', { name: /^Category details/ });
-    await filter.selectOption(groceries.groupId);
+    const group = (await api.categoryGroups()).find((g) => g.id === groceries.groupId)!;
+    await filter.fill(group.name);
+    await page.getByRole('option', { name: group.name, exact: true }).click();
     await expect(
       page.getByText('Totals and other review items include all groups.', { exact: false }),
     ).toBeVisible();
