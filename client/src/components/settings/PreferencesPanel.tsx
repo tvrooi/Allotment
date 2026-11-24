@@ -1,3 +1,4 @@
+import { Input } from '../ui/Input';
 import { SidebarFeatureSettings } from './SidebarFeatureSettings';
 import { useState } from 'react';
 import {
@@ -288,13 +289,13 @@ export function PreferencesPanel() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {!budgetCurrency && (
-              <input
+              <Input
                 type="text"
                 aria-label="Currency symbol"
                 value={currencySymbol}
                 onChange={(e) => setCurrencySymbol(e.target.value.slice(0, 3))}
                 maxLength={3}
-                className="w-20 text-center text-sm border border-border rounded-md px-3 py-1.5 max-md:min-h-11 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+                className="w-20 text-center"
               />
             )}
             {symbolPositions.map((opt) => (

@@ -1,3 +1,6 @@
+import { Input } from '../ui/Input';
+import { DatePicker } from '../ui/DatePicker';
+import { Checkbox } from '../ui/Checkbox';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { AlertTriangle, Download, Trash2 } from 'lucide-react';
@@ -28,8 +31,6 @@ import { formatDay } from '../../utils/dates';
 import { GuideLink } from '../guide/GuideLink';
 
 const section = 'bg-surface-alt rounded-lg p-5 space-y-4';
-const inputClass =
-  'text-sm border border-border rounded-md px-3 py-1.5 max-md:min-h-11 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600';
 
 const errorText = (err: unknown) =>
   err instanceof Error ? err.message : 'Something went wrong. Try again.';
@@ -237,30 +238,22 @@ function Rates() {
           />
         </div>
         <div>
-          <label htmlFor="rate-date" className="block text-xs font-medium text-text-tertiary mb-1">
-            Day
-          </label>
-          <input
-            id="rate-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputClass}
-          />
+          <DatePicker label="Day" id="rate-date" fieldSize="sm" value={date} onChange={setDate} />
         </div>
         <div>
           <label htmlFor="rate-value" className="block text-xs font-medium text-text-tertiary mb-1">
             1 {currency} in {budget}
           </label>
-          <input
+          <Input
             id="rate-value"
             type="text"
             inputMode="decimal"
             value={rate}
             onChange={(e) => setRate(e.target.value)}
             placeholder="1.0812"
-            aria-invalid={(rate !== '' && !rateValid) || undefined}
-            className={`${inputClass} w-32`}
+            isInvalid={rate !== '' && !rateValid}
+            fieldSize="sm"
+            className="w-32"
           />
         </div>
         <Button
@@ -344,16 +337,13 @@ function RateDownload() {
         </p>
       ) : (
         <>
-          <label className="flex items-center gap-3 cursor-pointer max-md:min-h-11">
-            <input
-              type="checkbox"
-              checked={settings.ratesEnabled}
-              onChange={(e) => setDownload.mutate({ enabled: e.target.checked })}
-              disabled={!canSave || setDownload.isPending}
-              className="h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
-            />
-            <span className="text-sm text-text-secondary">Download ECB reference rates</span>
-          </label>
+          <Checkbox
+            checked={settings.ratesEnabled}
+            onCheckedChange={(enabled) => setDownload.mutate({ enabled })}
+            disabled={!canSave || setDownload.isPending}
+          >
+            Download ECB reference rates
+          </Checkbox>
           {settings.ratesEnabled && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
@@ -393,13 +383,12 @@ function RateDownload() {
                   >
                     Server (optional, for your own Frankfurter)
                   </label>
-                  <input
+                  <Input
                     id="rates-url"
                     type="url"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder={settings.defaultRatesUrl ?? ''}
-                    className={`${inputClass} w-full`}
                   />
                 </div>
                 <Button
@@ -461,14 +450,15 @@ function Display() {
               <span className="w-40 text-sm text-text">
                 {code} <span className="text-xs text-text-tertiary">{currencyName(code)}</span>
               </span>
-              <input
+              <Input
                 type="text"
                 aria-label={`${code} symbol`}
                 value={own.symbol ?? ''}
                 placeholder={currencySymbol(code)}
                 maxLength={5}
                 onChange={(e) => setStyle(code, { ...own, symbol: e.target.value || undefined })}
-                className={`${inputClass} w-20 text-center`}
+                fieldSize="sm"
+                className="w-20 text-center"
               />
               <div role="group" aria-label={`${code} symbol position`} className="flex gap-1">
                 {POSITIONS.map((p) => (

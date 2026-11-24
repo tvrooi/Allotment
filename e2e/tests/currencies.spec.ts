@@ -5,6 +5,7 @@ import {
   isoDay,
   thisMonth,
   typeAmount,
+  setToggle,
   categoryOption,
   chooseOption,
 } from './fixtures';
@@ -162,7 +163,7 @@ test('ECB rates download only when turned on', async ({ page, api }) => {
 
   await open(page, '/settings?tab=currencies');
   const download = page.getByRole('checkbox', { name: 'Download ECB reference rates' });
-  await download.click();
+  await setToggle(download);
   await expect(download).toBeChecked();
   await page.getByRole('button', { name: 'Download now' }).click();
   await expect(page.getByText('1 PLN = 0.235294 EUR')).toBeVisible();

@@ -1,3 +1,4 @@
+import { MonthPicker } from '../ui/MonthPicker';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
@@ -8,9 +9,6 @@ import { getBudgetStart, setBudgetStart } from '../../api/budget';
 // (a fresh start mid-month, set when a new budget connects its first bank). Bank history from
 // before you started budgeting stays in the register and reports, but its spending no longer
 // shows as overspent or uncategorised envelopes (server: routes/budget.ts /start).
-
-const inputClass =
-  'px-3 py-1.5 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none';
 
 export function BudgetStartSettings() {
   const qc = useQueryClient();
@@ -61,16 +59,13 @@ export function BudgetStartSettings() {
           save.mutate({ month: value });
         }}
       >
-        <label>
-          <span className="block text-xs font-medium text-text-secondary mb-1">Start month</span>
-          <input
-            type="month"
-            value={value}
-            max={thisMonth}
-            onChange={(e) => setDraft(e.target.value)}
-            className={inputClass}
-          />
-        </label>
+        <MonthPicker
+          label="Start month"
+          value={value}
+          maxValue={thisMonth}
+          onChange={setDraft}
+          className="w-auto"
+        />
         <Button type="submit" disabled={!value || value === current || save.isPending}>
           Start budget here
         </Button>

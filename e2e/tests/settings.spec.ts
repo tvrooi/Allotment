@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import fs from 'fs';
-import { test, expect, open, isoDay, categoryOption, setToggle } from './fixtures';
+import { test, expect, open, isoDay, fillMonth, categoryOption, setToggle } from './fixtures';
 
 // Settings: preferences and the other sections. Categories and groups are managed on the Budget
 // area's Categories page (/budget/categories, #244); its tests live here with the rest.
@@ -520,7 +520,7 @@ test('the budget start keeps older history out of the envelopes', async ({ page,
 
   await open(page, '/settings?tab=budget');
   await expect(page.getByText('Envelopes count all history.')).toBeVisible();
-  await page.getByLabel('Start month').fill(thisMonth);
+  await fillMonth(page, 'Start month', thisMonth);
   await page.getByRole('button', { name: 'Start budget here' }).click();
   await expect(page.getByText(/^Envelopes start in /)).toBeVisible();
   expect(await summary()).toMatchObject({ uncategorized: 0, budgetStartMonth: thisMonth });
