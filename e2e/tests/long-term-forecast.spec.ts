@@ -13,6 +13,9 @@ async function planAction(page: Page, name: 'Duplicate' | 'Rename' | 'Delete') {
  */
 async function pick(page: Page, name: string, option: string) {
   const field = page.getByRole('combobox', { name, exact: true });
+  // Centre the field before opening its list. Scrolling the plan's container closes the list.
+  await field.evaluate((input) => input.scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await field.click();
   // Emptied first, as recurring.spec.ts does: typing over a chosen label does not search
   await field.fill('');
   await field.fill(option);
@@ -190,6 +193,8 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   await page.getByRole('dialog').getByLabel('When: age').fill('55');
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
+  // The new projection changes the height above Compare. Wait for it before opening the list.
+  await expect(page.getByText('Retiring at 55', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Compare' }).click();
   await pick(page, 'Compare with', 'Main plan');
   const comparison = page.getByRole('region', { name: 'Comparison' });

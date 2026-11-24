@@ -82,7 +82,7 @@ Tasks run in the listed order; "after" names the tasks that must be done first.
 ### Task 13: Household page, then finish G4 — [04-11-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-11-PLAN.md), [04-12-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-12-PLAN.md) (after 2 to 12)
 
 - [x] 04-11: `pages/Household.tsx`'s controls, region by region
-- [ ] 04-12: whole-tree gate, cross-screen spec, full check, docs, next `0.2.0-up.N`, the G4 PR to
+- [x] 04-12: whole-tree gate, cross-screen spec, full check, docs, next `0.2.0-up.N`, the G4 PR to
       `redesign` (no merge)
 
 ## G5: the guard (after G4 is merged)
