@@ -82,6 +82,8 @@ function isHalfTyped(group: HTMLElement | null): boolean {
 interface DatePickerFields {
   name?: string;
   label: string;
+  /** For autosave: commit segment edits when leaving the field, picker choices immediately. */
+  onCommit?: (value: string) => void;
   /** Clearing is offered when the date is optional */
   optional?: boolean;
   /** Shows a muted "(optional)" hint beside the label without changing the accessible name */
@@ -129,6 +131,7 @@ export function DatePicker(props: Props) {
     value: controlledValue,
     defaultValue,
     onChange,
+    onCommit,
     name,
     label,
     optional,
@@ -156,6 +159,11 @@ export function DatePicker(props: Props) {
   const isPhone = useIsPhone();
   const format = usePreferencesStore((s) => s.dateFormat);
   const groupRef = useRef<HTMLDivElement>(null);
+  const pendingCommit = useRef<string | undefined>(undefined);
+  const commit = (next: string) => {
+    pendingCommit.current = undefined;
+    onCommit?.(next);
+  };
   // Set when the field is left half-typed; a complete date or the next blur re-checks it
   const [halfTyped, setHalfTyped] = useState(false);
   // The same check as each segment is edited. React Aria gives no value for a half-typed date,
@@ -209,7 +217,10 @@ export function DatePicker(props: Props) {
       <NativePicker
         {...props}
         value={value}
-        onChange={change}
+        onChange={(next) => {
+          change(next);
+          commit(next);
+        }}
         type="date"
         className={className}
         error={invalid ? error : undefined}
@@ -229,13 +240,23 @@ export function DatePicker(props: Props) {
             setDraftHalf(false);
             hold(d.toString());
           }
-          change(d ? d.toString() : '');
+          const next = d ? d.toString() : '';
+          change(next);
+          if (onCommit) {
+            const active = document.activeElement;
+            // Keyboard entry can briefly be a different complete date (e.g. 2 before 24).
+            if (active?.hasAttribute('data-type') && groupRef.current?.contains(active))
+              pendingCommit.current = next;
+            else commit(next);
+          }
         }}
         // Leaving the field is when a half-typed date is named (the "partial" state)
         onFocusChange={(focused) => {
           if (!focused) {
-            setHalfTyped(isHalfTyped(groupRef.current));
+            const half = isHalfTyped(groupRef.current);
+            setHalfTyped(half);
             recheckDraft();
+            if (!half && pendingCommit.current !== undefined) commit(pendingCommit.current);
           }
         }}
         minValue={min ?? undefined}
@@ -277,7 +298,10 @@ export function DatePicker(props: Props) {
               aria-label={`Clear ${subject}`}
               // Not a calendar slot: it empties the field instead of opening the calendar
               slot={null}
-              onPress={() => change('')}
+              onPress={() => {
+                change('');
+                commit('');
+              }}
               className={fieldSize === 'sm' ? pickerIconButtonSm : pickerIconButton}
             >
               <X size={14} aria-hidden />
@@ -339,6 +363,7 @@ export function DatePicker(props: Props) {
                       setDraftHalf(false);
                       hold(todayIso());
                       change(todayIso());
+                      commit(todayIso());
                       close();
                     }}
                     className={pickerShortcutClass}

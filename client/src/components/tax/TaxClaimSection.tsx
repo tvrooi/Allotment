@@ -1,9 +1,11 @@
+import { Checkbox } from '../ui/Checkbox';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TAX_LABEL_NAMES, type TaxLabel } from '../../api/tax';
 import { useClaim, useReceipts, useRemoveClaim, useSetClaim } from '../../hooks/useTax';
 import { formatMoney } from '../../utils/currency';
-import { Input, Select } from '../ui/Input';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import type { Transaction } from '../../types';
 import { ASSET_LABELS, type AssetLabel } from '../../api/assets';
 import { purchaseCost } from '../../utils/purchaseCost';
@@ -96,32 +98,28 @@ export function TaxClaimSection({ tx, currency }: { tx: Transaction; currency: s
 
   return (
     <section aria-label="Tax deduction" className="space-y-2">
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={on}
-          onChange={(e) => {
-            setOn(e.target.checked);
-            if (e.target.checked) store({});
-            else remove.mutate(tx.id);
-          }}
-        />
+      <Checkbox
+        checked={on}
+        onCheckedChange={(checked) => {
+          setOn(checked);
+          if (checked) store({});
+          else remove.mutate(tx.id);
+        }}
+      >
         Claim as a tax deduction
-      </label>
+      </Checkbox>
       {!claim && overLimit && <p className="pl-6">{depreciate}</p>}
       {claim && (
         <div className="space-y-2 pl-6">
           <Select
             aria-label="Tax return label"
             value={claim.label}
-            onChange={(e) => store({ label: e.target.value as TaxLabel })}
-          >
-            {Object.entries(TAX_LABEL_NAMES).map(([label, name]) => (
-              <option key={label} value={label}>
-                {label} {name}
-              </option>
-            ))}
-          </Select>
+            onChange={(label) => store({ label: label as TaxLabel })}
+            options={Object.entries(TAX_LABEL_NAMES).map(([value, name]) => ({
+              value,
+              label: `${value} ${name}`,
+            }))}
+          />
           <div className="flex items-center gap-2">
             <label className="text-xs text-text-secondary" htmlFor={`work-${tx.id}`}>
               Work use

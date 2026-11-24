@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, fillDate } from './fixtures';
 
 // Tax time → Car and home, working from home (D4a, docs/TAX-CAR-AND-HOME.md). Mock data only.
 
@@ -22,7 +22,7 @@ const yearName = `${fy}–${String(fy + 1).slice(2)}`;
 async function addDay(page: import('@playwright/test').Page, date: string, hours: string) {
   await page.getByRole('button', { name: 'Add hours' }).click();
   const form = page.getByRole('dialog', { name: 'Add hours' });
-  await form.getByLabel('Date').fill(date);
+  await fillDate(form, 'Date', date);
   await form.getByLabel('Hours worked at home').fill(hours);
   await form.getByRole('button', { name: 'Save hours' }).click();
   await expect(form).toBeHidden();
@@ -38,8 +38,8 @@ test('hours at home go into D5; a lodged year is amended, then marked lodged aga
   await addDay(page, monday, '8');
   await page.getByRole('button', { name: 'Fill a pattern' }).click();
   const fill = page.getByRole('dialog', { name: 'Fill a pattern' });
-  await fill.getByLabel('From').fill(monday);
-  await fill.getByLabel('To').fill(addDays(monday, 13));
+  await fillDate(fill, 'From', monday);
+  await fillDate(fill, 'To', addDays(monday, 13));
   await fill.getByLabel('Hours each day').fill('7.5');
   await expect(fill.getByRole('status')).toHaveText('Adds 9 days, skips 1 already recorded.');
   await fill.getByRole('button', { name: 'Add 9 days' }).click();

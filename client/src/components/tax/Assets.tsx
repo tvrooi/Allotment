@@ -1,3 +1,7 @@
+import { Radio, RadioGroup } from '../ui/RadioGroup';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
+import { DatePicker } from '../ui/DatePicker';
+import { Checkbox } from '../ui/Checkbox';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Download, ExternalLink as ExternalIcon, Lock, LockOpen, Plus } from 'lucide-react';
@@ -33,7 +37,8 @@ import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { ExternalLink } from '../ui/ExternalLink';
-import { Input, Select } from '../ui/Input';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
 import { FilesSection } from '../files/FilesSection';
 import { formatCurrency } from '../../utils/currency';
@@ -339,16 +344,14 @@ function PoolChoice({ asset, onError }: { asset: Asset; onError: (e: unknown) =>
         {asset.poolOptions.length > 1 && (
           <Select
             aria-label="Pool from"
-            value={fy}
-            onChange={(e) => setFy(Number(e.target.value))}
+            value={String(fy)}
+            onChange={(value) => setFy(Number(value))}
             className="w-32"
-          >
-            {asset.poolOptions.map((o) => (
-              <option key={o.financialYear} value={o.financialYear}>
-                {fyName(o.financialYear)}
-              </option>
-            ))}
-          </Select>
+            options={asset.poolOptions.map((option) => ({
+              value: String(option.financialYear),
+              label: fyName(option.financialYear),
+            }))}
+          />
         )}
         <Button
           size="sm"
@@ -406,6 +409,7 @@ function AssetForm({
   onClose: () => void;
   onSaved: (a: Asset) => void;
 }) {
+  const { allValid, report } = useAmountValidity();
   const [name, setName] = useState(asset?.name ?? prefill?.name ?? '');
   const [label, setLabel] = useState<AssetLabel>(asset?.label ?? prefill?.label ?? 'D5');
   const [cost, setCost] = useState(asset?.cost ?? prefill?.cost ?? 0);
@@ -426,6 +430,7 @@ function AssetForm({
   const lifeHundredths = Math.round(Number(life) * 100);
   const workUseBps = Math.round(Number(workUse) * 100);
   const valid =
+    allValid &&
     cost > 0 &&
     lifeHundredths > 0 &&
     workUseBps >= 1 &&
@@ -447,6 +452,7 @@ function AssetForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!valid || !name.trim()) return;
     setError(null);
     try {
       const saved = (await save.mutateAsync({
@@ -471,183 +477,166 @@ function AssetForm({
   const field = 'block text-xs font-medium text-text-secondary space-y-1';
   return (
     <Modal isOpen onClose={onClose} title={asset ? `Edit ${asset.name}` : 'Add an asset'} size="lg">
-      <form onSubmit={submit} className="space-y-4">
-        {prefill?.claimed && (
-          <p role="note" className="rounded-md border border-caution p-3 text-sm text-caution">
-            This purchase is claimed outright now. Saving the asset replaces that claim with its
-            decline in value, year by year.
-          </p>
-        )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className={field}>
-            <label htmlFor="asset-name" className="block">
-              Name
-            </label>
-            <Input
-              id="asset-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              maxLength={200}
-            />
-          </div>
-          <label className={field}>
-            <span className="block">Tax return label</span>
-            <Select value={label} onChange={(e) => setLabel(e.target.value as AssetLabel)}>
-              {ASSET_LABELS.map((l) => (
-                <option key={l} value={l}>
-                  {l} {TAX_LABEL_NAMES[l] ?? ''}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <div className={field}>
-            <span className="block">Cost (what you paid, GST included)</span>
-            <CurrencyInput value={cost} onChange={setCost} aria-label="Cost" />
-          </div>
-          <div className={field}>
-            <label htmlFor="asset-start" className="block">
-              Start date (first used or installed ready for use)
-            </label>
-            <Input
-              id="asset-start"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
-          </div>
-          <label className={field}>
-            <span className="block">Effective life (years)</span>
-            <Input
-              inputMode="decimal"
-              value={life}
-              onChange={(e) => setLife(e.target.value)}
-              placeholder="e.g. 2"
-              required
-              list="asset-lives"
-            />
-            <datalist id="asset-lives">
-              {SUGGESTED_LIVES.map((s) => (
-                <option key={s.item} value={s.years}>
-                  {s.item}
-                </option>
-              ))}
-            </datalist>
-          </label>
-          <div className={field}>
-            <label htmlFor="asset-work-use" className="block">
-              Work use (%)
-            </label>
-            <Input
-              id="asset-work-use"
-              inputMode="decimal"
-              value={workUse}
-              onChange={(e) => setWorkUse(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-        <div className="text-xs text-text-tertiary space-y-1">
-          <p>
-            Suggested effective lives:{' '}
-            {SUGGESTED_LIVES.map((s, i) => (
-              <span key={s.item}>
-                {i > 0 && ', '}
-                <button
-                  type="button"
-                  className="text-brand-600 hover:text-brand-700 max-md:min-h-11"
-                  onClick={() => setLife(String(s.years))}
-                >
-                  {s.item.toLowerCase()} {s.years} years
-                </button>
-              </span>
-            ))}
-            . From the ATO&rsquo;s table, checked {LIVES_CHECKED}; the ATO revises them.{' '}
-            <ExternalLink href={ATO_EFFECTIVE_LIFE_URL}>
-              Find yours <ExternalIcon size={11} className="inline" />
-            </ExternalLink>
-          </p>
-        </div>
-        {cost > 0 && cost <= 30_000 && (
-          <label className="flex items-start gap-2 text-sm text-text">
-            <input
-              type="checkbox"
-              checked={partOfSet}
-              onChange={(e) => setPartOfSet(e.target.checked)}
-              className="mt-1"
-            />
-            <span>
-              Part of a set, or one of several identical items, costing over $300 in total this year
-              <span className="block text-xs text-text-tertiary">
-                Otherwise an item of $300 or less is claimed at once in Deductions.
-              </span>
-            </span>
-          </label>
-        )}
-
-        <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-text-secondary">Method</legend>
-          <div role="radiogroup" className="flex flex-wrap gap-2">
-            {(['diminishing_value', 'prime_cost'] as AssetMethod[]).map((m) => (
-              <label
-                key={m}
-                className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm max-md:min-h-11 ${
-                  method === m ? 'border-brand-500 bg-brand-50' : 'border-border'
-                } ${asset?.lodgedYears.length ? 'opacity-60' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="method"
-                  value={m}
-                  checked={method === m}
-                  disabled={!!asset?.lodgedYears.length}
-                  onChange={() => setMethod(m)}
-                />
-                {METHOD_NAMES[m]}
-              </label>
-            ))}
-          </div>
-          <p className="text-xs text-text-tertiary">
-            Diminishing value claims more in the first years; prime cost the same each year. Once a
-            lodged year includes the asset, its method can&rsquo;t change.
-          </p>
-          {preview && (
-            <div className="grid gap-4 sm:grid-cols-2 rounded-md bg-surface-alt p-3">
-              <ScheduleTable
-                rows={preview.diminishing_value.slice(0, 5)}
-                caption="Diminishing value"
-              />
-              <ScheduleTable rows={preview.prime_cost.slice(0, 5)} caption="Prime cost" />
-            </div>
+      <AmountFields report={report}>
+        <form onSubmit={submit} className="space-y-4">
+          {prefill?.claimed && (
+            <p role="note" className="rounded-md border border-caution p-3 text-sm text-caution">
+              This purchase is claimed outright now. Saving the asset replaces that claim with its
+              decline in value, year by year.
+            </p>
           )}
-        </fieldset>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className={field}>
+              <label htmlFor="asset-name" className="block">
+                Name
+              </label>
+              <Input
+                id="asset-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={200}
+              />
+            </div>
+            <Select
+              label="Tax return label"
+              value={label}
+              onChange={(value) => setLabel(value as AssetLabel)}
+              options={ASSET_LABELS.map((value) => ({
+                value,
+                label: `${value} ${TAX_LABEL_NAMES[value] ?? ''}`,
+              }))}
+            />
+            <div className={field}>
+              <span className="block">Cost (what you paid, GST included)</span>
+              <CurrencyInput value={cost} onChange={setCost} aria-label="Cost" />
+            </div>
+            <div className={field}>
+              <DatePicker
+                id="asset-start"
+                label="Start date (first used or installed ready for use)"
+                value={startDate}
+                onChange={setStartDate}
+                isRequired
+              />
+            </div>
+            <label className={field}>
+              <span className="block">Effective life (years)</span>
+              <Input
+                inputMode="decimal"
+                value={life}
+                onChange={(e) => setLife(e.target.value)}
+                placeholder="e.g. 2"
+                required
+                list="asset-lives"
+              />
+              <datalist id="asset-lives">
+                {SUGGESTED_LIVES.map((s) => (
+                  <option key={s.item} value={s.years}>
+                    {s.item}
+                  </option>
+                ))}
+              </datalist>
+            </label>
+            <div className={field}>
+              <label htmlFor="asset-work-use" className="block">
+                Work use (%)
+              </label>
+              <Input
+                id="asset-work-use"
+                inputMode="decimal"
+                value={workUse}
+                onChange={(e) => setWorkUse(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="text-xs text-text-tertiary space-y-1">
+            <p>
+              Suggested effective lives:{' '}
+              {SUGGESTED_LIVES.map((s, i) => (
+                <span key={s.item}>
+                  {i > 0 && ', '}
+                  <button
+                    type="button"
+                    className="text-brand-600 hover:text-brand-700 max-md:min-h-11"
+                    onClick={() => setLife(String(s.years))}
+                  >
+                    {s.item.toLowerCase()} {s.years} years
+                  </button>
+                </span>
+              ))}
+              . From the ATO&rsquo;s table, checked {LIVES_CHECKED}; the ATO revises them.{' '}
+              <ExternalLink href={ATO_EFFECTIVE_LIFE_URL}>
+                Find yours <ExternalIcon size={11} className="inline" />
+              </ExternalLink>
+            </p>
+          </div>
+          {cost > 0 && cost <= 30_000 && (
+            <Checkbox
+              checked={partOfSet}
+              onCheckedChange={setPartOfSet}
+              description="Otherwise an item of $300 or less is claimed at once in Deductions."
+            >
+              Part of a set, or one of several identical items, costing over $300 in total this year
+            </Checkbox>
+          )}
 
-        <div className={field}>
-          <label htmlFor="asset-notes" className="block">
-            Notes
-          </label>
-          <Input
-            id="asset-notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={5000}
-          />
-        </div>
-        {error && (
-          <p role="alert" className="text-sm text-negative">
-            {error}
-          </p>
-        )}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!valid || !name.trim() || save.isPending}>
-            {asset ? 'Save' : prefill?.claimed ? 'Depreciate instead' : 'Add asset'}
-          </Button>
-        </div>
-      </form>
+          <div className="space-y-2">
+            <RadioGroup
+              label="Method"
+              value={method}
+              onChange={(value) => setMethod(value as AssetMethod)}
+              isDisabled={!!asset?.lodgedYears.length}
+              orientation="horizontal"
+            >
+              {(['diminishing_value', 'prime_cost'] as AssetMethod[]).map((value) => (
+                <Radio key={value} value={value}>
+                  {METHOD_NAMES[value]}
+                </Radio>
+              ))}
+            </RadioGroup>
+            <p className="text-xs text-text-tertiary">
+              Diminishing value claims more in the first years; prime cost the same each year. Once
+              a lodged year includes the asset, its method can&rsquo;t change.
+            </p>
+            {preview && (
+              <div className="grid gap-4 sm:grid-cols-2 rounded-md bg-surface-alt p-3">
+                <ScheduleTable
+                  rows={preview.diminishing_value.slice(0, 5)}
+                  caption="Diminishing value"
+                />
+                <ScheduleTable rows={preview.prime_cost.slice(0, 5)} caption="Prime cost" />
+              </div>
+            )}
+          </div>
+
+          <div className={field}>
+            <label htmlFor="asset-notes" className="block">
+              Notes
+            </label>
+            <Input
+              id="asset-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={5000}
+            />
+          </div>
+          {error && (
+            <p role="alert" className="text-sm text-negative">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!valid || !name.trim() || save.isPending}>
+              {asset ? 'Save' : prefill?.claimed ? 'Depreciate instead' : 'Add asset'}
+            </Button>
+          </div>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }
@@ -850,61 +839,56 @@ function WorkUseCell({
 }
 
 function DisposeForm({ asset, onClose }: { asset: Asset; onClose: () => void }) {
+  const { allValid, report } = useAmountValidity();
   const [date, setDate] = useState(today());
   const [value, setValue] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const dispose = useAssetMutation(() => disposeAsset(asset.id, date, value));
   return (
     <Modal isOpen onClose={onClose} title={`Sold or no longer used: ${asset.name}`}>
-      <form
-        className="space-y-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setError(null);
-          try {
-            await dispose.mutateAsync(undefined);
-            onClose();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Could not save');
-          }
-        }}
-      >
-        <p className="text-sm text-text-secondary">
-          Sold, lost, destroyed, or never to be used again. What it brought in (sale price or
-          insurance payout) less its value on that day is a balancing adjustment: a shortfall is a
-          deduction, an excess is income. Any capital gain on a private-use share is outside what
-          Allotment works out.
-        </p>
-        <div className="block text-xs font-medium text-text-secondary space-y-1">
-          <label htmlFor="dispose-date" className="block">
-            Date
-          </label>
-          <Input
-            id="dispose-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-        </div>
-        <div className="block text-xs font-medium text-text-secondary space-y-1">
-          <span className="block">What it brought in (0 if nothing)</span>
-          <CurrencyInput value={value} onChange={setValue} aria-label="Termination value" />
-        </div>
-        {error && (
-          <p role="alert" className="text-sm text-negative">
-            {error}
+      <AmountFields report={report}>
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!allValid || !date) return;
+            setError(null);
+            try {
+              await dispose.mutateAsync(undefined);
+              onClose();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not save');
+            }
+          }}
+        >
+          <p className="text-sm text-text-secondary">
+            Sold, lost, destroyed, or never to be used again. What it brought in (sale price or
+            insurance payout) less its value on that day is a balancing adjustment: a shortfall is a
+            deduction, an excess is income. Any capital gain on a private-use share is outside what
+            Allotment works out.
           </p>
-        )}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={dispose.isPending}>
-            Record disposal
-          </Button>
-        </div>
-      </form>
+          <div className="block text-xs font-medium text-text-secondary space-y-1">
+            <DatePicker id="dispose-date" label="Date" value={date} onChange={setDate} isRequired />
+          </div>
+          <div className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">What it brought in (0 if nothing)</span>
+            <CurrencyInput value={value} onChange={setValue} aria-label="Termination value" />
+          </div>
+          {error && (
+            <p role="alert" className="text-sm text-negative">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!allValid || !date || dispose.isPending}>
+              Record disposal
+            </Button>
+          </div>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }

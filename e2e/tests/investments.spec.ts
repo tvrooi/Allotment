@@ -1,4 +1,13 @@
-import { test, expect, open, isoDay, typeAmount, fillDate, setToggle } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  typeAmount,
+  fillDate,
+  setToggle,
+  chooseOption,
+} from './fixtures';
 
 // P3 investments (docs/INVESTMENTS.md): manual holdings, prices and purchases, kept apart from
 // the ledger until the user records a value. Mock data only.
@@ -127,9 +136,10 @@ test('sells chosen parcels and shows the capital gain on Tax time', async ({ pag
   const year =
     Number(soldOn.slice(5, 7)) >= 7 ? Number(soldOn.slice(0, 4)) : Number(soldOn.slice(0, 4)) - 1;
   await open(page, '/tax');
-  await page
-    .getByLabel('Financial year')
-    .selectOption({ label: `${year}–${String(year + 1).slice(2)}` });
+  await chooseOption(
+    page.getByRole('button', { name: /Financial year/ }),
+    `${year}–${String(year + 1).slice(2)}`,
+  );
   const section = page.getByRole('region', { name: 'Capital gains (item 18)' });
   await expect(
     section.getByRole('row', { name: /18H Total current year capital gains/ }),
@@ -191,9 +201,10 @@ test('records a franked dividend, links its deposit and shows item 11', async ({
   const year =
     Number(paidOn.slice(5, 7)) >= 7 ? Number(paidOn.slice(0, 4)) : Number(paidOn.slice(0, 4)) - 1;
   await open(page, '/tax');
-  await page
-    .getByLabel('Financial year')
-    .selectOption({ label: `${year}–${String(year + 1).slice(2)}` });
+  await chooseOption(
+    page.getByRole('button', { name: /Financial year/ }),
+    `${year}–${String(year + 1).slice(2)}`,
+  );
   const section = page.getByRole('region', { name: 'Dividends and interest (items 10 and 11)' });
   await expect(section.getByRole('row', { name: /11T Franked amount/ })).toContainText(
     /A?\$70(\.00)?/,

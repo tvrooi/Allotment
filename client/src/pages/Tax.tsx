@@ -6,7 +6,9 @@ import { StatCardRow } from '../components/reports/ChartHelpers';
 import { ReceiptDrop, ReceiptThumb } from '../components/tax/ReceiptsSection';
 import { Button } from '../components/ui/Button';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
-import { Input, Select } from '../components/ui/Input';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { DatePicker } from '../components/ui/DatePicker';
 import {
   receiptFileUrl,
   taxYearArchiveUrl,
@@ -129,20 +131,15 @@ function Deductions() {
   return (
     <div className="space-y-5 max-w-5xl">
       <div data-guide="tax.year" className="flex flex-wrap items-end gap-3">
-        <label className="text-xs font-medium text-text-secondary space-y-1">
+        <div className="text-xs font-medium text-text-secondary space-y-1">
           <span className="block">Financial year (1 July to 30 June)</span>
           <Select
             aria-label="Financial year"
-            value={fy ?? ''}
-            onChange={(e) => setFy(Number(e.target.value))}
-          >
-            {years.map((y) => (
-              <option key={y.financialYear} value={y.financialYear}>
-                {y.name}
-              </option>
-            ))}
-          </Select>
-        </label>
+            value={fy === null ? '' : String(fy)}
+            onChange={(value) => setFy(Number(value))}
+            options={years.map((year) => ({ value: String(year.financialYear), label: year.name }))}
+          />
+        </div>
         {year &&
           (year.claims.length > 0 ||
             year.assets.length > 0 ||
@@ -756,6 +753,7 @@ function InboxItem({ receipt }: { receipt: Receipt }) {
   const remove = useDeleteReceipt();
   const { data: matches = [] } = useReceiptMatches(receipt.id);
   const [merchant, setMerchant] = useState(receipt.merchant ?? '');
+  const [receiptDate, setReceiptDate] = useState(receipt.receiptDate ?? '');
   const save = (change: Parameters<typeof update.mutate>[0]['change']) =>
     update.mutate({ id: receipt.id, change });
   return (
@@ -786,11 +784,15 @@ function InboxItem({ receipt }: { receipt: Receipt }) {
               (merchant || null) !== receipt.merchant && save({ merchant: merchant || null })
             }
           />
-          <Input
-            aria-label="Receipt date"
-            type="date"
-            value={receipt.receiptDate ?? ''}
-            onChange={(e) => save({ receiptDate: e.target.value || null })}
+          <DatePicker
+            label="Receipt date"
+            hideLabel
+            optional
+            value={receiptDate}
+            onChange={setReceiptDate}
+            onCommit={(date) => {
+              if ((date || null) !== receipt.receiptDate) save({ receiptDate: date || null });
+            }}
           />
           <CurrencyInput
             aria-label="Receipt total"

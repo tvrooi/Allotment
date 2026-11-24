@@ -1,3 +1,4 @@
+import { Checkbox } from '../ui/Checkbox';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
@@ -16,7 +17,10 @@ import { FilesSection } from '../files/FilesSection';
 import { Button } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ExternalLink } from '../ui/ExternalLink';
-import { Input, Select } from '../ui/Input';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
+import { DatePicker } from '../ui/DatePicker';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Modal } from '../ui/Modal';
 import { fyName } from '../../api/assets';
 import { formatCurrency } from '../../utils/currency';
@@ -52,21 +56,15 @@ export default function CarAndHome() {
 
   return (
     <div className="space-y-5 max-w-3xl">
-      <label className="block text-xs font-medium text-text-secondary space-y-1">
+      <div className="text-xs font-medium text-text-secondary space-y-1">
         <span className="block">Financial year (1 July to 30 June)</span>
         <Select
           aria-label="Financial year"
-          className="w-48"
-          value={fy ?? ''}
-          onChange={(e) => setFy(Number(e.target.value))}
-        >
-          {years.map((y) => (
-            <option key={y.financialYear} value={y.financialYear}>
-              {y.name}
-            </option>
-          ))}
-        </Select>
-      </label>
+          value={fy === null ? '' : String(fy)}
+          onChange={(value) => setFy(Number(value))}
+          options={years.map((year) => ({ value: String(year.financialYear), label: year.name }))}
+        />
+      </div>
       {fy !== null && home && <WorkingFromHome fy={fy} home={home} />}
     </div>
   );
@@ -232,6 +230,7 @@ function WorkingFromHome({ fy, home }: { fy: number; home: HomeDetail }) {
 /** Adds a day's hours, or edits one (its date stays) */
 function DayModal({ fy, day, onClose }: { fy: number; day: HomeDay | null; onClose: () => void }) {
   const canSave = useCanSave();
+  const { allValid, report } = useAmountValidity();
   const save = useHomeMutation((a: { date: string; minutes: number; notes: string | null }) =>
     setHomeDay(a.date, { minutes: a.minutes, notes: a.notes }),
   );
@@ -242,66 +241,60 @@ function DayModal({ fy, day, onClose }: { fy: number; day: HomeDay | null; onClo
   const [notes, setNotes] = useState(day?.notes ?? '');
   const [error, setError] = useState('');
   const minutes = parseDuration(hours);
-  const valid = !!date && minutes !== null;
+  const valid = allValid && !!date && minutes !== null;
   return (
     <Modal isOpen onClose={onClose} title={day ? 'Edit hours' : 'Add hours'} size="sm">
-      <form
-        className="space-y-3"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!valid) return;
-          try {
-            await save.mutateAsync({ date, minutes, notes: notes.trim() || null });
-            onClose();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Could not save');
-          }
-        }}
-      >
-        <label className="block text-xs font-medium text-text-secondary space-y-1">
-          <span className="block">Date</span>
-          <Input
-            type="date"
-            value={date}
-            disabled={!!day}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </label>
-        <label className="block text-xs font-medium text-text-secondary space-y-1">
-          <span className="block">Hours worked at home</span>
-          <Input
-            type="text"
-            inputMode="decimal"
-            placeholder="7.5 or 7:30"
-            value={hours}
-            onChange={(e) => setHours(e.target.value)}
-          />
-        </label>
-        <label className="block text-xs font-medium text-text-secondary space-y-1">
-          <span className="block">Notes (optional)</span>
-          <Input
-            type="text"
-            maxLength={500}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </label>
-        {hours && minutes === null && (
-          <p className="text-xs text-negative">
-            Use hours between 0:01 and 24, such as 7.5 or 7:30.
-          </p>
-        )}
-        {error && <p className="text-sm text-negative">{error}</p>}
-        <SavingPausedHint className="text-right" />
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!valid || !canSave || save.isPending}>
-            Save hours
-          </Button>
-        </div>
-      </form>
+      <AmountFields report={report}>
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!valid) return;
+            try {
+              await save.mutateAsync({ date, minutes, notes: notes.trim() || null });
+              onClose();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not save');
+            }
+          }}
+        >
+          <DatePicker label="Date" value={date} isDisabled={!!day} onChange={setDate} />
+          <label className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">Hours worked at home</span>
+            <Input
+              type="text"
+              inputMode="decimal"
+              placeholder="7.5 or 7:30"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+            />
+          </label>
+          <label className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">Notes (optional)</span>
+            <Input
+              type="text"
+              maxLength={500}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </label>
+          {hours && minutes === null && (
+            <p className="text-xs text-negative">
+              Use hours between 0:01 and 24, such as 7.5 or 7:30.
+            </p>
+          )}
+          {error && <p className="text-sm text-negative">{error}</p>}
+          <SavingPausedHint className="text-right" />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!valid || !canSave || save.isPending}>
+              Save hours
+            </Button>
+          </div>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }
@@ -309,6 +302,7 @@ function DayModal({ fy, day, onClose }: { fy: number; day: HomeDay | null; onClo
 /** The same hours on chosen weekdays across a range, after a confirmation; recorded days are kept */
 function FillModal({ fy, onClose }: { fy: number; onClose: () => void }) {
   const canSave = useCanSave();
+  const { allValid, report } = useAmountValidity();
   const fill = useHomeMutation((a: Parameters<typeof fillHome>[0]) => fillHome(a));
   const today = todayIso();
   const [from, setFrom] = useState(fyStart(fy));
@@ -318,7 +312,7 @@ function FillModal({ fy, onClose }: { fy: number; onClose: () => void }) {
   const [error, setError] = useState('');
   const minutes = parseDuration(hours);
   const input = { from, to, weekdays, minutes: minutes ?? 0 };
-  const ready = !!from && !!to && weekdays.length > 0 && minutes !== null;
+  const ready = allValid && !!from && !!to && weekdays.length > 0 && minutes !== null;
   const preview = useQuery({
     queryKey: ['tax', 'home', 'fill-preview', from, to, weekdays.join(), minutes],
     queryFn: () => fillHome(input, true),
@@ -328,90 +322,87 @@ function FillModal({ fy, onClose }: { fy: number; onClose: () => void }) {
   const previewError = preview.error instanceof Error ? preview.error.message : '';
   return (
     <Modal isOpen onClose={onClose} title="Fill a pattern" size="sm">
-      <form
-        className="space-y-3"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!ready || !preview.data) return;
-          try {
-            await fill.mutateAsync(input);
-            onClose();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Could not save');
-          }
-        }}
-      >
-        <p className="text-xs text-text-tertiary">
-          Writes the same hours on the days you choose, within {fyName(fy)}. A day you already
-          recorded is never changed. The hours must match what you actually worked.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">From</span>
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label className="block text-xs font-medium text-text-secondary space-y-1">
-            <span className="block">To</span>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </label>
-        </div>
-        <fieldset>
-          <legend className="text-xs font-medium text-text-secondary mb-1">Days of the week</legend>
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {WEEKDAYS.map(([n, name]) => (
-              <label key={n} className="flex items-center gap-1 text-sm min-h-8">
-                <input
-                  type="checkbox"
+      <AmountFields report={report}>
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!ready || !preview.data) return;
+            try {
+              await fill.mutateAsync(input);
+              onClose();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not save');
+            }
+          }}
+        >
+          <p className="text-xs text-text-tertiary">
+            Writes the same hours on the days you choose, within {fyName(fy)}. A day you already
+            recorded is never changed. The hours must match what you actually worked.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <DatePicker label="From" value={from} onChange={setFrom} />
+            <DatePicker label="To" value={to} onChange={setTo} />
+          </div>
+          <fieldset>
+            <legend className="text-xs font-medium text-text-secondary mb-1">
+              Days of the week
+            </legend>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {WEEKDAYS.map(([n, name]) => (
+                <Checkbox
+                  key={n}
                   checked={weekdays.includes(n)}
-                  onChange={(e) =>
-                    setWeekdays(
-                      e.target.checked ? [...weekdays, n].sort() : weekdays.filter((w) => w !== n),
+                  onCheckedChange={(checked) =>
+                    setWeekdays((days) =>
+                      checked ? [...days, n].sort() : days.filter((day) => day !== n),
                     )
                   }
-                />
-                {name}
-              </label>
-            ))}
+                >
+                  {name}
+                </Checkbox>
+              ))}
+            </div>
+          </fieldset>
+          <label className="block text-xs font-medium text-text-secondary space-y-1">
+            <span className="block">Hours each day</span>
+            <Input
+              type="text"
+              inputMode="decimal"
+              placeholder="7.5 or 7:30"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+            />
+          </label>
+          {preview.data && (
+            <p role="status" className="text-sm text-text">
+              Adds {preview.data.added} day{preview.data.added === 1 ? '' : 's'}, skips{' '}
+              {preview.data.skipped} already recorded.
+            </p>
+          )}
+          {(previewError || error) && (
+            <p role="alert" className="text-sm text-negative">
+              {error || previewError}
+            </p>
+          )}
+          <SavingPausedHint className="text-right" />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                !ready || !preview.data || preview.data.added === 0 || !canSave || fill.isPending
+              }
+            >
+              {preview.data
+                ? `Add ${preview.data.added} day${preview.data.added === 1 ? '' : 's'}`
+                : 'Add days'}
+            </Button>
           </div>
-        </fieldset>
-        <label className="block text-xs font-medium text-text-secondary space-y-1">
-          <span className="block">Hours each day</span>
-          <Input
-            type="text"
-            inputMode="decimal"
-            placeholder="7.5 or 7:30"
-            value={hours}
-            onChange={(e) => setHours(e.target.value)}
-          />
-        </label>
-        {preview.data && (
-          <p role="status" className="text-sm text-text">
-            Adds {preview.data.added} day{preview.data.added === 1 ? '' : 's'}, skips{' '}
-            {preview.data.skipped} already recorded.
-          </p>
-        )}
-        {(previewError || error) && (
-          <p role="alert" className="text-sm text-negative">
-            {error || previewError}
-          </p>
-        )}
-        <SavingPausedHint className="text-right" />
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={
-              !ready || !preview.data || preview.data.added === 0 || !canSave || fill.isPending
-            }
-          >
-            {preview.data
-              ? `Add ${preview.data.added} day${preview.data.added === 1 ? '' : 's'}`
-              : 'Add days'}
-          </Button>
-        </div>
-      </form>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }
