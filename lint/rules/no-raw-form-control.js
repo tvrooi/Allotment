@@ -37,9 +37,9 @@ export default {
             items: {
               type: 'object',
               properties: {
-                file: { type: 'string' },
+                file: { type: 'string', minLength: 1 },
                 element: { enum: ['input', 'select', 'textarea'] },
-                reason: { type: 'string' },
+                reason: { type: 'string', minLength: 1 },
               },
               required: ['file', 'element', 'reason'],
               additionalProperties: false,

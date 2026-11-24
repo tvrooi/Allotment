@@ -92,7 +92,9 @@ export default tseslint.config(
   },
   {
     files: ['client/src/**/*.tsx'],
-    ignores: ['**/*.test.tsx', 'client/src/components/ui/**'],
+    // Runs in components/ui too: the rule itself lets the shared set use native elements there,
+    // but still refuses type="number"
+    ignores: ['**/*.test.tsx'],
     plugins: { allotment },
     rules: {
       'allotment/no-raw-form-control': [

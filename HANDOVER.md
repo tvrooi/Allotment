@@ -11,7 +11,7 @@ Last updated: 24 November 2026 (Wave G4 merged; Wave G5 guard and doc cleanup op
 
 ## State
 
-- **Wave G5** (up.182), branch `feat/phase-04-g5` (PR into `redesign`): adds `allotment/no-raw-form-control`, removes `ui/Input.tsx`'s old `Select`, updates UI docs and retires the UI wave handover file. The owner’s UAT 03 tests 1 and 2 are still pending.
+- **Wave G5** (up.182), branch `feat/phase-04-g5` (PR #287 into `redesign`): adds `allotment/no-raw-form-control`, removes `ui/Input.tsx`'s old `Select`, updates UI docs and retires the UI wave handover file. The owner’s UAT 03 tests 1 and 2 are still pending.
 - **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
 - **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
 - **Unreleased on `redesign`:** up.154 to up.181 are prepared (up.182 is on the G5 PR) (versions and CHANGELOG entries) but not tagged.

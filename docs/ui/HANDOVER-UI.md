@@ -1,7 +1,7 @@
 # UI handover
 
 Overwritten at the end of each UI session, never appended. Wave G5 entry written 24 November 2026
-(branch `feat/phase-04-g5`, up.182, PR into `redesign`); Wave G4 merged 24 November 2026
+(branch `feat/phase-04-g5`, up.182, PR #287 into `redesign`); Wave G4 merged 24 November 2026
 (PR #284, up.181); UAT 03 round 2 merged 24 November 2026 (PR #283, up.180); UAT 03 fixes entry
 22 November 2026 (PR #280, up.178, merged into `redesign`); Wave G3 entry written 21 November 2026
 (PR #279 from `feat/wave-g3-screens`, up.177, merged into `redesign`); Wave G2 entry 20 November 2026 (PR #278,
@@ -11,7 +11,7 @@ for the revised PR #273 (branch `wave-f`, up.174, merged); Wave E entry 13 Novem
 
 ## Done this session
 
-- Wave G5 (#267, WAVG-09, WAVG-10; up.182, branch `feat/phase-04-g5`, PR into `redesign`):
+- Wave G5 (#267, WAVG-09, WAVG-10; up.182, branch `feat/phase-04-g5`, PR #287 into `redesign`):
   added ESLint rule `allotment/no-raw-form-control` (`lint/rules/no-raw-form-control.js` +
   `no-raw-form-control.test.js`) as an error over `client/src/**/*.tsx` outside
   `client/src/components/ui/`, refusing raw `<input>`, `<select>`, `<textarea>` (except static
