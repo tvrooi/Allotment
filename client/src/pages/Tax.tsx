@@ -790,9 +790,7 @@ function InboxItem({ receipt }: { receipt: Receipt }) {
             optional
             value={receiptDate}
             onChange={setReceiptDate}
-            onCommit={(date) => {
-              if ((date || null) !== receipt.receiptDate) save({ receiptDate: date || null });
-            }}
+            onCommit={(date) => save({ receiptDate: date || null })}
           />
           <CurrencyInput
             aria-label="Receipt total"

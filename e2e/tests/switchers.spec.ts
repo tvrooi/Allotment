@@ -312,9 +312,15 @@ test('links Up to an account that already has history, from a cut-over date', as
   const [year, month, day] = next.toISOString().slice(0, 10).split('-');
   await expect(cutoverField.locator('[data-type="year"]')).toHaveText(year);
   await expect(cutoverField.locator('[data-type="month"]')).toHaveText(month);
-  await expect(cutoverField.locator('[data-type="day"]')).toHaveText(day);
+  const daySegment = cutoverField.locator('[data-type="day"]');
+  await expect(daySegment).toHaveText(day);
   await expect(dialog).toContainText('stays as it is');
   await expect(dialog).toContainText('onwards are imported');
+  await daySegment.click();
+  for (let i = 0; i < 4 && (await daySegment.getAttribute('data-placeholder')) === null; i++)
+    await daySegment.press('Backspace');
+  await expect(daySegment).toHaveAttribute('data-placeholder', 'true');
+  await expect(dialog.getByRole('button', { name: 'Save & Sync' })).toBeDisabled();
   await fillDate(dialog, 'Cut-over date for Up Everyday', cutover);
   await chooseOption(dialog.getByRole('button', { name: /Set up Up Saver/ }), 'Skip this account');
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();

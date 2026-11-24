@@ -179,7 +179,7 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## In progress
 
-- None committed half-done. `redesign` is ahead of `main`; up.154 to up.178 are prepared, not tagged.
+- `redesign` is ahead of `main`, with prepared versions up.154 through up.179.
 - Wave G shared form controls (#267): G0, the audit, is
   [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md) (PR #275): every field and selector in
   `client/src` with its file and line, what it becomes and the phase that moves it.

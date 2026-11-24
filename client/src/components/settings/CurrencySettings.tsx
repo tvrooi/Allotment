@@ -1,5 +1,6 @@
 import { Input } from '../ui/Input';
 import { DatePicker } from '../ui/DatePicker';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Checkbox } from '../ui/Checkbox';
 import { useState } from 'react';
 import { format } from 'date-fns';
@@ -165,6 +166,7 @@ function MissingRates() {
 }
 
 function Rates() {
+  const { allValid, report } = useAmountValidity();
   const { data: settings } = useCurrencySettings();
   const budget = settings?.currency ?? null;
   const foreign = settings?.foreignCurrencies ?? [];
@@ -182,10 +184,11 @@ function Rates() {
 
   const rateText = rate.trim().replace(',', '.');
   const rateValid = parseRate(rateText) !== null;
+  const ready = allValid && !!date && rateValid && currency !== budget && canSave && !add.isPending;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!rateValid || currency === budget) return;
+    if (!ready) return;
     add.mutate(
       { date, base: currency, quote: budget!, rate: rateText },
       { onSuccess: () => setRate('') },
@@ -238,7 +241,9 @@ function Rates() {
           />
         </div>
         <div>
-          <DatePicker label="Day" id="rate-date" fieldSize="sm" value={date} onChange={setDate} />
+          <AmountFields report={report}>
+            <DatePicker label="Day" id="rate-date" fieldSize="sm" value={date} onChange={setDate} />
+          </AmountFields>
         </div>
         <div>
           <label htmlFor="rate-value" className="block text-xs font-medium text-text-tertiary mb-1">
@@ -256,11 +261,7 @@ function Rates() {
             className="w-32"
           />
         </div>
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!rateValid || currency === budget || add.isPending || !canSave || !date}
-        >
+        <Button type="submit" size="sm" disabled={!ready}>
           Add rate
         </Button>
       </form>

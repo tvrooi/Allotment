@@ -3,8 +3,7 @@
 How the design re-review backlog (issues #222 to #245) is being worked through on `redesign`, and
 where to pick up. Read after [README.md](README.md) and [HANDOVER-UI.md](HANDOVER-UI.md). Update
 the **Status** and **Open PRs** sections whenever a wave PR opens, merges or is sent back; delete
-this file when Wave G has merged (owner, 15 November 2026). Last written 22 November 2026, when
-the UAT 03 fixes were prepared.
+this file when Wave G has merged (owner, 15 November 2026). Updated 24 November 2026 for the Wave G4 draft.
 
 ## Roles
 

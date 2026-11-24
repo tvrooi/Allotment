@@ -2,6 +2,7 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Combobox } from '../ui/Combobox';
 import { DatePicker } from '../ui/DatePicker';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -131,6 +132,7 @@ export function UpConnectModal(props: Props) {
 }
 
 function UpConnectDialog({ isOpen, onClose }: Props) {
+  const { allValid, report } = useAmountValidity();
   const [token, setToken] = useState('');
   const [discovered, setDiscovered] = useState<UpDiscoveredAccount[] | null>(null);
   const [choices, setChoices] = useState<UpMappingChoice[]>([]);
@@ -187,6 +189,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
   }
 
   async function save() {
+    if (!canSave || busy || invalidChoice) return;
     setBusy(true);
     setError(null);
     try {
@@ -211,6 +214,7 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
   }
 
   const invalidChoice =
+    !allValid ||
     choices.every((m) => m.action === 'skip') ||
     choices.some(
       (m) =>
@@ -400,15 +404,17 @@ function UpConnectDialog({ isOpen, onClose }: Props) {
                       <div className="space-y-1">
                         <div>
                           <p className="text-xs text-text-secondary mb-1">Up takes over from</p>
-                          <DatePicker
-                            label={`Cut-over date for ${a.name}`}
-                            hideLabel
-                            value={choice.cutoverDate}
-                            isDisabled={busy}
-                            onChange={(date) =>
-                              update(a.upAccountId, { cutoverDate: date || undefined })
-                            }
-                          />
+                          <AmountFields report={report}>
+                            <DatePicker
+                              label={`Cut-over date for ${a.name}`}
+                              hideLabel
+                              value={choice.cutoverDate}
+                              isDisabled={busy}
+                              onChange={(date) =>
+                                update(a.upAccountId, { cutoverDate: date || undefined })
+                              }
+                            />
+                          </AmountFields>
                         </div>
                         <p className="text-xs text-text-secondary">
                           Your existing history up to {formatDay(dayBefore(choice.cutoverDate))}{' '}
