@@ -84,7 +84,6 @@ export function CombinedHousehold({ group, people }: Props) {
       onChange={setPartnerPersonId}
       placeholder={`Who are they in ${group.name}?`}
       fieldSize="sm"
-      menuTrigger="focus"
       items={others.map((person) => ({ value: person.id, label: person.name }))}
     />
   );
@@ -147,7 +146,6 @@ export function CombinedHousehold({ group, people }: Props) {
                   onChange={setPartnerId}
                   placeholder="Combine with…"
                   fieldSize="sm"
-                  menuTrigger="focus"
                   items={data.people.map((person) => ({ value: person.id, label: person.name }))}
                 />
               </div>

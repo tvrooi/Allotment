@@ -1,4 +1,4 @@
-import { chooseOption, setToggle } from '../fixtures';
+import { setToggle } from '../fixtures';
 import fs from 'fs';
 import { test, expect, type Page } from '@playwright/test';
 import { caughtMail } from '../../mailCatcher';
@@ -156,11 +156,10 @@ test("two people combine their households and see each other's entries", async (
   // Combining lives in the household's Settings tab (da18c99)
   await owner.getByRole('tab', { name: 'Settings', exact: true }).click();
   const ask = owner.getByRole('region', { name: 'Combine with another Allotment user' });
-  await chooseOption(ask.getByRole('combobox', { name: 'Combine with' }), 'Edward');
-  await chooseOption(
-    ask.getByRole('combobox', { name: 'Who they are in this household' }),
-    'Edward',
-  );
+  await ask.getByRole('combobox', { name: 'Combine with' }).fill('Edward');
+  await owner.getByRole('option', { name: 'Edward', exact: true }).click();
+  await ask.getByRole('combobox', { name: 'Who they are in this household' }).fill('Edward');
+  await owner.getByRole('option', { name: 'Edward', exact: true }).click();
   await ask.getByRole('button', { name: 'Ask to combine' }).click();
   await expect(ask.getByText('Waiting for Edward to accept.')).toBeVisible();
 
@@ -169,10 +168,8 @@ test("two people combine their households and see each other's entries", async (
   await partner.getByRole('tab', { name: 'Settings', exact: true }).click();
   const accept = partner.getByRole('region', { name: 'Combine with another Allotment user' });
   await expect(accept.getByText('Tristan asked to combine')).toBeVisible();
-  await chooseOption(
-    accept.getByRole('combobox', { name: 'Who Tristan is in Our place' }),
-    'Tristan',
-  );
+  await accept.getByRole('combobox', { name: 'Who Tristan is in Our place' }).fill('Tristan');
+  await partner.getByRole('option', { name: 'Tristan', exact: true }).click();
   await accept.getByRole('button', { name: 'Combine with Our place' }).click();
   await expect(accept.getByText('Combined with Tristan.')).toBeVisible();
 
