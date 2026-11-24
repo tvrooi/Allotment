@@ -1,3 +1,4 @@
+import { Checkbox } from '../ui/Checkbox';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -228,24 +229,22 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
                   </div>
                 ) : null}
                 <BillAmount bill={b} currency={currency} />
-                <label className="flex items-center gap-2 text-xs text-text-secondary min-h-8 max-md:min-h-11">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-brand-600"
-                    checked={!!b.autoShareFrom}
-                    disabled={busy}
-                    onChange={(e) =>
-                      update.mutate({
-                        scheduleId: b.scheduleId,
-                        changes: { autoShare: e.target.checked },
-                      })
-                    }
-                  />
+                <Checkbox
+                  aria-label="Share new payments automatically"
+                  checked={!!b.autoShareFrom}
+                  disabled={busy}
+                  onCheckedChange={(autoShare) =>
+                    update.mutate({
+                      scheduleId: b.scheduleId,
+                      changes: { autoShare },
+                    })
+                  }
+                >
                   Share new payments automatically
                   {b.autoShareFrom && (
-                    <span className="text-text-tertiary">(from {formatDay(b.autoShareFrom)})</span>
+                    <span className="text-text-tertiary"> (from {formatDay(b.autoShareFrom)})</span>
                   )}
-                </label>
+                </Checkbox>
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
                   <p className="text-xs text-text-tertiary">
                     {b.payments.length === 0
@@ -319,20 +318,17 @@ export function RecurringBills({ groupId, currency, people, bills, hasPool = fal
               Which bills do you share?
             </legend>
             {candidates.map((s) => (
-              <label key={s.id} className="flex items-center gap-3 text-sm text-text min-h-9">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-brand-600"
-                  checked={picked.includes(s.id)}
-                  onChange={(e) =>
-                    setPicked(
-                      e.target.checked ? [...picked, s.id] : picked.filter((x) => x !== s.id),
-                    )
-                  }
-                />
+              <Checkbox
+                key={s.id}
+                aria-label={s.name}
+                checked={picked.includes(s.id)}
+                onCheckedChange={(checked) =>
+                  setPicked((ids) => (checked ? [...ids, s.id] : ids.filter((id) => id !== s.id)))
+                }
+              >
                 <span className="flex-1">{s.name}</span>
-                <span className="tabular-nums text-text-secondary">{money(-s.amount)}</span>
-              </label>
+                <span className="ml-2 tabular-nums text-text-secondary">{money(-s.amount)}</span>
+              </Checkbox>
             ))}
           </fieldset>
           <div className="flex justify-end gap-2 mt-2">

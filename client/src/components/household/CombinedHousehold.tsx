@@ -16,7 +16,8 @@ import { useAuthStatus } from '../../hooks/useServer';
 import { formatMoney } from '../../utils/currency';
 import { formatDay, formatDayTime } from '../../utils/dates';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
+import { Textarea } from '../ui/Textarea';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { PayeeIcon } from '../payees/PayeeIcon';
 
@@ -77,18 +78,15 @@ export function CombinedHousehold({ group, people }: Props) {
   const link = data.links.find((l) => l.groupId === group.id);
   const asked = data.links.filter((l) => l.role === 'invitee' && l.status === 'pending');
   const whoIsThem = (label: string) => (
-    <Select
+    <Combobox
       aria-label={label}
       value={partnerPersonId}
-      onChange={(e) => setPartnerPersonId(e.target.value)}
-    >
-      <option value="">Who are they in {group.name}?</option>
-      {others.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name}
-        </option>
-      ))}
-    </Select>
+      onChange={setPartnerPersonId}
+      placeholder={`Who are they in ${group.name}?`}
+      fieldSize="sm"
+      menuTrigger="focus"
+      items={others.map((person) => ({ value: person.id, label: person.name }))}
+    />
   );
 
   return (
@@ -143,18 +141,15 @@ export function CombinedHousehold({ group, people }: Props) {
           ) : (
             <>
               <div className="w-48">
-                <Select
+                <Combobox
                   aria-label="Combine with"
                   value={partnerId}
-                  onChange={(e) => setPartnerId(e.target.value)}
-                >
-                  <option value="">Combine with…</option>
-                  {data.people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={setPartnerId}
+                  placeholder="Combine with…"
+                  fieldSize="sm"
+                  menuTrigger="focus"
+                  items={data.people.map((person) => ({ value: person.id, label: person.name }))}
+                />
               </div>
               <div className="w-56">{whoIsThem('Who they are in this household')}</div>
               <Button
@@ -410,14 +405,14 @@ function EntryDetail({
         <label className="block font-semibold text-text-secondary" htmlFor={`note-${e.key}`}>
           Shared note
         </label>
-        <textarea
+        <Textarea
           id={`note-${e.key}`}
           value={text}
           maxLength={2000}
           rows={2}
           onChange={(ev) => setText(ev.target.value)}
           placeholder="What it was for: you can both edit this"
-          className="mt-1 block w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text focus:border-brand-600 focus:outline-none"
+          className="mt-1 w-full"
         />
         <div className="mt-1 flex items-center justify-between gap-2">
           <span className="text-text-tertiary">

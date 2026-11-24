@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { updateTransaction } from '../../api/transactions';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { formatMoney } from '../../utils/currency';
 
 /**
@@ -87,19 +87,25 @@ export function RepaymentCategoryOffers({
                 {o.description}, {formatMoney(o.amount, currency)}
                 {o.direction === 'from_you' && ' (you paid)'}
               </span>
-              <Select
-                aria-label={`Category for ${o.description}`}
-                className="w-auto"
-                value={categoryId}
-                onChange={(e) => setChosen({ ...chosen, [o.eventId]: e.target.value })}
-              >
-                {o.candidates.map((c) => (
-                  <option key={c.categoryId} value={c.categoryId}>
-                    {c.name} ({o.direction === 'from_you' ? 'you owed' : 'owed'}{' '}
-                    {formatMoney(c.amount, currency)})
-                  </option>
-                ))}
-              </Select>
+              <div className="w-52">
+                <CategorySelectButton
+                  label={`Category for ${o.description}`}
+                  value={categoryId}
+                  onChange={(id) => {
+                    if (id) setChosen((prev) => ({ ...prev, [o.eventId]: id }));
+                  }}
+                  categoryIds={o.candidates.map((candidate) => candidate.categoryId)}
+                  allowNone={false}
+                  allowCreate={false}
+                  includeHidden
+                  hint={(id) => {
+                    const candidate = o.candidates.find((c) => c.categoryId === id);
+                    return candidate
+                      ? `(${o.direction === 'from_you' ? 'you owed' : 'owed'} ${formatMoney(candidate.amount, currency)})`
+                      : '';
+                  }}
+                />
+              </div>
               <Button
                 size="sm"
                 disabled={categorise.isPending}

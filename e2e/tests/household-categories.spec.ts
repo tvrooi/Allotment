@@ -70,9 +70,9 @@ test('offers a category for your repayment to someone, from what they paid', asy
   await open(page, `/household?household=${group.group.id}`);
   const offers = page.getByRole('region', { name: 'Categorise repayments' });
   await expect(offers.getByText(/Paid Sam back.*\(you paid\)/)).toBeVisible();
-  await expect(offers.getByRole('combobox', { name: 'Category for Paid Sam back' })).toHaveValue(
-    restaurants.id,
-  );
+  await expect(
+    offers.getByRole('button', { name: 'Category for Paid Sam back: Restaurants', exact: true }),
+  ).toBeVisible();
   await offers.getByRole('button', { name: 'Categorise' }).click();
   await expect(offers).toHaveCount(0);
   const [row] = await api.transactions(`?accountId=${spending.id}`);

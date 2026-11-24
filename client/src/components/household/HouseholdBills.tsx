@@ -1,3 +1,4 @@
+import { Checkbox } from '../ui/Checkbox';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { setHouseholdIncludesBills } from '../../api/households';
@@ -32,23 +33,15 @@ export function HouseholdBills({ groupId, includeBills }: Props) {
       <h2 id="household-bills-setting" className="text-base font-semibold text-text">
         Bills
       </h2>
-      <label className="mt-2 flex items-start gap-3 text-sm text-text min-h-9 max-md:min-h-11">
-        <input
-          type="checkbox"
-          className="mt-0.5 h-4 w-4 accent-brand-600"
-          checked={includeBills}
-          disabled={!canSave || toggle.isPending}
-          onChange={(e) => toggle.mutate(e.target.checked)}
-        />
-        <span>
-          Include bills in this household
-          <span className="block text-xs text-text-tertiary mt-0.5">
-            On: recurring and one-off bills, and what the household account covers. Off: just shared
-            costs and who owes whom, like splitting groceries and outings. Turning it off hides
-            bills; nothing is deleted.
-          </span>
-        </span>
-      </label>
+      <Checkbox
+        className="mt-2"
+        checked={includeBills}
+        disabled={!canSave || toggle.isPending}
+        onCheckedChange={(checked) => toggle.mutate(checked)}
+        description="On: recurring and one-off bills, and what the household account covers. Off: just shared costs and who owes whom, like splitting groceries and outings. Turning it off hides bills; nothing is deleted."
+      >
+        Include bills in this household
+      </Checkbox>
       {error && (
         <p role="alert" className="mt-1 text-xs text-negative">
           {error}

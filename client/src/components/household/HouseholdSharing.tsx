@@ -14,7 +14,7 @@ import {
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
 import { SplitEditor, describeSplit } from './SplitEditor';
 import { HouseholdIcon } from './HouseholdIcon';
 
@@ -139,17 +139,16 @@ export function HouseholdSharing({ group, people }: Props) {
         ))}
       </ul>
       <div className="mt-2 flex gap-2 items-end">
-        <label className="grid gap-1 text-xs text-text-secondary flex-1">
-          Add an account
-          <Select value={adding} onChange={(e) => setAdding(e.target.value)}>
-            <option value="">Choose an account</option>
-            {candidates.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <Combobox
+          label="Add an account"
+          value={adding}
+          onChange={setAdding}
+          placeholder="Choose an account"
+          className="flex-1 min-w-0"
+          fieldSize="sm"
+          menuTrigger="focus"
+          items={candidates.map((account) => ({ value: account.id, label: account.name }))}
+        />
         <Button
           size="sm"
           variant="secondary"
