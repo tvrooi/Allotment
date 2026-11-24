@@ -1,17 +1,34 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. UAT 03 round 2 entry written 23 November 2026
-(branch `fix/uat-03-selection-colour-and-date`, up.180, PR into `redesign`, not merged); UAT 03 fixes entry
+Overwritten at the end of each UI session, never appended. Wave G5 entry written 24 November 2026
+(branch `feat/phase-04-g5`, up.182, PR #287 into `redesign`); Wave G4 merged 24 November 2026
+(PR #284, up.181); UAT 03 round 2 merged 24 November 2026 (PR #283, up.180); UAT 03 fixes entry
 22 November 2026 (PR #280, up.178, merged into `redesign`); Wave G3 entry written 21 November 2026
 (PR #279 from `feat/wave-g3-screens`, up.177, merged into `redesign`); Wave G2 entry 20 November 2026 (PR #278,
 up.176, merged into `redesign`). Wave F entry rewritten 15 November 2026
-for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
+for the revised PR #273 (branch `wave-f`, up.174, merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
 (PRs #262 and #259). Other entries last written 11 November 2026 from `redesign` (head `cf2e2f0`). Older detail: grep `docs/handover/ARCHIVE.md`.
 
 ## Done this session
 
-- UAT 03 round 2 (#267; up.180, branch `fix/uat-03-selection-colour-and-date`, PR into `redesign`,
-  not merged). G-03-4, the owner's words "Don't move the list": a selected row or phone card shows
+- Wave G5 (#267, WAVG-09, WAVG-10; up.182, branch `feat/phase-04-g5`, PR #287 into `redesign`):
+  added ESLint rule `allotment/no-raw-form-control` (`lint/rules/no-raw-form-control.js` +
+  `no-raw-form-control.test.js`) as an error over `client/src/**/*.tsx` outside
+  `client/src/components/ui/`, refusing raw `<input>`, `<select>`, `<textarea>` (except static
+  `<input type="file">` and explicit `D-17` allowlist entries in `lint/eslint.config.js`, currently
+  empty) and refusing `type="number"` anywhere; removed the old `Select` export, `compactSelectClass`
+  and `inputClass` from `ui/Input.tsx` (and its `Input.test.ts` case); removed `Select` and
+  `MoneyInput` from `jsx-a11y/label-has-associated-control` `controlComponents` while keeping the
+  119-warning cap; verified zero remaining callers of `CategorySelect`, `selectorInputClass`,
+  `MoneyInput` and `ui/Input`'s `Select` across `client/src`, `e2e/` and active docs; updated
+  `DESIGN.md`, `docs/ui/MAP.md`, `CLAUDE.md`, `AGENTS.md`, `docs/ui/README.md` and `HANDOVER.md`,
+  and deleted `docs/ui/WAVES.md` per the owner's 19 November 2026 decision after moving still-true
+  traps here.
+- Wave G4 (#267, WAVG-07, WAVG-08; up.181, PR #284, merged into `redesign`): Settings, Connected
+  banks, sign-in, Command Palette, Dashboard, Payment plans, Review, Tax and Household now use the
+  shared controls (`CategorySelect` removed, `utils/noNumberInput.test.ts` enforcing zero
+  `type="number"` fields).
+- UAT 03 round 2 (#267; up.180, PR #283, merged into `redesign`). G-03-4, the owner's words "Don't move the list": a selected row or phone card shows
   only by colour (`SELECTED_ROW`: `bg-brand-100` and a 3 px brand bar on its left edge), with no
   checkbox. While selecting, a plain click or tap toggles a row (the planner's choice; it no longer
   opens details), and the row itself is the checkbox for assistive technology (`role="checkbox"`,
@@ -179,38 +196,15 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## In progress
 
-- `redesign` is ahead of `main`, with prepared versions up.154 through up.179.
-- Wave G shared form controls (#267): G0, the audit, is
-  [FORM-CONTROLS-AUDIT.md](FORM-CONTROLS-AUDIT.md) (PR #275): every field and selector in
-  `client/src` with its file and line, what it becomes and the phase that moves it.
-- G1, the shared control set (merged into `redesign` as #277, with #264): `client/src/components/ui/`
-  has `Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`, `RadioGroup`, `Switch`,
-  `DatePicker`, `MonthPicker`, `Label` and `Field`, on `react-aria-components` (already a
-  dependency; no new package). Their class strings live in one place, `ui/fieldClasses.ts`;
-  default messages and the control's subject in `ui/fieldMessages.ts`. Phones get native select,
-  date and month controls. Fixes: the disabled Switch reads as disabled (#264), placeholders
-  meet 4.5:1, and a field shows one focus mark. The DatePicker gains a Today shortcut.
-- The gallery: a development-only page at `/dev/controls` (the dev server, or a
-  `vite build --mode gallery` build); every other build swaps it for a stub, and
-  `e2e/tests/gallery-absent.spec.ts` checks that. Its Playwright project is `gallery`; the
-  screenshot test compares committed Linux baselines in `e2e/tests/gallery/__screenshots__/`,
-  checked with `bash e2e/gallery-baselines.sh` and remade with `--update` (Playwright's Linux
-  container; macOS skips the pixel tests). Look at every changed image before committing it.
-  Specs drive the controls through `chooseOption`, `categoryOption`, `fillDate` and `fillMonth`
-  in `e2e/tests/fixtures.ts`.
-- `MonthRangePicker` was rebuilt in this phase, at the owner's request (D-11, 17 November 2026),
-  on MonthPicker's `MonthGrid` inside React Aria's dialog, with two native month inputs (From and
-  To) on phones and its props unchanged. Its three users are `reports/DateRangeControl.tsx`,
-  `reports/ReportBuilderSidebar.tsx` and `pages/CashFlow.tsx`.
-- G4 (up.181, branch `feat/phase-04-g4`, stacked on #283) moves Settings, Connected banks,
-  sign-in, Command Palette, Dashboard, Payment plans, Review, Tax and Household. Cash flow already
-  uses MonthRangePicker. Named Select, Combobox, CurrencyInput, DatePicker and Checkbox fields
-  preserve Household's form values. Tags use Select's swatch trigger. Receipt date segments
-  save when the user leaves the field. The source scan in `utils/noNumberInput.test.ts` checks
-  there are no native number fields.
-- G5, after G4 merges, adds the raw form control lint rule, removes the old native Select export
-  in `ui/Input.tsx`, and updates the shared control guidance. The owner's UAT 03 tests 1 and 2,
-  real iPhone and VoiceOver pass, and password-manager check remain open.
+- `redesign` holds prepared versions up.154 through up.181 (up.182 is on the Wave G5 PR).
+- Wave G shared form controls (#267) is complete in code: G0 audit (`FORM-CONTROLS-AUDIT.md`, PR #275),
+  G1 shared controls (`ui/`, PR #277), G2 everyday money (PR #278), G3 planning/reports/files/import
+  (PR #279), UAT 03 fixes and round 2 (PRs #280 and #283), and G4 remaining screens (PR #284) are
+  merged into `redesign`; G5 (`feat/phase-04-g5`, up.182) adds `allotment/no-raw-form-control`,
+  removes the old `ui/Input.tsx` `Select`, updates the docs and retires `WAVES.md`.
+- Still open for the owner: UAT 03 tests 1 and 2, real iPhone and VoiceOver check, password-manager
+  check on the credential forms, and PR #284's Codex follow-up on `client/src/pages/Tax.tsx`
+  receipt-date draft sync.
 
 ## Next up (issues)
 
@@ -236,10 +230,12 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - A $0 Ready to assign never says an unqualified "all done" while a caveat remains: the label names
   the caveat, and the figure keeps the normal text colour (14 November 2026, #241).
 - Long-range forecast amounts use `formatWholeCurrency`; forecasts are dotted with a ring at today.
-- Pickers (Wave G1, #267, replacing Wave E's short-list rule): categories use `CategoryPicker`,
-  payees use `PayeeCombobox`, a fixed list uses `Select` (`components/ui/Select.tsx`), and a list
-  the user grows uses `Combobox`; phones get native select, date and month controls. A bounded
-  number uses `NumberField`, money `CurrencyInput` (D-14). G2, G3 and G4 use these controls. G5 removes the old native `Select` in `ui/Input.tsx`.
+- Pickers and form controls (Wave G, #267, replacing Wave E's short-list rule): fields come only
+  from `client/src/components/ui/` (`allotment/no-raw-form-control` in `lint/rules/no-raw-form-control.js`,
+  allowlist in `lint/eslint.config.js`). Categories use `CategoryPicker`, payees use `PayeeCombobox`,
+  a fixed list uses `Select` (`components/ui/Select.tsx`), and a list the user grows uses
+  `Combobox`; phones get native select, date and month controls. A bounded number uses `NumberField`,
+  money `CurrencyInput` (never `type="number"`). The old `ui/Input` `Select` was removed in G5.
 - The register's selection (owner, 21 November 2026, UAT tests 1 and 2): transactions are selected
   one by one or all at once and changed from the right-click menu, with no edit dialog. Owner
   decision A, given during planning on 21 November 2026: the calm phone category list (no
@@ -262,8 +258,21 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
   never a hand-typed path or `?tab=`: `movedSections.test.ts` fails on a spelled-out path.
 - Guide markers on Budget: `budget.categories` marks the envelope list (two guides target it); the
   header's Categories link is `budget.manage-categories`.
-- `docs/ui/WAVES.md` is kept until Wave G merges (owner, 15 November 2026); update its Status and
-  Open PRs when a wave PR opens, merges or is sent back.
+- Node: CI runs Node 24 (`PATH=/usr/local/bin:$PATH` on the owner's Mac); Node 26 breaks 11 client
+  Safe mode tests.
+- e2e ports are fixed (`e2e/ports.ts`, #251), so two worktrees cannot run browser tests at once.
+  Run full projects (`desktop`, `phone`, `demo`, `server-mode`, `multi-user`, `gallery`) rather than
+  subsets, and run `cd e2e && npx tsc --noEmit` before pushing (CI runs it before any shard).
+- CI `npx playwright install --with-deps` has flaked once; check the failing step before blaming
+  the change, then `gh run rerun <id> --failed`.
+- Date and timing in tests: `toISOString()` fails east of UTC before 11:00; 390 px overflow checks
+  must wait for the phone layout (`phoneWidth(page)` in `household.spec.ts`).
+- Menus in animated panels: `RowMenu` closes on scroll events; use `overflow-clip` instead of
+  `overflow-hidden` inside a scrollable box.
+- Lazy chunks offline: warm while online and guard with `utils/retryingImport.ts`.
+- Lint cap (`lint/package.json`): fix new warnings rather than raising `--max-warnings`.
+- `aria-disabled` rows: Playwright `click()` waits forever; dispatch click and assert nothing happened.
+- Making a shared call do more (e.g. `undoStore.push`): search every caller so notices do not double up.
 
 - The register has one selection (`utils/registerSelection.ts`): never add a second. Selection is
   shown by colour only, and the selection bar covers the toolbar rather than pushing the list: a new

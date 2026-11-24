@@ -15,7 +15,11 @@ cd lint && npm ci && npm test && npm run lint
 - **Icon-only controls.** A button or link that holds only an icon needs an `aria-label`
   (`rules/icon-only-control.js`, an error; audit F-15). jsx-a11y's own rule trusts any component
   child, so it never saw a lucide icon.
-- **Tests.** `npm test` runs three groups with node's test runner: the rule above, WCAG contrast
+- **Form controls.** Raw `<input>`, `<select>` and `<textarea>` elements outside
+  `client/src/components/ui/` and any `type="number"` field are errors
+  (`rules/no-raw-form-control.js`, Wave G WAVG-09); static file inputs are allowed and any other
+  native exception requires an explicit `{ file, element, reason }` entry in `eslint.config.js`.
+- **Tests.** `npm test` runs three groups with node's test runner: the rules above, WCAG contrast
   of the theme's text colours in both themes (`tokens/`, read from `client/src/index.css`), and
   the retired names that must not come back (`terms/`, from docs/GLOSSARY.md).
 - **Warnings are a burn-down.** These are accessibility (jsx-a11y, audit F-15), `any` outside

@@ -7,29 +7,22 @@ UI sessions start at [docs/ui/README.md](docs/ui/README.md) instead.
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 24 November 2026 (Wave G4 is prepared on top of UAT 03 round 2).
+Last updated: 24 November 2026 (Wave G4 merged; Wave G5 guard and doc cleanup open for review).
 
 ## State
 
-- **Wave G4** (up.181), draft PR #284, branch `feat/phase-04-g4`, stacks on #283. The owner’s UAT 03 tests 1 and 2 are still pending.
+- **Wave G5** (up.182), branch `feat/phase-04-g5` (PR #287 into `redesign`): adds `allotment/no-raw-form-control`, removes `ui/Input.tsx`'s old `Select`, updates UI docs and retires the UI wave handover file. The owner’s UAT 03 tests 1 and 2 are still pending.
 - **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
 - **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
-- **Unreleased on `redesign`:** up.154 to up.179 are prepared (up.180 is on an open PR) (versions and CHANGELOG entries) but not tagged.
+- **Unreleased on `redesign`:** up.154 to up.181 are prepared (up.182 is on the G5 PR) (versions and CHANGELOG entries) but not tagged.
   The owner has not yet decided how `redesign` is released; do not tag or publish until they do.
-- Design re-review waves (issues #222 to #245) are in progress on `redesign`: status, open PRs and
-  the routine are in `docs/ui/WAVES.md`.
-- Waves G2 (#267, up.176, PR #278), G3 (up.177, PR #279) and the UAT 03 fixes (up.178, PR #280:
-  the register selects transactions and edits them from the right-click menu with Undo) are merged
-  into `redesign`.
+- Wave G shared form controls (PRs #275, #277, #278, #279, #280, #283, #284; up.175 to up.181)
+  are merged into `redesign`; current UI handover and traps are in [docs/ui/HANDOVER-UI.md](docs/ui/HANDOVER-UI.md).
 - The demo has sample records on every tab (up.179, PR #281): a household,
   receipts and files that open and can be edited in the tab (`server/src/demo/demoFiles.ts`), tax
   claims, a depreciating asset, a lodged year, pay later, a long-term plan and loan terms.
-- **UAT 03 round 2** (up.180, branch `fix/uat-03-selection-colour-and-date`, PR into `redesign`,
-  open for the owner's review and merge): selected register rows show by colour only, with no
-  checkbox, and the selection bar covers the toolbar so the list never moves (G-03-4); the iPhone
-  Date value in Add transaction is vertically centred (G-03-3). Owner checks after merge: UAT
-  test 49 on an iPhone and a re-run of G-03-4. Then Phase 4 (Settings, bank connections, the
-  shelved pages, the lint rule) starts (`docs/ui/HANDOVER-UI.md`).
+- Owner checks still open after Wave G: UAT 03 tests 1 and 2 (test 49 on an iPhone and a re-run of
+  G-03-4) and password-manager checks (`docs/ui/HANDOVER-UI.md`).
 - **Planning:** specs, plans and where the milestone stands are in
   [docs/superpowers/README.md](docs/superpowers/README.md) (Superpowers workflow). GSD was retired on
   23 November 2026; its records are in `docs/superpowers/gsd-records/`.

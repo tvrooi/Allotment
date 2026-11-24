@@ -89,12 +89,12 @@ Tasks run in the listed order; "after" names the tasks that must be done first.
 
 ### Task 14: Reconcile G5 and add the lint rule — [04-13-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-13-PLAN.md)
 
-- [ ] Done
+- [x] Done
 
 ### Task 15: Remove what the shared set replaced (D-22) — [04-14-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-14-PLAN.md) (after 14)
 
-- [ ] Done
+- [x] Done
 
 ### Task 16: Finish G5: docs, version, the G5 PR — [04-15-PLAN.md](../gsd-records/phases/04-remaining-screens-and-the-guard/04-15-PLAN.md) (after 14, 15)
 
-- [ ] Done; tick this plan and update "Where things stand" in `docs/superpowers/README.md`.
+- [x] Done; tick this plan and update "Where things stand" in `docs/superpowers/README.md`.
