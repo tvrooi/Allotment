@@ -13,24 +13,22 @@ Last updated: 23 November 2026 (planning moved from GSD to Superpowers; UAT 03 r
 
 - **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
 - **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
-- **Unreleased on `redesign`:** up.154 to up.179 are prepared (versions and CHANGELOG entries) but not tagged.
+- **Unreleased on `redesign`:** up.154 to up.179 are prepared (up.180 is on an open PR) (versions and CHANGELOG entries) but not tagged.
   The owner has not yet decided how `redesign` is released; do not tag or publish until they do.
 - Design re-review waves (issues #222 to #245) are in progress on `redesign`: status, open PRs and
   the routine are in `docs/ui/WAVES.md`.
-- Waves G2 (#267, up.176, PR #278) and G3 (up.177, PR #279) are merged into `redesign`. The UAT 03
-  fixes (up.178, branch `feat/uat-03-selection-and-phone-pickers`, PR #280 into `redesign`, open for
-  the owner's review and merge): the register selects transactions one by one or all at once and
-  edits them from the right-click menu with Undo (the Edit dialog and the unused
-  `POST /api/transactions/review` route are gone), and Add transaction's phone category list opens
-  without the keyboard. After the owner merges it and re-runs UAT tests 1 and 2, Phase 4 (Settings,
-  bank connections, the shelved pages, the lint rule) starts (`docs/ui/HANDOVER-UI.md`).
-- The demo has sample records on every tab (up.179, branch `feat/demo-every-tab`): a household,
+- Waves G2 (#267, up.176, PR #278), G3 (up.177, PR #279) and the UAT 03 fixes (up.178, PR #280:
+  the register selects transactions and edits them from the right-click menu with Undo) are merged
+  into `redesign`.
+- The demo has sample records on every tab (up.179, PR #281): a household,
   receipts and files that open and can be edited in the tab (`server/src/demo/demoFiles.ts`), tax
   claims, a depreciating asset, a lodged year, pay later, a long-term plan and loan terms.
-- **Paused, 22 November 2026: UAT 03 round 2** (G-03-3 iPhone date centring, G-03-4 colour-only
-  selection). The code is done and verified on two unpushed branches; the PR, docs and version are
-  left. Pick up from [docs/handover/UAT-03-ROUND-2.md](docs/handover/UAT-03-ROUND-2.md) and its
-  checklist plan in `docs/superpowers/plans/`.
+- **UAT 03 round 2** (up.180, branch `fix/uat-03-selection-colour-and-date`, PR into `redesign`,
+  open for the owner's review and merge): selected register rows show by colour only, with no
+  checkbox, and the selection bar covers the toolbar so the list never moves (G-03-4); the iPhone
+  Date value in Add transaction is vertically centred (G-03-3). Owner checks after merge: UAT
+  test 49 on an iPhone and a re-run of G-03-4. Then Phase 4 (Settings, bank connections, the
+  shelved pages, the lint rule) starts (`docs/ui/HANDOVER-UI.md`).
 - **Planning:** specs, plans and where the milestone stands are in
   [docs/superpowers/README.md](docs/superpowers/README.md) (Superpowers workflow). GSD was retired on
   23 November 2026; its records are in `docs/superpowers/gsd-records/`.

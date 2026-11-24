@@ -10,6 +10,7 @@ import {
   chooseOption,
   fillDate,
   setToggle,
+  tokenColour,
   type Api,
 } from './fixtures';
 import { startDesktopServer, stopDesktopServer } from './serverControl';
@@ -1698,7 +1699,7 @@ test.describe('Select all makes the whole list the selection', () => {
       );
     await page.getByRole('button', { name: 'Select all 3' }).click();
     await expect(bar(page)).toContainText('All 3 selected');
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }), false);
+    await page.getByRole('checkbox', { name: /^Select Mock two/ }).uncheck();
     await expect(bar(page)).toContainText('2 selected');
     await expect(bar(page)).not.toContainText('All 3 selected');
 
@@ -1720,7 +1721,7 @@ test.describe('Select all makes the whole list the selection', () => {
   test('a row unticked after Select all is not deleted', async ({ page, api }) => {
     const checking = await threeRows(api, page);
     await page.getByRole('button', { name: 'Select all 3' }).click();
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }), false);
+    await page.getByRole('checkbox', { name: /^Select Mock two/ }).uncheck();
     await bar(page).getByRole('button', { name: 'More actions' }).click();
     await page.getByRole('menuitem', { name: 'Delete 2' }).click();
     const dialog = page.getByRole('dialog', { name: 'Delete 2 transactions' });
@@ -1753,9 +1754,10 @@ test.describe('Select all makes the whole list the selection', () => {
     await page.getByRole('button', { name: 'Select all 1' }).click();
     await expect(bar(page)).toContainText('All 1 selected');
 
-    // The whole-list selection does not carry over to a list the owner has not chosen
+    // The whole-list selection does not carry over to a list the owner has not chosen.
+    // SelectionSummary ("2 transactions") is invisible under the selection bar while selecting (03-33).
     await page.getByRole('button', { name: 'All time' }).click();
-    await expect(page.getByText('2 transactions')).toBeVisible();
+    await expect(page.getByTestId('transaction-row')).toHaveCount(2);
     await expect(bar(page)).toContainText('0 selected');
     await expect(bar(page)).not.toContainText('All');
     await expect(page.getByRole('checkbox', { name: /^Select / })).toHaveCount(2);
@@ -1818,8 +1820,8 @@ test('ticked transactions are marked reviewed from the right-click menu, the res
 
   await open(page, `/accounts/${checking.id}`);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+  await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Mock two/ }).check();
   await expect(page.getByRole('region', { name: 'Selected transactions' })).toContainText(
     '2 selected',
   );
@@ -1871,8 +1873,8 @@ test('ticked transactions take a new payee from the right-click menu', async ({ 
 
   await open(page, `/accounts/${checking.id}`);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+  await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Mock two/ }).check();
 
   await row(page, 'Mock one').click({ button: 'right' });
   const menu = page.getByRole('menu', { name: 'Actions for 2 selected transactions' });
@@ -1949,8 +1951,8 @@ test.describe('deleting ticked transactions from the selection menu', () => {
     const { checking } = await threeRows(api);
     await open(page, `/accounts/${checking.id}`);
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+    await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
+    await page.getByRole('checkbox', { name: /^Select Mock two/ }).check();
 
     await row(page, 'Mock one').click({ button: 'right' });
     await page
@@ -1979,8 +1981,8 @@ test.describe('deleting ticked transactions from the selection menu', () => {
     await api.call('PUT', `/accounts/${checking.id}/reconcile`, { transactionIds: [ids[2]] });
     await open(page, `/accounts/${checking.id}`);
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock three/ }));
+    await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
+    await page.getByRole('checkbox', { name: /^Select Mock three/ }).check();
 
     await row(page, 'Mock one').click({ button: 'right' });
     await page
@@ -2011,8 +2013,8 @@ test.describe('the selection menu makes the changes the Edit dialog did', () => 
       await api.createTransaction({ accountId: checking.id, date: isoDay(), amount, payeeName });
     await open(page, `/accounts/${checking.id}`);
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+    await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
+    await page.getByRole('checkbox', { name: /^Select Mock two/ }).check();
     /** One field of every register row, by payee */
     const field = async (name: string) =>
       Object.fromEntries(
@@ -2120,7 +2122,7 @@ test.describe('the selection menu makes the changes the Edit dialog did', () => 
     await expect(menu.getByRole('menuitem', { name: /tag$/ })).toHaveCount(0);
     await page.keyboard.press('Escape');
 
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }), false);
+    await page.getByRole('checkbox', { name: /^Select Mock two/ }).uncheck();
     await row(page, 'Mock one').click({ button: 'right' });
     await page
       .getByRole('menu', { name: 'Actions for 1 selected transaction' })
@@ -2148,8 +2150,8 @@ test.describe('the selection menu makes the changes the Edit dialog did', () => 
     });
     await open(page, `/accounts/${checking.id}`);
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
-    await setToggle(page.getByRole('checkbox', { name: /^Select Transfer: / }));
+    await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
+    await page.getByRole('checkbox', { name: /^Select Transfer to Rainy Day Savings/ }).check();
 
     await row(page, 'Mock one').click({ button: 'right' });
     await page
@@ -2215,8 +2217,8 @@ test('while saving is paused the selection menu offers no change, then offers th
   await api.call('POST', '/tags', { name: 'Holiday' });
   await open(page, `/accounts/${checking.id}`);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock one/ }));
-  await setToggle(page.getByRole('checkbox', { name: /^Select Mock two/ }));
+  await page.getByRole('checkbox', { name: /^Select Mock one/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Mock two/ }).check();
 
   const menu = page.getByRole('menu', { name: 'Actions for 2 selected transactions' });
   const hint = 'Saving is paused until Allotment reconnects.';
@@ -2317,11 +2319,10 @@ test.describe('selecting transactions in the register', () => {
     await expect(boxes(page).nth(4)).not.toBeChecked();
     await expect(page.getByRole('complementary', { name: 'Transaction details' })).toHaveCount(0);
 
-    // A plain click (on the payee, not a button in the row) still opens the row's details, and
-    // the selection stays
+    // While selecting, a plain click toggles the row instead of opening details (owner, UAT G-03-4)
     await rows.nth(4).click({ position: { x: 80, y: 12 } });
-    await expect(page.getByRole('complementary', { name: 'Transaction details' })).toBeVisible();
-    await expect(bar(page)).toContainText('4 selected');
+    await expect(page.getByRole('complementary', { name: 'Transaction details' })).toHaveCount(0);
+    await expect(bar(page)).toContainText('5 selected');
   });
 
   test('Shift+click on the anchor row selects exactly that row, and a range goes either way', async ({
@@ -2354,8 +2355,8 @@ test.describe('selecting transactions in the register', () => {
   }) => {
     await fiveRows(api, page);
     await page.getByRole('button', { name: 'Select', exact: true }).click();
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock alpha/ }));
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock bravo/ }));
+    await page.getByRole('checkbox', { name: /^Select Mock alpha/ }).check();
+    await page.getByRole('checkbox', { name: /^Select Mock bravo/ }).check();
     await expect(bar(page)).toContainText('2 selected');
 
     await page.getByPlaceholder('Search payee or notes…').fill('alpha');
@@ -2383,10 +2384,254 @@ test.describe('selecting transactions in the register', () => {
     await page.keyboard.press('Escape');
 
     // One selected row: the selection's menu, for that row only
-    await setToggle(page.getByRole('checkbox', { name: /^Select Mock alpha/ }));
+    await page.getByRole('checkbox', { name: /^Select Mock alpha/ }).check();
     await rows.filter({ hasText: 'Mock alpha' }).click({ button: 'right' });
     await expect(
       page.getByRole('menu', { name: 'Actions for 1 selected transaction' }),
     ).toBeVisible();
+  });
+
+  test('a selected row changes colour, shows no checkbox, and nothing in it moves', async ({
+    page,
+    api,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const rows = await fiveRows(api, page);
+    await expect(rows).toHaveCount(5);
+    const firstRowText = await rows.nth(0).innerText();
+    const firstPayee = names.find((name) => firstRowText.includes(name));
+    expect(firstPayee).toBeDefined();
+    const firstAmount = `-$${names.indexOf(firstPayee!) + 1}`;
+    const brand100 = await tokenColour(page, '--color-brand-100');
+    const brand600 = await tokenColour(page, '--color-brand-600');
+    const surface = await tokenColour(page, '--color-surface');
+    const brand600Re = new RegExp(brand600.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    const layout = async () => {
+      const first = (await rows.nth(0).boundingBox())!;
+      const fifth = (await rows.nth(4).boundingBox())!;
+      const payee = (await rows.nth(0).getByText(firstPayee!, { exact: true }).boundingBox())!;
+      const amount = (await rows.nth(0).getByText(firstAmount, { exact: true }).boundingBox())!;
+      return {
+        firstTop: first.y,
+        firstLeft: first.x,
+        fifthTop: fifth.y,
+        fifthLeft: fifth.x,
+        payeeOffset: payee.x - first.x,
+        amountOffset: first.x + first.width - (amount.x + amount.width),
+      };
+    };
+    const same = async (before: Awaited<ReturnType<typeof layout>>) => {
+      const now = await layout();
+      for (const [k, v] of Object.entries(before) as [keyof typeof before, number][]) {
+        expect(now[k], k).toBeCloseTo(v, 0);
+      }
+    };
+
+    const before = await layout();
+
+    // (1) Focus Select and press Enter: nothing moves, bar covers the toolbar and takes focus
+    const selectBtn = page.getByRole('button', { name: 'Select', exact: true });
+    await selectBtn.focus();
+    await page.keyboard.press('Enter');
+    await same(before);
+    const barBox = (await bar(page).boundingBox())!;
+    const firstBox = (await rows.nth(0).boundingBox())!;
+    expect(barBox.y + barBox.height).toBeLessThanOrEqual(firstBox.y + 0.5);
+    await expect(selectBtn).toBeHidden();
+    await expect(bar(page).getByRole('button', { name: 'Select all 5' })).toBeVisible();
+    await expect(bar(page)).toBeFocused();
+
+    // (2) The rows themselves are the checkboxes, with no nested interactive controls
+    await expect(boxes(page)).toHaveCount(5);
+    expect(
+      await boxes(page).evaluateAll((els) =>
+        els.every((el) => el.getAttribute('data-testid') === 'transaction-row'),
+      ),
+    ).toBe(true);
+    await expect(
+      rows.nth(0).locator('button, a[href], input, select, textarea, [tabindex]'),
+    ).toHaveCount(0);
+
+    // (3) Plain-click selects the first row and changes its colour without opening details
+    await rows.nth(0).click();
+    await expect(bar(page)).toContainText('1 selected');
+    await expect(rows.nth(0)).toBeChecked();
+    await expect(page.getByRole('complementary', { name: 'Transaction details' })).toHaveCount(0);
+    await same(before);
+    await expect(rows.nth(0)).toHaveCSS('background-color', brand100);
+    await expect(rows.nth(0)).toHaveCSS('box-shadow', brand600Re);
+    await page.mouse.move(0, 0);
+    await expect(rows.nth(2)).toHaveCSS('background-color', surface);
+
+    // (4) Space toggles a focused row; Shift+F10 opens the selection menu
+    await rows.nth(1).focus();
+    await page.keyboard.press('Space');
+    await expect(bar(page)).toContainText('2 selected');
+    await expect(rows.nth(1)).toBeChecked();
+    await same(before);
+    await page.keyboard.press('Space');
+    await expect(bar(page)).toContainText('1 selected');
+    await rows.nth(0).focus();
+    await page.keyboard.press('Shift+F10');
+    await expect(
+      page.getByRole('menu', { name: 'Actions for 1 selected transaction' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // (5) Done restores the toolbar and inline controls without moving the list
+    await bar(page).getByRole('button', { name: 'Done' }).click();
+    await same(before);
+    await expect(selectBtn).toBeVisible();
+    await expect(
+      rows.nth(0).getByRole('button', { name: new RegExp(`^Category for ${firstPayee!}:`) }),
+    ).toBeVisible();
+
+    // (6) Toolbar Select all 5: bar overlays toolbar, hides its own Select all 5
+    await page.getByRole('button', { name: 'Select all 5' }).click();
+    await expect(bar(page)).toContainText('All 5 selected');
+    await same(before);
+    const allBarBox = (await bar(page).boundingBox())!;
+    const allFirstBox = (await rows.nth(0).boundingBox())!;
+    expect(allBarBox.y + allBarBox.height).toBeLessThanOrEqual(allFirstBox.y + 0.5);
+    await expect(bar(page).getByRole('button', { name: 'Select all 5' })).toHaveCount(0);
+    await bar(page).getByRole('button', { name: 'Done' }).click();
+  });
+
+  test('does not offer Select all while a filtered list is loading', async ({ page, api }) => {
+    await fiveRows(api, page);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await expect(bar(page).getByRole('button', { name: 'Select all 5' })).toBeVisible();
+
+    let releaseFiltered!: () => void;
+    const filteredHeld = new Promise<void>((resolve) => {
+      releaseFiltered = resolve;
+    });
+    let filteredRequested = false;
+    await page.route(
+      (url) => url.pathname === '/api/transactions' && url.search.includes('alpha'),
+      async (route) => {
+        filteredRequested = true;
+        await filteredHeld;
+        await route.continue();
+      },
+    );
+
+    await page.getByPlaceholder('Search payee or notes…').fill('alpha');
+    await expect.poll(() => filteredRequested).toBe(true);
+    await expect(bar(page).getByRole('button', { name: /^Select all/ })).toHaveCount(0);
+
+    releaseFiltered();
+    await expect(page.getByTestId('transaction-row')).toHaveCount(1);
+    await expect(boxes(page).nth(0)).not.toBeChecked();
+    await expect(bar(page)).toContainText('0 selected');
+    await expect(bar(page).getByRole('button', { name: 'Select all 1' })).toBeVisible();
+  });
+
+  test('row checkbox name uses the account currency and folded round-up total', async ({
+    page,
+    api,
+  }) => {
+    await api.call('PUT', '/currency', { currency: 'AUD' });
+    const jpy = await api.createAccount('Tokyo cash', 0, 'checking', { currency: 'JPY' });
+    await api.createTransaction({
+      accountId: jpy.id,
+      date: isoDay(),
+      amount: -1500,
+      payeeName: 'Ramen',
+    });
+
+    await open(page, '/transactions');
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await expect(
+      page.getByRole('checkbox', { name: 'Select Ramen -¥1,500', exact: true }),
+    ).toBeVisible();
+  });
+
+  test('selected and unselected rows are visually distinct in forced colors without affecting focus outline', async ({
+    page,
+    api,
+  }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    const rows = await fiveRows(api, page);
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await rows.nth(0).click();
+    await expect(rows.nth(0)).toBeChecked();
+    await expect(rows.nth(1)).not.toBeChecked();
+
+    const probeMarker = (locator: ReturnType<typeof rows.nth>) =>
+      locator.evaluate((el) => {
+        const before = getComputedStyle(el, '::before');
+        const probe = document.createElement('span');
+        probe.style.borderLeft = '3px solid Highlight';
+        document.body.append(probe);
+        const highlight = getComputedStyle(probe).borderLeftColor;
+        probe.remove();
+        return {
+          content: before.content,
+          position: before.position,
+          borderLeftStyle: before.borderLeftStyle,
+          borderLeftWidth: before.borderLeftWidth,
+          borderLeftColor: before.borderLeftColor,
+          highlight,
+        };
+      });
+
+    const selected = await probeMarker(rows.nth(0));
+    const unselected = await probeMarker(rows.nth(1));
+    expect(selected.content).not.toBe('none');
+    expect(selected.position).toBe('absolute');
+    expect(selected.borderLeftStyle).toBe('solid');
+    expect(parseFloat(selected.borderLeftWidth)).toBeGreaterThanOrEqual(3);
+    expect(selected.borderLeftColor).toBe(selected.highlight);
+    expect(unselected).not.toMatchObject({
+      content: selected.content,
+      borderLeftStyle: selected.borderLeftStyle,
+      borderLeftWidth: selected.borderLeftWidth,
+    });
+
+    // Keyboard focus outline stays independent of the forced-colors selection marker
+    await rows.nth(0).focus();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(rows.nth(0)).toBeFocused();
+    expect(await rows.nth(0).evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
+  });
+
+  test('keyboard Done returns focus to the trigger that started selection or a stable fallback', async ({
+    page,
+    api,
+  }) => {
+    const rows = await fiveRows(api, page);
+    const selectBtn = page.getByRole('button', { name: 'Select', exact: true });
+    const selectAllBtn = page.getByRole('button', { name: 'Select all 5' });
+
+    // Start via Select + Enter, Tab to Done and press Enter -> returns to Select
+    await selectBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(bar(page)).toBeFocused();
+    const doneBtn = bar(page).getByRole('button', { name: 'Done' });
+    for (let i = 0; i < 6; i++) {
+      if (await doneBtn.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press('Tab');
+    }
+    await expect(doneBtn).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(selectBtn).toBeFocused();
+
+    // Start via Select all 5 + Enter, activate Done via keyboard -> returns to Select all 5
+    await selectAllBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(bar(page)).toBeFocused();
+    await doneBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(selectAllBtn).toBeFocused();
+
+    // Start from a row via Cmd/Ctrl+click, activate Done via keyboard -> stable fallback on Select
+    await rows.nth(0).click({ modifiers: ['ControlOrMeta'] });
+    await expect(bar(page)).toContainText('1 selected');
+    await doneBtn.focus();
+    await page.keyboard.press('Enter');
+    await expect(selectBtn).toBeFocused();
   });
 });

@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0-up.180
+
+- **Selected transactions show by colour, and the list stays put.** In the register, Select no longer puts a checkbox on every transaction. Click a row (or tap a phone card) to select it, and it turns the selected colour with a bar down its left edge; click it again to let it go. Shift+click still selects a range and Select all still takes the whole list. While you are selecting, a plain click selects instead of opening the transaction's details. The selection bar now covers the toolbar above the list instead of pushing the list down, so nothing on the screen moves when you start, change or finish a selection. Screen readers still hear each row as a checkbox named for its payee and amount, and Windows high-contrast mode marks a selected row in its own highlight colour.
+- **Fix: the Date in Add transaction sits high on an iPhone.** The date's text is now vertically centred in its field, level with Amount and Payee. The fix applies to iPhone and iPad Safari only; Android phones draw the field as before.
+
 ## 0.2.0-up.179
 
 - **The demo has something on every tab.** The sample budget now has a household (Harbour St house: Riley, Sam and their housemate Alex, sharing rent, power and internet, with an expense Alex paid and a settle-up), five saved receipts with photos and line items (three matched, one split across categories, one waiting in the inbox), a car insurance certificate and a starred return note in Files, phone bills and donations claimed on Tax time, the laptop as a depreciating asset with its invoice, last financial year lodged, an Afterpay purchase on Pay later, a Buying a home long-term plan, the car loan's rate and repayment, and Work and Trip up the coast tags. Review still opens with nothing overspent.

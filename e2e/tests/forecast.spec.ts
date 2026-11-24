@@ -231,8 +231,19 @@ test('the runway scenario fields are the shared controls and feed the forecast',
   // A saved scenario taken out of the comparison opens again from the Combobox
   await save.click();
   await expect(page.getByRole('button', { name: 'Delete saved Base' })).toBeVisible();
+  // The forecast without Base re-renders shorter, and the scroll that follows closes an open
+  // popover, so the saved list is opened once that forecast is back
+  const withoutBase = page.waitForResponse(
+    (r) =>
+      new URL(r.url()).pathname === '/api/forecast' &&
+      r.request().method() === 'POST' &&
+      !(r.request().postDataJSON() as { scenarios: { name: string }[] }).scenarios.some(
+        (s) => s.name === 'Base',
+      ),
+  );
   await page.getByRole('button', { name: 'Remove Base from the comparison' }).click();
   await expect(save).toHaveCount(0);
+  await withoutBase;
   const saved = page.getByRole('combobox', { name: 'Open a saved scenario' });
   await saved.click();
   await page.getByRole('option', { name: 'Base', exact: true }).click();

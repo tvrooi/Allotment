@@ -421,8 +421,11 @@ export function NativePicker({
           aria-describedby={describedByIds(lineId, description, error)}
           // iOS Safari sizes a native date input by its value and centres it, so in this flex
           // column it would outgrow its container: it may shrink (min-w-0), drops the native
-          // look and keeps its value on the left like any field (UAT G-03-1)
-          className={`${fieldBase} ${fieldStates} w-full min-w-0 min-h-11 appearance-none text-base [&::-webkit-date-and-time-value]:text-left`}
+          // look and keeps its value on the left like any field (UAT G-03-1); with `block` from
+          // fieldBase it stacks the value at the top, so zero vertical margin and a 42 px line
+          // (the 44 px field less its two 1 px borders) vertically centre it (UAT G-03-3). Android
+          // Chromium draws the same pseudo-element, so both rules sit behind a WebKit-only @supports
+          className={`${fieldBase} ${fieldStates} w-full min-w-0 min-h-11 appearance-none text-base [&::-webkit-date-and-time-value]:text-left supports-[-webkit-touch-callout:none]:[&::-webkit-date-and-time-value]:my-0 supports-[-webkit-touch-callout:none]:[&::-webkit-date-and-time-value]:leading-[42px]`}
         />
       </label>
       <FieldLines id={lineId} description={description} error={error} />

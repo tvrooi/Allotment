@@ -22,21 +22,22 @@ the UAT 03 fixes were prepared.
 
 ## Status
 
-| Wave                | Issues                                   | State                                                                                |
-| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                              |
-| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                            |
-| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                                |
-| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                              |
-| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                              |
-| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                              |
-| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                              |
-| F settings, delight | #244, #241                               | Merged, PR #273, up.174.                                                             |
-| G0 controls audit   | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.                                        |
-| G1 control set      | #267 (part), #264                        | Merged, PR #277, up.175. #267 stays open.                                            |
-| G2 money screens    | #267 (part)                              | Merged, PR #278, up.176. #267 stays open.                                            |
-| G3 planning screens | #267 (part)                              | Merged, PR #279, up.177. #267 stays open.                                            |
-| UAT 03 fixes        | #267 (part)                              | PR #280 from `feat/uat-03-selection-and-phone-pickers`, up.178 prepared, not merged. |
+| Wave                | Issues                                   | State                                                                        |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
+| A shell             | #222, #223, #225                         | Merged, PR #247, up.167. Issues closed.                                      |
+| A palette part 1    | #224 (part)                              | Merged, PR #253, up.169. #224 stays open.                                    |
+| A palette part 2    | #224 (rest)                              | Merged, PR #259, up.171. #224 closed.                                        |
+| B small fixes       | #227, #228, #229, #233, #234, #238, #242 | Merged, PR #248, up.168. Issues closed.                                      |
+| C dashboard         | #230, #231, #232                         | Merged, PR #255, up.170. Issues closed.                                      |
+| D discoverability   | #226, #237, #239, #236                   | Merged, PR #262, up.172. Issues closed.                                      |
+| E navigation depth  | #235, #243, #245, #240                   | Merged, PR #266, up.173. Issues closed.                                      |
+| F settings, delight | #244, #241                               | Merged, PR #273, up.174.                                                     |
+| G0 controls audit   | #267 (part)                              | Merged, PR #275 (docs only). #267 stays open.                                |
+| G1 control set      | #267 (part), #264                        | Merged, PR #277, up.175. #267 stays open.                                    |
+| G2 money screens    | #267 (part)                              | Merged, PR #278, up.176. #267 stays open.                                    |
+| G3 planning screens | #267 (part)                              | Merged, PR #279, up.177. #267 stays open.                                    |
+| UAT 03 fixes        | #267 (part)                              | Merged, PR #280, up.178.                                                     |
+| UAT 03 round 2      | #267 (part)                              | PR from `fix/uat-03-selection-colour-and-date`, up.180 prepared, not merged. |
 
 Also merged: PR #256, test-only fixes for date- and timing-dependent Household specs.
 
@@ -64,13 +65,11 @@ Not in any wave:
 
 ## Open PRs
 
-- The UAT 03 fixes (#267), branch `feat/uat-03-selection-and-phone-pickers`, base `redesign`, PR #280, up.178
-  prepared, not merged. The register selects transactions and edits them from the right-click menu
-  (the Edit dialog is gone, and so is the unused `POST /api/transactions/review` route), and Add
-  transaction's phone category list opens like the account list without the keyboard. Its body
-  keeps what the owner asked for in UAT apart from what the owner approved while planning and the
-  planner's own choices, and lists every changed selector and finding for the owner. The owner
-  merges it, then re-runs UAT tests 1 and 2.
+- UAT 03 round 2 (#267), branch `fix/uat-03-selection-colour-and-date`, base `redesign`, up.180
+  prepared, not merged. Selected register rows show by colour only, with no checkbox, and the
+  selection bar covers the toolbar so the list never moves (G-03-4); the iPhone Date value is
+  vertically centred (G-03-3, awaiting the owner's iPhone check). The owner merges it, then re-runs
+  UAT test 49 and G-03-4.
 - Wave E (PR #266) merged after three fix rounds. Rounds 1 and 2 were reviewed by
   Antigravity and the GitHub Codex review (no major issue on the round-2 commit); round 3 was
   merged on green CI alone, on the owner's instruction, so it has had no second review. Its five

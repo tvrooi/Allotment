@@ -1,7 +1,8 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. UAT 03 fixes entry written 22 November 2026
-(branch `feat/uat-03-selection-and-phone-pickers`, up.178, not merged); Wave G3 entry written 21 November 2026
+Overwritten at the end of each UI session, never appended. UAT 03 round 2 entry written 23 November 2026
+(branch `fix/uat-03-selection-colour-and-date`, up.180, PR into `redesign`, not merged); UAT 03 fixes entry
+22 November 2026 (PR #280, up.178, merged into `redesign`); Wave G3 entry written 21 November 2026
 (PR #279 from `feat/wave-g3-screens`, up.177, merged into `redesign`); Wave G2 entry 20 November 2026 (PR #278,
 up.176, merged into `redesign`). Wave F entry rewritten 15 November 2026
 for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 November 2026 (branch `feat/wave-e-navigation`, up.173); Wave D and palette entries updated 12 November 2026
@@ -9,10 +10,22 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 
 ## Done this session
 
-- UAT 03 fixes (#267; up.178, branch `feat/uat-03-selection-and-phone-pickers`, PR #280 into
-  `redesign`, not merged): the owner's UAT of 21 November 2026 found two gaps, both closed in code.
-  The register has one selection: **Select** puts a checkbox on every row and phone card, **Select
-  all _N_** selects the whole list, and `utils/registerSelection.ts` is its pure model (toggle,
+- UAT 03 round 2 (#267; up.180, branch `fix/uat-03-selection-colour-and-date`, PR into `redesign`,
+  not merged). G-03-4, the owner's words "Don't move the list": a selected row or phone card shows
+  only by colour (`SELECTED_ROW`: `bg-brand-100` and a 3 px brand bar on its left edge), with no
+  checkbox. While selecting, a plain click or tap toggles a row (the planner's choice; it no longer
+  opens details), and the row itself is the checkbox for assistive technology (`role="checkbox"`,
+  `aria-checked`, named "Select {payee} {amount}"), with a forced-colours `Highlight` marker. The
+  selection bar is laid over the toolbar, which stays in place `invisible` and `inert`, so the list
+  never moves; the bar's count has a fixed width so More actions does not shift. G-03-3: on iOS the
+  native date value is vertically centred (`my-0` and `leading-[42px]` on
+  `::-webkit-date-and-time-value`, behind `@supports (-webkit-touch-callout:none)` so Android
+  Chromium is untouched); it awaits the owner's iPhone check (UAT test 49). Specs: transactions
+  ("nothing in it moves"), household and phone/register-selection-phone.
+- UAT 03 fixes (#267; up.178, PR #280, merged into `redesign`): the owner's UAT of 21 November 2026
+  found two gaps, both closed in code. The register has one selection: **Select** starts selecting
+  (round 2 above replaced its checkboxes with the selected colour), **Select all _N_** selects the
+  whole list, and `utils/registerSelection.ts` is its pure model (toggle,
   Cmd/Ctrl and Shift clicks, prune, `selectionTarget`). Right-click, Shift+F10, the Menu key, long
   press, the bar's More actions or a card's ⋯ on a selected row opens `SelectionMenu`: Review, Category…,
   Payee…, Replace notes…, Remove notes, Add tag, Remove tag, Reports, Share _N_ selected with ▸ and
@@ -250,7 +263,9 @@ for the revised PR #273 (branch `wave-f`, up.174, not merged); Wave E entry 13 N
 - `docs/ui/WAVES.md` is kept until Wave G merges (owner, 15 November 2026); update its Status and
   Open PRs when a wave PR opens, merges or is sent back.
 
-- The register has one selection (`utils/registerSelection.ts`): never add a second. A selected row
+- The register has one selection (`utils/registerSelection.ts`): never add a second. Selection is
+  shown by colour only, and the selection bar covers the toolbar rather than pushing the list: a new
+  toolbar control must fit under the bar, or the list moves again. A selected row
   opens `SelectionMenu`, any other row `TransactionContextMenu`. A whole-list selection (Select
   all) ends when the filters or range change by value (a JSON key of the params), hand-picked rows
   are pruned to what is still listed once the list query succeeds, and `expectedCount` must be the
