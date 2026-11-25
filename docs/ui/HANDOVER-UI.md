@@ -196,12 +196,13 @@ for the revised PR #273 (branch `wave-f`, up.174, merged); Wave E entry 13 Novem
 
 ## In progress
 
-- `redesign` holds prepared versions up.154 through up.181 (up.182 is on the Wave G5 PR).
+- The redesign merged into `main` on 25 November 2026 (PR #288) and shipped as up.182; UI work
+  now branches from `main`.
 - Wave G shared form controls (#267) is complete in code: G0 audit (`FORM-CONTROLS-AUDIT.md`, PR #275),
   G1 shared controls (`ui/`, PR #277), G2 everyday money (PR #278), G3 planning/reports/files/import
   (PR #279), UAT 03 fixes and round 2 (PRs #280 and #283), and G4 remaining screens (PR #284) are
-  merged into `redesign`; G5 (`feat/phase-04-g5`, up.182) adds `allotment/no-raw-form-control`,
-  removes the old `ui/Input.tsx` `Select`, updates the docs and retires `WAVES.md`.
+  merged; G5 (PR #287, up.182) added `allotment/no-raw-form-control`, removed the old
+  `ui/Input.tsx` `Select`, updated the docs and retired `WAVES.md`. #267 is closed.
 - Still open for the owner: UAT 03 tests 1 and 2, real iPhone and VoiceOver check, password-manager
   check on the credential forms, and PR #284's Codex follow-up on `client/src/pages/Tax.tsx`
   receipt-date draft sync.
@@ -212,14 +213,15 @@ for the revised PR #273 (branch `wave-f`, up.174, merged); Wave E entry 13 Novem
 - #213 quick expense test; #214 refresh `docs/ux-ui-evidence/` dates; #215 iPhone check; #216 dark mode.
 - #217 Review queue redesign; #218 Cash flow personal share; #219 Household screens by type.
 - #220 sidebar item count (UX review item 7).
-- P2: #263 Review checklist in place of guide banners (rest of #239, needs an owner decision);
-  #264 disabled switch looks enabled (fixed in the G1 PR; closed by hand after it merges).
+- P2: #263 Review checklist in place of guide banners (rest of #239, needs an owner decision).
+- #290 the Existing bank payment option never settles in one household e2e test (local flake;
+  may be a list that jitters).
 
 ## Decisions
 
 - `client/src/index.css` `@theme` is the only token source; DESIGN.md describes it.
-- Budget work lives on `redesign`, beside the pre-redesign app on `main`; PR #209 was closed
-  unmerged and is reconciled later.
+- The redesign was built on `redesign` and merged into `main` whole (PR #288); PR #209 was
+  closed unmerged.
 - Goal in-progress bars use one brand colour, reached goals green; `goal.color` only tints the dot.
   A goal's plant (14 November 2026, #241) grows seed, seedling, bud and flowers only when the
   goal's money reaches its target (Goals.tsx's `complete` rule); a goal completed by hand short of

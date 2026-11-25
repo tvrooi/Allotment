@@ -7,31 +7,33 @@ UI sessions start at [docs/ui/README.md](docs/ui/README.md) instead.
 This file contains no credentials, hostnames or IP addresses, and must never contain them.
 Keep those private, outside the repository.
 
-Last updated: 24 November 2026 (Wave G4 merged; Wave G5 guard and doc cleanup open for review).
+Last updated: 25 November 2026 (the redesign merged into `main` and released as up.182).
 
 ## State
 
-- **Wave G5** (up.182), branch `feat/phase-04-g5` (PR #287 into `redesign`): adds `allotment/no-raw-form-control`, removes `ui/Input.tsx`'s old `Select`, updates UI docs and retires the UI wave handover file. The owner’s UAT 03 tests 1 and 2 are still pending.
-- **Released:** the newest tag is `v0.2.0-up.153`; `main` carries the pre-redesign app.
-- **Live:** `0.2.0-up.149` on the catalog app `24ff2149_flybudget_up` since 9 November 2026, auto update on.
-- **Unreleased on `redesign`:** up.154 to up.181 are prepared (up.182 is on the G5 PR) (versions and CHANGELOG entries) but not tagged.
-  The owner has not yet decided how `redesign` is released; do not tag or publish until they do.
-- Wave G shared form controls (PRs #275, #277, #278, #279, #280, #283, #284; up.175 to up.181)
-  are merged into `redesign`; current UI handover and traps are in [docs/ui/HANDOVER-UI.md](docs/ui/HANDOVER-UI.md).
-- The demo has sample records on every tab (up.179, PR #281): a household,
-  receipts and files that open and can be edited in the tab (`server/src/demo/demoFiles.ts`), tax
-  claims, a depreciating asset, a lodged year, pay later, a long-term plan and loan terms.
+- **The redesign is on `main`** (PR #288, merged 25 November 2026, owner-requested): every design
+  pass, Waves D to G and the UAT 03 fixes. The `redesign` branch is finished; new work branches
+  from `main`. Milestone v1.0 Redesign finish: [docs/superpowers/README.md](docs/superpowers/README.md).
+- **Released:** `v0.2.0-up.182` (up.154 to up.181 were never tagged; their CHANGELOG entries
+  describe what up.182 brings).
+- **Live:** `0.2.0-up.182` on the catalog app `24ff2149_flybudget_up` since 25 November 2026
+  (source `9c5f50da`), auto update on, updated by hand from up.152 after app-only cold backups
+  `3e4181c7` and `3a3e3082` ("Before Allotment 0.2.0-up.182 (final)"), both password-protected
+  with no failed apps. Both budgets started with no errors in the log and `/api/health` answers ok.
+  Not verified from here: that the budget opens (the app has its own password).
+- Shared form controls: every field is a `components/ui/` control, enforced by the
+  `allotment/no-raw-form-control` lint rule; UI handover and traps in [docs/ui/HANDOVER-UI.md](docs/ui/HANDOVER-UI.md).
+- The demo has sample records on every tab (up.179): a household, receipts and files that open
+  and can be edited in the tab (`server/src/demo/demoFiles.ts`), tax claims, a depreciating asset,
+  a lodged year, pay later, a long-term plan and loan terms.
 - Owner checks still open after Wave G: UAT 03 tests 1 and 2 (test 49 on an iPhone and a re-run of
   G-03-4) and password-manager checks (`docs/ui/HANDOVER-UI.md`).
-- **Planning:** specs, plans and where the milestone stands are in
+- **Planning:** specs, plans and where things stand are in
   [docs/superpowers/README.md](docs/superpowers/README.md) (Superpowers workflow). GSD was retired on
   23 November 2026; its records are in `docs/superpowers/gsd-records/`.
-- `redesign` holds the design passes: Budget (up.154), Dashboard (up.154, made the Dashboard in up.166).
-- Also on `redesign`: Transactions money clarity and iPhone web-app hardening (up.155), Review (up.156 to up.160).
-- Also on `redesign`: Accounts (up.161 to up.163), day-first dates and Household (up.164), Forecast (up.165), Goals, Investments.
-- PR #209 (Budget design onto `main`) was closed unmerged; `redesign` is reconciled with `main` later.
 - Budgeting review Phase 1 is built (up.152); Phase 2 (goal summaries, merged goal and target, one expected-income source) is next.
-- D4a working from home is built (up.144); D4b, the car, is next (`docs/TAX-CAR-AND-HOME.md`).
+- D4a working from home is built (up.144); D4b, the car, is next: plan
+  [docs/superpowers/plans/2026-11-25-d4b-car-expenses.md](docs/superpowers/plans/2026-11-25-d4b-car-expenses.md).
 - Design record: `DESIGN.md` and `PRODUCT.md`; tokens live in `client/src/index.css` `@theme`.
 - UI backlog: GitHub issues titled `ui(<screen>): ...`; current session notes in `docs/ui/HANDOVER-UI.md`.
 - Full feature history, live update log and the "Recent features" table: [docs/handover/ARCHIVE.md](docs/handover/ARCHIVE.md).
@@ -69,7 +71,7 @@ The full wording of each item, as of 10 November 2026, is in the archive under "
    opens. Auto update is on: take the cold backup before the store sees a new release.
 2. Multi-user: confirm the owner signed in with the setup code and the budget kept its data, Up sync
    and tokens. Email codes need the owner's `smtp_` options.
-3. Larger features: D4b car expenses next; Budgeting review Phase 2; reconcile `redesign` with `main`.
+3. Larger features: D4b car expenses next (plan written); Budgeting review Phase 2 (needs a spec).
 4. Depreciating assets and Files: ask the owner to try them on real records (archive items 7 and 8).
 5. Household partner links (`docs/HOUSEHOLD-PARTNER-LINKS.md`): decisions 4, 5, 7, 8 and 9 open; no code.
 6. UI items: GitHub issues listed in `docs/ui/HANDOVER-UI.md`.
