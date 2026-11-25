@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { updateTransaction } from '../../api/transactions';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { formatMoney } from '../../utils/currency';
 
 /**
@@ -71,7 +71,7 @@ export function RepaymentCategoryOffers({
       className="rounded-lg border border-border-light p-4 space-y-3"
     >
       <div>
-        <h2 className="text-sm font-semibold text-text">Categorise repayments</h2>
+        <h2 className="text-base font-semibold text-text">Categorise repayments</h2>
         <p className="text-xs text-text-tertiary">
           A repayment in the same category as what it paid for makes your reports show your share:
           money back nets against the whole bill you paid, and money you pay back counts as your
@@ -87,19 +87,25 @@ export function RepaymentCategoryOffers({
                 {o.description}, {formatMoney(o.amount, currency)}
                 {o.direction === 'from_you' && ' (you paid)'}
               </span>
-              <Select
-                aria-label={`Category for ${o.description}`}
-                className="w-auto"
-                value={categoryId}
-                onChange={(e) => setChosen({ ...chosen, [o.eventId]: e.target.value })}
-              >
-                {o.candidates.map((c) => (
-                  <option key={c.categoryId} value={c.categoryId}>
-                    {c.name} ({o.direction === 'from_you' ? 'you owed' : 'owed'}{' '}
-                    {formatMoney(c.amount, currency)})
-                  </option>
-                ))}
-              </Select>
+              <div className="w-52">
+                <CategorySelectButton
+                  label={`Category for ${o.description}`}
+                  value={categoryId}
+                  onChange={(id) => {
+                    if (id) setChosen((prev) => ({ ...prev, [o.eventId]: id }));
+                  }}
+                  categoryIds={o.candidates.map((candidate) => candidate.categoryId)}
+                  allowNone={false}
+                  allowCreate={false}
+                  includeHidden
+                  hint={(id) => {
+                    const candidate = o.candidates.find((c) => c.categoryId === id);
+                    return candidate
+                      ? `(${o.direction === 'from_you' ? 'you owed' : 'owed'} ${formatMoney(candidate.amount, currency)})`
+                      : '';
+                  }}
+                />
+              </div>
               <Button
                 size="sm"
                 disabled={categorise.isPending}

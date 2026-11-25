@@ -617,6 +617,13 @@
       "when": 1797177600000,
       "tag": "0087_schedule_amount_confirmed",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "6",
+      "when": 1797264000000,
+      "tag": "0088_household_include_bills",
+      "breakpoints": true
     }
   ]
 }

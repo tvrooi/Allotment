@@ -36,6 +36,11 @@ colors:
   sidebar-border: '#e4e1de'
   sidebar-text: '#5f5d5b'
   sidebar-text-hi: '#262520'
+  chart-account-investments: '#637b9c'
+  chart-account-property: '#9a7a43'
+  chart-account-other: '#907565'
+  chart-account-loans: '#a66e50'
+  chart-account-other-debt: '#a86269'
   chart-brand: '#487a78'
   chart-brand-light: '#68908c'
   chart-brand-subtle: '#dceae6'
@@ -83,6 +88,11 @@ colors:
   dark-sidebar-border: '#38322d'
   dark-sidebar-text: '#c9c3bb'
   dark-sidebar-text-hi: '#f4f1ec'
+  dark-chart-account-investments: '#9baec7'
+  dark-chart-account-property: '#c3aa7a'
+  dark-chart-account-other: '#bca99a'
+  dark-chart-account-loans: '#c99574'
+  dark-chart-account-other-debt: '#cf9ba1'
   dark-chart-brand: '#92bdb4'
   dark-chart-brand-light: '#b2d1c8'
   dark-chart-brand-subtle: '#304540'
@@ -278,7 +288,9 @@ Shared Button and ButtonLink expose primary, secondary, ghost and danger variant
 
 ### Inputs and selects
 
-White/themed surfaces, md corners, 1px border and 12px horizontal padding. Focus changes the border and adds a 1px brand ring. Preserve labels, placeholder hierarchy and mobile sizing. Money entry uses the existing CurrencyInput and currency formatting utilities.
+Shared form controls (`Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`, `RadioGroup`, `Switch`, `DatePicker`, `MonthPicker`, `Label`, `Field` in `client/src/components/ui/`) are built on `react-aria-components` with `@theme` tokens: white/themed surfaces, `md` corners, 1px border, 12px horizontal padding, `h-10` (40px) default height, `h-8` (32px) compact `sm` height, and `max-md:min-h-11` (44px) with 16px text on phones (`< 768px`). Focus changes the border and adds a 1px brand-600 ring; `Select`, `DatePicker`, and `MonthPicker` render native controls under 768px. Money entry uses `CurrencyInput` (`type="text" inputMode="decimal"`, never `type="number"`), and bounded counts use `NumberField`.
+
+Picker rule: categories use `CategoryPicker`, payees use `PayeeCombobox`, fixed lists use the shared `Select`, and lists the user grows use the shared `Combobox`. ESLint rule `allotment/no-raw-form-control` (`lint/rules/no-raw-form-control.js`) fails as an error on any raw `<input>`, `<select>`, or `<textarea>` in `client/src/**/*.tsx` outside `client/src/components/ui/` (and on `type="number"`), allowing static `<input type="file">` and explicit per-entry exceptions with reasons in `lint/eslint.config.js`.
 
 ### Cards and summary tiles
 
@@ -298,7 +310,7 @@ Desktop dialogs are centered at the shared sm/md/lg/xl widths (384/448/512/768px
 
 Backdrops fade in 150ms and out 120ms. Dialogs enter in 160ms with a small rise and scale; menus enter in 110ms. Sheets enter in 220ms. Reduced-motion mode replaces movement with fades. General color transitions use Tailwind transition-colors; sidebar width transitions use 200ms.
 
-Global keyboard focus uses a 2px brand-600 outline offset by 3px; horizontally clipped tab rows draw focus inside. Fields have their own focus treatment.
+Global keyboard focus is a 2px brand-600 outline offset by 3px, kept in the CSS base layer so a component's own focus utility wins: fields show only their own ring, and controls without one (a Button, a link) keep the outline. Horizontally clipped tab rows still draw focus inside.
 
 ## Do's and Don'ts
 

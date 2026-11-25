@@ -34,6 +34,7 @@ import {
 import { getCategoriesWithUsage, getCategoryTransactionCount } from '../../api/categories';
 import { useQuery } from '@tanstack/react-query';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { Input } from '../ui/Input';
 import { DeleteCategoryModal } from './DeleteCategoryModal';
 import { useModalValue } from '../ui/Modal';
 import { EditCategoryModal } from './EditCategoryModal';
@@ -58,9 +59,11 @@ function InlineEdit({
   }, []);
 
   return (
-    <input
+    <Input
       ref={inputRef}
+      fieldSize="sm"
       autoFocus
+      aria-label="Group name"
       value={text}
       onChange={(e) => setText(e.target.value)}
       onKeyDown={(e) => {
@@ -76,7 +79,7 @@ function InlineEdit({
         if (!cancelled.current && text.trim()) onSave(text.trim());
         else if (!cancelled.current) onCancel();
       }}
-      className="text-sm bg-surface border border-brand-500 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-600 w-48"
+      className="w-48"
     />
   );
 }
@@ -289,8 +292,10 @@ function GroupCard({
                 )}
               </div>
             )}
-            <input
+            <Input
+              fieldSize="sm"
               autoFocus
+              aria-label="Category name"
               value={newCategoryName}
               onChange={(e) => onNewCategoryNameChange(e.target.value)}
               onKeyDown={(e) => {
@@ -298,7 +303,7 @@ function GroupCard({
                 if (e.key === 'Escape') onAddCategoryCancel();
               }}
               placeholder="Category name..."
-              className="text-sm border border-border rounded px-2.5 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 flex-1"
+              className="flex-1 min-w-0"
             />
             <button
               onClick={onAddCategorySubmit}
@@ -437,8 +442,10 @@ function Section({
 
       {isAddingGroup && (
         <div className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg border border-brand-100">
-          <input
+          <Input
+            fieldSize="sm"
             autoFocus
+            aria-label="Group name"
             value={addingGroupName}
             onChange={(e) => onAddGroupNameChange(e.target.value)}
             onKeyDown={(e) => {
@@ -446,7 +453,7 @@ function Section({
               if (e.key === 'Escape') onAddGroupCancel();
             }}
             placeholder="Group name..."
-            className="text-sm border border-border rounded px-2.5 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 flex-1"
+            className="flex-1 min-w-0"
           />
           <button
             onClick={onAddGroupSubmit}

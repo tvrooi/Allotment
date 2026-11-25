@@ -14,7 +14,7 @@ import {
 import { formatMoney } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
 import { SplitEditor, describeSplit } from './SplitEditor';
 import { HouseholdIcon } from './HouseholdIcon';
 
@@ -98,7 +98,7 @@ export function HouseholdSharing({ group, people }: Props) {
         </p>
       )}
 
-      <h3 className="text-xs font-semibold text-text-secondary mt-3">Picture</h3>
+      <h3 className="text-sm font-semibold text-text mt-3">Picture</h3>
       <p className="text-xs text-text-tertiary">
         Shown next to each payment shared with {group.name}. Without one, its initial is shown.
       </p>
@@ -111,7 +111,7 @@ export function HouseholdSharing({ group, people }: Props) {
         />
       </div>
 
-      <h3 className="text-xs font-semibold text-text-secondary mt-3">Household accounts</h3>
+      <h3 className="text-sm font-semibold text-text mt-3">Household accounts</h3>
       <p className="text-xs text-text-tertiary">
         Payments from these accounts are the household's, not yours, so they stay out of your
         budget. Your own transfers into them count as your share, in the category you give them. Add
@@ -139,17 +139,16 @@ export function HouseholdSharing({ group, people }: Props) {
         ))}
       </ul>
       <div className="mt-2 flex gap-2 items-end">
-        <label className="grid gap-1 text-xs text-text-secondary flex-1">
-          Add an account
-          <Select value={adding} onChange={(e) => setAdding(e.target.value)}>
-            <option value="">Choose an account</option>
-            {candidates.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <Combobox
+          label="Add an account"
+          value={adding}
+          onChange={setAdding}
+          placeholder="Choose an account"
+          className="flex-1 min-w-0"
+          fieldSize="sm"
+          menuTrigger="focus"
+          items={candidates.map((account) => ({ value: account.id, label: account.name }))}
+        />
         <Button
           size="sm"
           variant="secondary"
@@ -163,7 +162,7 @@ export function HouseholdSharing({ group, people }: Props) {
         </Button>
       </div>
 
-      <h3 className="text-xs font-semibold text-text-secondary mt-4">Default split</h3>
+      <h3 className="text-sm font-semibold text-text mt-4">Default split</h3>
       <p className="text-xs text-text-tertiary">
         Used by <strong>Share with household</strong> in transactions and by rules. Now{' '}
         {describeSplit(current, people)}.
@@ -179,7 +178,7 @@ export function HouseholdSharing({ group, people }: Props) {
 
       {suggestions.length > 0 && self && (
         <>
-          <h3 className="text-xs font-semibold text-text-secondary mt-4">
+          <h3 className="text-sm font-semibold text-text mt-4">
             Looks like repayments or contributions
           </h3>
           <ul

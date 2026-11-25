@@ -1,9 +1,9 @@
 import type { GuideProgress, NavFeature } from '../api/guides';
 
-// The sidebar's optional features (audit decision I-4, docs/AUDIT-2026-11.md): a new budget's menu
-// stays short, and each appears once it holds something, or when the person turns it on in
-// Settings → Preferences → Sidebar. Their pages always open from a link or a guide, and the menu
-// shows the one you're on.
+// Optional navigation uses the budget's choices and usage. Setup features stay in their fixed
+// menu positions before they hold data; an explicit Hidden choice still leaves them out.
+export const SETUP_FEATURES = ['household', 'tax', 'files'] as const;
+export type FeatureState = 'shown' | 'setup' | 'hidden';
 
 export interface NavFeatureInfo {
   key: NavFeature;
@@ -40,24 +40,32 @@ const onPage = (pathname: string, path: string) =>
   pathname === path || pathname.startsWith(`${path}/`);
 
 /**
- * Whether the menu lists an optional feature. `progress` is undefined while it loads (hidden, so
- * nothing flashes in and out); `failed` (an older server, or none reachable) lists everything,
- * as before features were optional.
+ * Loading leaves optional rows out; failed/older guides and the current page show normal rows.
+ * Explicit choices take precedence over usage, except while visiting the feature itself.
  */
+export function featureState(
+  feature: NavFeature,
+  progress: GuideProgress | undefined,
+  pathname: string,
+  failed = false,
+): FeatureState {
+  const info = NAV_FEATURES.find((f) => f.key === feature)!;
+  if (onPage(pathname, info.path) || failed) return 'shown';
+  if (!progress) return 'hidden';
+  const choice = progress.navFeatures?.[feature];
+  if (choice) return choice === 'shown' ? 'shown' : 'hidden';
+  if (!progress.featuresInUse || progress.featuresInUse.includes(feature)) return 'shown';
+  return SETUP_FEATURES.some((key) => key === feature) ? 'setup' : 'hidden';
+}
+
+/** Whether a feature has a row, including its setup row. */
 export function featureShown(
   feature: NavFeature,
   progress: GuideProgress | undefined,
   pathname: string,
   failed = false,
 ): boolean {
-  const info = NAV_FEATURES.find((f) => f.key === feature)!;
-  if (onPage(pathname, info.path)) return true;
-  if (failed) return true;
-  if (!progress) return false;
-  const choice = progress.navFeatures?.[feature];
-  if (choice) return choice === 'shown';
-  if (!progress.featuresInUse) return true;
-  return progress.featuresInUse.includes(feature);
+  return featureState(feature, progress, pathname, failed) !== 'hidden';
 }
 
 /** How many optional features the menu leaves out right now */
@@ -67,5 +75,6 @@ export function hiddenFeatureCount(
   failed = false,
 ): number {
   if (!progress || failed) return 0;
-  return NAV_FEATURES.filter((f) => !featureShown(f.key, progress, pathname, failed)).length;
+  return NAV_FEATURES.filter((f) => featureState(f.key, progress, pathname, failed) === 'hidden')
+    .length;
 }

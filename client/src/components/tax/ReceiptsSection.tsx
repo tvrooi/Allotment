@@ -3,14 +3,16 @@ import { FileText, Paperclip, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { receiptFileUrl, type Receipt } from '../../api/tax';
 import { useDeleteReceipt, useReceipts, useUploadReceipt } from '../../hooks/useTax';
+import { useFileSrc } from '../../hooks/useFileSrc';
 
 /** A receipt's preview: the photo itself, or a document icon for a PDF or HEIC */
 export function ReceiptThumb({ receipt, size = 56 }: { receipt: Receipt; size?: number }) {
   const shows =
     receipt.hasFile && receipt.mimeType.startsWith('image/') && receipt.mimeType !== 'image/heic';
+  const src = useFileSrc(receipt.hasFile ? receiptFileUrl(receipt.id) : undefined);
   return (
     <a
-      href={receipt.hasFile ? receiptFileUrl(receipt.id) : undefined}
+      href={src}
       target="_blank"
       rel="noreferrer"
       title={receipt.hasFile ? `Open ${receipt.fileName}` : 'The file is not on this installation'}
@@ -18,11 +20,7 @@ export function ReceiptThumb({ receipt, size = 56 }: { receipt: Receipt; size?: 
       style={{ width: size, height: size }}
     >
       {shows ? (
-        <img
-          src={receiptFileUrl(receipt.id)}
-          alt={receipt.fileName}
-          className="w-full h-full object-cover"
-        />
+        <img src={src} alt={receipt.fileName} className="w-full h-full object-cover" />
       ) : (
         <FileText size={20} className="text-text-tertiary" aria-label={receipt.fileName} />
       )}

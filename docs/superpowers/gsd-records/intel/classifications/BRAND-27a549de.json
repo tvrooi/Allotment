@@ -1,0 +1,21 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/BRAND.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Allotment brand",
+  "summary": "Brand guide for Allotment: tagline, voice, colour palette, logo sources, FlyBudget rename rules and UI writing conventions.",
+  "scope": [
+    "Allotment brand",
+    "logo and icon mark",
+    "colour palette",
+    "wordmark",
+    "FlyBudget rename identifiers",
+    "UI writing style",
+    "date and money formatting"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

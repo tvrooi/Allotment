@@ -1,4 +1,4 @@
-import { transferLabel, transferSides } from './transferLabel';
+import { transactionPayeeName, transferSides } from './transferLabel';
 import { useAccountName } from '../../hooks/useAccounts';
 import { listedAmount, RoundUpDetails } from './RoundUp';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
@@ -6,19 +6,9 @@ import { PayAhead } from '../household/PayAhead';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { HouseholdIcon } from '../household/HouseholdIcon';
 import { useHouseholds } from '../../hooks/useHouseholds';
-import { useNavigate } from 'react-router-dom';
-import { useState, useEffect, useId } from 'react';
-import {
-  X,
-  Lock,
-  Trash2,
-  Repeat,
-  Unlink,
-  Wand2,
-  Split,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useId, useRef } from 'react';
+import { X, Lock, Repeat, Unlink, Wand2, Split, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   useUpdateTransaction,
   useDeleteTransaction,
@@ -29,8 +19,12 @@ import { useTransferToAccount, useUnlinkTransfer } from '../../hooks/useTransfer
 import { useCanSave } from '../../hooks/useConnection';
 import { useSchedules, useUnmatchByTransaction } from '../../hooks/useSchedules';
 import { CategoryPicker } from './CategoryPicker';
+import { categoriseEdit } from './categoriseEdit';
 import { PayeeCombobox } from './PayeeCombobox';
 import { Button } from '../ui/Button';
+import { DatePicker } from '../ui/DatePicker';
+import { Textarea } from '../ui/Textarea';
+import RowMenu from '../ui/RowMenu';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useModalValue } from '../ui/Modal';
 import { RuleEditorFlow } from '../rules/RuleEditorFlow';
@@ -39,6 +33,8 @@ import { useUpdatePayee } from '../../hooks/usePayees';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { AccountIcon } from '../accounts/AccountIcon';
 import { formatMoney } from '../../utils/currency';
+import { transactionsLink } from '../../utils/transactionFilters';
+import { payeeCondition } from '../../utils/ruleFormat';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { MainAmountField } from '../currency/MainAmountField';
 import { RECURRENCE_TYPE_LABELS } from '../../types';
@@ -49,14 +45,8 @@ import { TaxClaimSection } from '../tax/TaxClaimSection';
 import { FilesSection } from '../files/FilesSection';
 import { InvestmentMoney } from '../investments/InvestmentMoney';
 import { SplitTransactionModal } from './SplitTransactionModal';
-import type {
-  Transaction,
-  CategoryGroup,
-  Payee,
-  Account,
-  RuleCondition,
-  RuleInput,
-} from '../../types';
+import type { Transaction, CategoryGroup, Payee, Account, RuleInput } from '../../types';
+import { transferTargets } from '../../utils/addTransaction';
 
 interface Props {
   transaction: Transaction;
@@ -117,6 +107,12 @@ export function TransactionDetailPanel({
   // Each field follows only its own saved value: a refetch after one edit must not wipe
   // another field that's being typed but not saved yet
   useEffect(() => setLocalDate(tx.date), [tx.id, tx.date]);
+  // The day last sent, so leaving the field after a pick does not send (and undo) it again
+  const sentDate = useRef(tx.date);
+  useEffect(() => {
+    sentDate.current = tx.date;
+  }, [tx.id, tx.date]);
+  const dateField = useRef<HTMLDivElement>(null);
   useEffect(() => setLocalNotes(tx.notes ?? ''), [tx.id, tx.notes]);
   useEffect(
     () => setLocalPayee({ id: tx.payeeId, name: tx.payeeName ?? '' }),
@@ -126,6 +122,11 @@ export function TransactionDetailPanel({
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
+      // Escape in the ⋮ menu closes only the menu
+      if ((e.target as Element | null)?.closest?.('[role="menu"]')) return;
+      // An Escape a control already handled (the payee list closing, D-12) leaves the panel
+      // open, the same contract as Modal.tsx
+      if (e.defaultPrevented) return;
       if (
         e.key === 'Escape' &&
         !showCategoryPicker &&
@@ -150,22 +151,49 @@ export function TransactionDetailPanel({
 
   const accountNameOf = useAccountName();
   const transferWay = transferSides(tx, accountNameOf);
-  const payeeName =
-    transferLabel(tx, accountNameOf) ?? (tx.payeeName || (isTransfer ? 'Transfer' : '—'));
+  const payeeName = transactionPayeeName(tx, accountNameOf);
   const payee = tx.payeeId ? payees.find((p) => p.id === tx.payeeId) : undefined;
   const categoryEntry = tx.categoryId ? (categoryMap.get(tx.categoryId) ?? null) : null;
+  // The register filtered to this payee, category or account, over all dates
+  const payeeLink = isTransfer
+    ? null
+    : tx.payeeId
+      ? transactionsLink({ payeeIds: [tx.payeeId], datePreset: 'all' })
+      : tx.payeeName
+        ? transactionsLink({ payeeName: tx.payeeName, datePreset: 'all' })
+        : null;
+  // Always underlined (touch has no hover), 44px tall on phones
+  const linkCls =
+    'inline-flex items-center max-md:min-h-11 underline decoration-border decoration-1 underline-offset-4 hover:text-brand-600 hover:decoration-brand-600';
   // Making or undoing a transfer needs the server: not offered while saving is paused, and a
   // balance correction can't be a transfer
   const canSave = useCanSave();
   const transferAccounts =
-    canSave && !isTransfer && !tx.isAdjustment
-      ? accounts.filter((a) => a.id !== tx.accountId && !a.closedAt)
-      : [];
+    canSave && !isTransfer && !tx.isAdjustment ? transferTargets(accounts, tx.accountId) : [];
 
-  function saveDate() {
-    if (localDate !== tx.date) {
-      updateTx.mutate({ id: tx.id, data: { date: localDate } });
+  /** Sends a whole day that differs from the saved one; a cleared or half-typed date is '' */
+  function saveDate(day: string) {
+    if (day && day !== sentDate.current) {
+      sentDate.current = day;
+      updateTx.mutate(
+        { id: tx.id, data: { date: day } },
+        {
+          // Not saved: show the saved day again, and let the same day be sent again
+          onError: () => {
+            sentDate.current = tx.date;
+            setLocalDate(tx.date);
+          },
+        },
+      );
     }
+  }
+
+  // A day picked from the calendar or Today saves at once: focus is in the calendar then, and
+  // goes back to the field, so there is no blur to wait for (03-RESEARCH Pitfall 2). A typed
+  // day changes with each digit (year 2, 20, 202, 2026), so it saves once the field is left.
+  function handleDateChange(day: string) {
+    setLocalDate(day);
+    if (!dateField.current?.contains(document.activeElement)) saveDate(day);
   }
 
   function saveNotes() {
@@ -197,7 +225,9 @@ export function TransactionDetailPanel({
       transferTo.mutate({ id: tx.id, accountId: catId.slice('transfer:'.length) });
     } else {
       updateTx
-        .mutateAsync({ id: tx.id, data: { categoryId: catId } })
+        .mutateAsync(
+          categoriseEdit(tx, payeeName, catId, catId ? categoryMap.get(catId)?.name : undefined),
+        )
         .then(() => offerFollowup(tx, catId))
         .catch(() => {});
     }
@@ -206,12 +236,9 @@ export function TransactionDetailPanel({
 
   /** A rule matching this transaction's payee that sets its current category */
   function startRule() {
-    const condition: RuleCondition = tx.payeeId
-      ? { field: 'payee', op: 'is', value: tx.payeeId }
-      : { field: 'payee_name', op: 'is', value: tx.payeeName ?? '' };
     setRuleDraft({
       conditionsOp: 'and',
-      conditions: [condition],
+      conditions: [payeeCondition(tx)],
       actions: [{ type: 'set_category', value: tx.categoryId ?? '' }],
       enabled: true,
     });
@@ -257,6 +284,17 @@ export function TransactionDetailPanel({
           >
             <ChevronDown size={16} />
           </button>
+          <RowMenu
+            label="More actions"
+            items={[
+              {
+                label: 'Delete transaction',
+                danger: true,
+                hidden: isReconciled,
+                onClick: () => setShowDeleteConfirm(true),
+              },
+            ]}
+          />
           <button
             onClick={onClose}
             aria-label="Close details"
@@ -279,13 +317,41 @@ export function TransactionDetailPanel({
                 payee ? (logo) => updatePayee.mutate({ id: payee.id, logo }) : undefined
               }
             />
-            <div>
-              <div className="text-base font-semibold text-text">{payeeName}</div>
+            <div className="flex flex-col items-start">
+              {/* The payee's own page (#235); transfers have none */}
+              {payee && !isTransfer ? (
+                <Link
+                  to={`/payees/${payee.id}`}
+                  onClick={onClose}
+                  aria-label={`Payee page for ${payeeName}`}
+                  className={`text-base font-semibold text-text ${linkCls}`}
+                >
+                  {payeeName}
+                </Link>
+              ) : (
+                <div className="text-base font-semibold text-text">{payeeName}</div>
+              )}
+              {/* The register filtered to this payee (the row's old payee arrow, #243) */}
+              {payeeLink && (
+                <Link
+                  to={payeeLink}
+                  onClick={onClose}
+                  aria-label={`All ${payeeName} transactions`}
+                  className={`mt-0.5 max-md:mt-0 text-xs text-text-tertiary ${linkCls}`}
+                >
+                  All transactions
+                </Link>
+              )}
               {accountName && (
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <Link
+                  to={transactionsLink({ accountIds: [tx.accountId], datePreset: 'all' })}
+                  onClick={onClose}
+                  aria-label={`All ${accountName} transactions`}
+                  className={`gap-1.5 mt-0.5 max-md:mt-0 text-xs text-text-tertiary ${linkCls}`}
+                >
                   <AccountIcon name={accountName} type={accountType} logo={accountLogo} size="xs" />
-                  <span className="text-xs text-text-tertiary">{accountName}</span>
-                </div>
+                  {accountName}
+                </Link>
               )}
             </div>
           </div>
@@ -323,22 +389,24 @@ export function TransactionDetailPanel({
           </>
         )}
 
-        <div>
-          <label
-            htmlFor={`${fieldId}-date`}
-            className="text-xs font-medium text-text-secondary mb-1.5 block"
-          >
+        <div
+          ref={dateField}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) saveDate(localDate);
+          }}
+        >
+          {/* The panel's own label look; the picker names itself with its hidden label, and a
+              <label> would point at its group, which is no field */}
+          <span aria-hidden="true" className="text-xs font-medium text-text-secondary mb-1.5 block">
             Date
-          </label>
-          <input
+          </span>
+          <DatePicker
             id={`${fieldId}-date`}
-            type="date"
-            aria-label="Date"
+            label="Date"
+            hideLabel
             value={localDate}
-            onChange={(e) => setLocalDate(e.target.value)}
-            onBlur={saveDate}
-            disabled={isReconciled}
-            className={inputCls}
+            onChange={handleDateChange}
+            isDisabled={isReconciled}
           />
         </div>
 
@@ -433,6 +501,15 @@ export function TransactionDetailPanel({
                   <ChevronDown size={14} className="ml-auto text-text-tertiary" aria-hidden />
                 )}
               </button>
+              {categoryEntry && tx.categoryId && (
+                <Link
+                  to={transactionsLink({ categoryIds: [tx.categoryId], datePreset: 'all' })}
+                  onClick={onClose}
+                  className="inline-flex items-center mt-1.5 max-md:min-h-11 text-xs text-brand-600 hover:text-brand-700 hover:underline underline-offset-2"
+                >
+                  All {categoryEntry.name} transactions
+                </Link>
+              )}
               {showCategoryPicker && (
                 <CategoryPicker
                   value={tx.categoryId}
@@ -484,7 +561,8 @@ export function TransactionDetailPanel({
                 value={localPayee}
                 onChange={handlePayeeChange}
                 payees={payees}
-                className={`border border-border rounded-lg px-3 py-2 focus:border-brand-600 focus:ring-1 focus:ring-brand-600`}
+                // 44 px with 16px text on phones, as every shared field there (03-UI-SPEC §6)
+                className="border border-border rounded-lg px-3 py-2 max-md:min-h-11 max-md:text-base focus:border-brand-600 focus:ring-1 focus:ring-brand-600"
               />
             </div>
           </div>
@@ -497,7 +575,7 @@ export function TransactionDetailPanel({
           >
             Notes
           </label>
-          <textarea
+          <Textarea
             id={`${fieldId}-notes`}
             value={localNotes}
             onChange={(e) => setLocalNotes(e.target.value)}
@@ -505,7 +583,8 @@ export function TransactionDetailPanel({
             placeholder="Add notes to this transaction..."
             aria-label="Notes"
             rows={3}
-            className={`${inputCls} resize-none`}
+            // As it was: a fixed three rows (the shared Textarea resizes vertically otherwise)
+            className="w-full resize-none!"
           />
         </div>
 
@@ -588,12 +667,10 @@ export function TransactionDetailPanel({
             Create rule
           </Button>
         )}
-        {!isReconciled && (
-          <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} className="w-full">
-            <Trash2 size={14} />
-            Delete transaction
-          </Button>
-        )}
+        {/* Changes save as they're made; Done is the way out (Delete is in the ⋮ menu) */}
+        <Button onClick={onClose} className="w-full">
+          Done
+        </Button>
       </div>
 
       <SplitTransactionModal
@@ -630,7 +707,7 @@ export function TransactionDetailPanel({
         title="Delete transaction"
         message={
           tx.importedId?.startsWith('up:')
-            ? 'Delete this transaction? Up still has it, so it stays deleted when Up syncs and this account’s balance won’t match Up’s. Until it does, assigning money pauses. The Budget page and Up review (Settings → Connected banks → Up) can restore it.'
+            ? 'Delete this transaction? Up still has it, so it stays deleted when Up syncs and this account’s balance won’t match Up’s. Until it does, assigning money pauses. The Budget page and Up review (Accounts → Connected banks → Up) can restore it.'
             : 'Are you sure you want to delete this transaction? This action cannot be undone.'
         }
         confirmLabel="Delete"

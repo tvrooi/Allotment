@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { GuideSettings } from './GuideSettings';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
 
 /** Every guide, to take (again), with the tip settings: the ? menu, or ? on the keyboard */
 export function GuidesDialog() {
@@ -53,6 +54,12 @@ export function GuidesDialog() {
       <div className="mt-4 pt-4 border-t border-border">
         <GuideSettings showList={false} />
       </div>
+      {/* Phones have no keyboard to speak of */}
+      {!isPhone && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <KeyboardShortcuts />
+        </div>
+      )}
       <p className="mt-4 text-xs text-text-tertiary">
         Want more detail?{' '}
         <Link

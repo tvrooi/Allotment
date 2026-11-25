@@ -5,7 +5,7 @@ import { useHideBalances } from '../../utils/safeMode';
 import { Private } from '../ui/Private';
 import { balanceValue, unconvertedCurrencies } from '../../utils/accountMoney';
 import { UnconvertedNote } from '../currency/UnconvertedNote';
-import { chartColors, SUPER_COLOR } from '../../utils/chartColors';
+import { ACCOUNT_OVERVIEW_COLORS } from '../../utils/chartColors';
 import { accountTypeInfo } from '../../utils/accountTypes';
 import type { Account, AccountGroup } from '../../types';
 
@@ -16,17 +16,17 @@ interface Bucket {
 }
 
 const ASSET_BUCKETS: Bucket[] = [
-  { group: 'investments', label: 'Investments', color: '#7C3AED' },
-  { group: 'super', label: 'Super (preserved)', color: SUPER_COLOR },
-  { group: 'cash', label: 'Cash', color: chartColors.positive },
-  { group: 'property', label: 'Property', color: '#0891B2' },
-  { group: 'other', label: 'Other', color: '#78716C' },
+  { group: 'investments', label: 'Investments', color: ACCOUNT_OVERVIEW_COLORS.investments },
+  { group: 'super', label: 'Super (preserved)', color: ACCOUNT_OVERVIEW_COLORS.super },
+  { group: 'cash', label: 'Cash', color: ACCOUNT_OVERVIEW_COLORS.cash },
+  { group: 'property', label: 'Property', color: ACCOUNT_OVERVIEW_COLORS.property },
+  { group: 'other', label: 'Other', color: ACCOUNT_OVERVIEW_COLORS.other },
 ];
 
 const LIABILITY_BUCKETS: Bucket[] = [
-  { group: 'credit', label: 'Credit', color: chartColors.negative },
-  { group: 'loans', label: 'Loans', color: '#EA580C' },
-  { group: 'other', label: 'Other', color: '#9F1239' },
+  { group: 'credit', label: 'Credit', color: ACCOUNT_OVERVIEW_COLORS.credit },
+  { group: 'loans', label: 'Loans', color: ACCOUNT_OVERVIEW_COLORS.loans },
+  { group: 'other', label: 'Other', color: ACCOUNT_OVERVIEW_COLORS.otherDebt },
 ];
 
 interface Props {

@@ -1,5 +1,177 @@
 # Changes
 
+## 0.2.0-up.182
+
+- **Guard against raw form controls (#267, WAVG-09).** Added ESLint rule `allotment/no-raw-form-control` as an error over `client/src/**/*.tsx` outside `client/src/components/ui/`, blocking raw `<input>`, `<select>`, and `<textarea>` elements (except static `<input type="file">` and explicit allowlisted exceptions) as well as any `type="number"` field.
+- **Removed replaced form controls and updated docs (WAVG-10).** Removed the old native `Select` export, `compactSelectClass`, and `inputClass` from `client/src/components/ui/Input.tsx`, removed `Select` and `MoneyInput` from `jsx-a11y/label-has-associated-control` `controlComponents`, updated `DESIGN.md`, `docs/ui/MAP.md`, `docs/ui/HANDOVER-UI.md`, `CLAUDE.md`, `AGENTS.md`, `docs/ui/README.md`, and `HANDOVER.md` with the shared control set, picker rule, and lint guard, and retired `docs/ui/WAVES.md`.
+
+## 0.2.0-up.181
+
+- **Shared form controls across the remaining screens (#267).** Settings, Connected banks, sign-in, search, Dashboard, Pay later, Review, Tax time and Household use the shared pickers and fields. Phones use their native pickers for fixed lists and dates. Welcome keeps its existing switches, Cash flow keeps its month range, and the working-from-home rate still accepts fractional cents per hour.
+- **Payment plans validate the number of payments before saving.** The new field accepts 1 to 60 whole payments and keeps existing linked payments in the plan. Purchases and adjustments use the shared category picker.
+- **Money fields display formatted amounts.** Priorities covers the essentials estimate, comfort target and reserve minimum. Review covers the usual deposit amount. Household covers expense and refund amounts, fixed shares, one-off bill totals, personal shares and reserves. Amounts still save in minor units.
+- **Half-typed dates hold the button.** Editing a household contribution or repayment, the Data tab's Download CSV and Household's Export this statement wait until a part-typed date is whole, instead of saving or exporting with the old date. The statement's From and To dates have Clear.
+- **Fix: the receipt inbox shows what the reader found.** A receipt added to the Tax time inbox shows the merchant and date once the reader has read it, without reloading the page.
+- **Fix: Paid by after switching to an advance.** In Record something else, changing a household pool expense to an advance into the pool or a repayment picks you as the payer instead of leaving Paid by empty.
+
+## 0.2.0-up.180
+
+- **Selected transactions show by colour, and the list stays put.** In the register, Select no longer puts a checkbox on every transaction. Click a row (or tap a phone card) to select it, and it turns the selected colour with a bar down its left edge; click it again to let it go. Shift+click still selects a range and Select all still takes the whole list. While you are selecting, a plain click selects instead of opening the transaction's details. The selection bar now covers the toolbar above the list instead of pushing the list down, so nothing on the screen moves when you start, change or finish a selection. Screen readers still hear each row as a checkbox named for its payee and amount, and Windows high-contrast mode marks a selected row in its own highlight colour.
+- **Fix: the Date in Add transaction sits high on an iPhone.** The date's text is now vertically centred in its field, level with Amount and Payee. The fix applies to iPhone and iPad Safari only; Android phones draw the field as before.
+
+## 0.2.0-up.179
+
+- **The demo has something on every tab.** The sample budget now has a household (Harbour St house: Riley, Sam and their housemate Alex, sharing rent, power and internet, with an expense Alex paid and a settle-up), five saved receipts with photos and line items (three matched, one split across categories, one waiting in the inbox), a car insurance certificate and a starred return note in Files, phone bills and donations claimed on Tax time, the laptop as a depreciating asset with its invoice, last financial year lodged, an Afterpay purchase on Pay later, a Buying a home long-term plan, the car loan's rate and repayment, and Work and Trip up the coast tags. Review still opens with nothing overspent.
+- **Receipts and Files work in the demo.** Their sample files open, and receipts can be edited, categorised, matched and deleted in the tab, like any other demo change. Adding a file, the receipt reader and the zip downloads still need the app. The search palette finds the sample files.
+- **Fix: file lists for a working-from-home year, an investment sale or an income row.** Filtering or counting files linked to one of these failed on the server, because the query named the wrong column.
+
+## 0.2.0-up.178
+
+- **Select transactions and change them from the right-click menu.** In the register, Select puts a checkbox on every transaction (and phone card). Tick them one by one, Shift+click a range, or choose Select all to take the whole list, then right-click one of the selected rows (or use More actions, or ⋯ on a phone card) to mark them reviewed, set a category or payee, replace or remove notes, add or remove a tag, show or hide them in reports, share them with a household or delete them. The Edit dialog is gone. A change applies at once and the toast offers Undo, and it says how many rows were changed and which it left alone (a transfer, a split, a household entry). Delete still waits for you to type delete. While saving is paused every change in the menu waits too. The household sharing button that used to be called Pick to share is now Select, and the button that picked every shown row is gone: Select all does that.
+- **Marking the whole list reviewed has no confirm step.** It applies at once and Undo puts every row back. The server route that only the old Mark reviewed button used, `POST /api/transactions/review`, is removed; marking a list reviewed is `POST /api/transactions/bulk` with `changes.reviewed`, as the selection menu already did, and keeps its expected-count check and exact undo.
+- **A calmer category list on phones.** In Add transaction, the Category list opens like the Account list: directly against its field, without the keyboard. Tap the search box to type. Other category lists keep their focused search.
+- **Phone date fields fit the screen.** The Date field in Add transaction, and every other date and month field on a phone, can no longer run past the edge of its sheet on an iPhone.
+
+## 0.2.0-up.177
+
+- **Planning, reports, files and import screens on the shared controls.** Goals (the goal form, and pausing or replacing a goal), Investments (income, purchases, prices, sales and splits), Forecast's cash runway, the long-term forecast (plans, life events, the savings order, assumptions, accounts and simulations), Reports and the report builder, Files (the filters and a file's details) and the CSV, CAMT and YNAB imports with their category mapping now use the shared fields, lists, checkboxes and date pickers. Labels, placeholders, choices and saved values are unchanged, and an import creates the same transactions, accounts and categories as before (#267).
+- **Numbers say when they are out of range.** These fields used to snap a wrong number to the nearest allowed one, or send it on for the server to refuse. They now keep what you typed, say what they accept under the field, and hold Save, Create or Preview until it is fixed: the cash runway's Variable spending % (a whole number from 0 to 500), Income % (0 to 200) and Goal growth % a year (-100% to 50%), a recurring life event's Last year (1900 to 2300, or blank for no end) and an import's Rows above the header (0 to 1000, and fewer than the file's rows). The long-term forecast's whole-number and rate fields use the same number field and keep their messages and Use default.
+- **Amounts read the same in every field.** The amount moved when you pause a goal, and the cash runway's spending per day, one-off amounts, goal contributions and cost changes, use the one money field: an amount shows as money once you leave it, and text that isn't an amount stays in the field with a line under it saying so and holds Save. A runway amount now applies when you leave the field rather than on each key. A cleared or half-typed runway date keeps the last whole date instead of stopping the forecast.
+- **Clearer pickers.** A goal's progress source and the category to move money to open the searchable category picker. Accounts, securities, saved scenarios, plans, loans and import target accounts can be typed to filter. The Files search has a Clear button, and its From and To filters are date fields with Clear. Required investment dates show the required mark and stop at today. The YNAB import's format fields read Date format and Amount format, and the category mapping puts a new category's group under it, so the table fits on a phone.
+- **Month grid fixes.** The month grid's names come from the same place as the month shown in the field, and Next year stops at the last year that has a month you can pick.
+
+## 0.2.0-up.176
+
+- **Everyday money screens on the shared controls.** Transactions (the register, its filters and marks, Add transaction, the details panel, bulk edit, split and transfer suggestions), Accounts (add, edit, delete and reconcile), Budget (the table, the phone sheet, moves, targets, card payments, auto-assign, the payday plan and notes), Categories, Payees, Rules, Recurring and receipts now use the shared fields, lists, checkboxes and date pickers, so they look and behave the same everywhere. Labels, placeholders, choices and saved values are unchanged (#267).
+- **Numbers say when they are out of range.** These fields used to snap a wrong number to the nearest allowed one without a word. They now keep what you typed, say what they accept under the field, and hold Save until it is fixed: a rule's split percentage (0% to 100%, decimals allowed), a recurring transaction's date flexibility (a whole number from 0 to 14 days), a custom upcoming length (a whole number of 1 or more), a target's Repeats every (1 to 60 months) and a payday plan rule's percent (0 to 100).
+- **Amounts read the same in every field.** The budget amount on a phone, card payment funding, Move money, a target amount, the payday plan's pay and rule amounts, a split part, the new transaction row's outflow, inflow and split amounts, and the register's At least and At most all use the one money field. An amount shows as money once you leave it ($60, not 60, and the phone budget sheet turns a sum like 20\*3 into $60), and text that isn't an amount stays in the field with a line under it saying so. A typed 0 in At least or At most is still a bound.
+- **A picked date saves at once.** In a transaction's details, choosing a day from the calendar or pressing Today saves it straight away; a typed date still saves when you leave the field. A half-typed date holds Save instead of saving an empty date.
+- **Clearer pickers.** Category fields open the searchable category picker. The account in Add transaction can be typed to filter. The register's From and To dates have a Clear button and warn when From is after To.
+- **Short month names on phones.** The month range's From and To fields on Reports, the report builder and Cash flow show months as Nov 2026, so the whole month fits on a phone.
+
+## 0.2.0-up.175
+
+- **One set of form controls.** Text fields, selects, searchable lists, checkboxes, radio buttons, switches, and date and month fields now share one look and one set of states (help text, errors, disabled, read-only), with keyboard support throughout. Phones keep their own select, date and month pickers. Screens move onto the set over the next releases; this one changes only the pickers below (#267).
+- **Clearer states.** A switch that is turned off for editing now looks disabled (#264). Placeholder text is easier to read, and a field shows one focus mark instead of two when you tab to it.
+- **Today in one press.** The date field has a Today shortcut beside its calendar.
+- **Category and payee pickers.** Both now run on the shared searchable list. The payee suggestions can be chosen with the arrow keys, and Escape closes only the suggestions, so a form on a phone stays open. If creating a category fails, the picker says so.
+- **Month range picker rebuilt.** The month range on Reports, the report builder and Cash flow uses the same month grid as the month field. On a phone it is two plain From and To month fields. The ranges you can pick are unchanged.
+
+## 0.2.0-up.174
+
+- **Banks under Accounts, categories under Budget.** Connected banks is its own page under Accounts: open it with Connected banks at the top of the Accounts page, and Up is at most two clicks away. A bank's status opens that bank's own connection. Categories have their own page under Budget, opened with Categories in the Budget header (in the ⋯ menu on a phone). Settings has eight tabs and opens on Accounts. Old links to Settings' Connected banks and Categories tabs still work, and Search finds both pages. The message that stops you deleting an account linked to a bank now says to unlink it under Accounts → Connected banks.
+- **Good moments are marked.** Each goal has a small plant at the end of its bar that grows from a seed to a seedling to a bud as the money comes in, and flowers when the goal is reached, opening once the first time you see it. When Ready to assign is $0 and nothing is left to sort out, it says "Every dollar has a job"; when something is, such as an overspent envelope or spending with no category, it names that instead. Animations stay still when your device asks for reduced motion.
+
+## 0.2.0-up.173
+
+- **Payees and goals lead somewhere.** Each payee has its own page: its spending by month and in total, its default category, the rules that name it and its transactions. Open it from the Payees list, from a transaction's details or from Search. A goal funded by a category opens that category; every goal has an Edit button. Payees are renamed with a visible button, and a default category is chosen with the same searchable picker as everywhere else.
+- **One click opens a transaction.** On a computer, a click anywhere on a row opens its details. The category button, now always drawn as a button, is the one change made right in the list, and the row ends in an Edit button. The payee is changed in the details, its logo on the payee's page; the small hover arrows are gone (the details link the payee, category and account).
+- **Undo is always offered, and Back keeps your place.** Every change that can be undone says so in a toast with Undo, including sorting in Review's budget setup and changing a category in the list. The toast stays 8 seconds, and as long as the pointer or keyboard is on it. Browser Back and Forward return to the filters of an account's and a category's transactions and to the Payees search, and lists return to where they were scrolled; a fresh visit starts at the top.
+- **Page titles line up.** On a phone every page title starts the same 16 px from the edge.
+
+## 0.2.0-up.172
+
+- **Discover shared costs, tax and files.** Household, Tax time and Files stay in the menu as dimmed Set up links until used; an explicit Hidden preference still hides them. The welcome screen can pin these features. Files, Household and both Forecast tabs explain an empty page with an illustrative example and one next action. Review and the Dashboard now surface possible transfers and open the existing dialog for the owner to check each pair.
+
+## 0.2.0-up.171
+
+- **Find transactions and files from Search.** The palette now searches payees and notes across all transaction dates and finds files by the existing Files search. Type two characters to start; choose a transaction to open its details or See all in Transactions for the full search. Files open directly, and stay out of Search when the feature is hidden. These searches pause offline while cached destinations still work, the demo explains Files availability, and Safe mode hides every result amount. Search results are never saved as recents or in the offline copy.
+
+## 0.2.0-up.170
+
+- **A Dashboard that keeps its next step and says how things stand.** The review card always has an Open review button, full width and easy to tap on phones, and on wider screens the next two steps sit beside the first as quiet rows instead of leaving an empty row. Left to spend gains a slim pace bar and one line: how much of this month's spending money is used beside how far through the month you are, red only when you're overspent, with the share hidden in Safe mode. Under the opening line a small status strip shows how fresh each bank feed is (Up, Plaid, SimpleFIN, Enable Banking) and, when you have a household, who owes whom, each linking to its page; with nothing to say it isn't there. Cards side by side now end together, and Bills and income lists three bills and two pay days on wide screens with the rest a View all away. On phones the summary has one "How these figures are calculated" instead of two. The Net worth and Spending comparison cards choose their range with the same segmented buttons as Reports instead of dropdowns.
+
+## 0.2.0-up.169
+
+- **Search from any page.** Press Cmd+K (Ctrl+K on Windows and Linux) or / to open a search over pages, accounts, categories, payees and goals, plus a few actions: add a transaction, turn Safe mode on or off, and open the guides. Type a few letters, use the arrow keys and press Enter. With nothing typed it shows the places you opened from it last on this device (names only, forgotten when you sign out or restore a backup). Features you haven't set up are listed with a Set up tag that opens the sidebar setting. On phones, tap the magnifying glass in the header. It searches what the app has already loaded, so it works offline and in the demo, and it shows no amounts. The guides list (?) now lists every keyboard shortcut.
+
+## 0.2.0-up.168
+
+- **Seven small fixes from the design review.** A category's page opens on All time, so the chart, the transaction list and the summary agree instead of showing an empty month beside a full chart; on a wide screen the list sits right under the chart. Income and expenses use the same muted colours on the Dashboard, in Reports and on a category's chart, and the Reports summary and the full Income & Expenses report show spending in plain text: red is kept for overspending. The summary card no longer cuts off its bottom labels on phones. In a transaction's details, Delete moves into the ⋮ menu (still asking first), Done is the main button, and the payee, category and account are underlined links to the register filtered to them. On Recurring, possible matches show as a quiet note with a Review now link instead of a solid orange bar. The arrow at the end of a transaction row and the hide-balances eye now have names a screen reader can read.
+
+## 0.2.0-up.167
+
+- **Add a transaction from any page.** The sidebar has an Add a transaction button at its top (an icon when the sidebar is folded), and pressing N on any page opens the same dialog, except while you're typing or another dialog is open. The dialog opens ready to type the amount, on the account whose page you're on, or else the account you used last on this device; a closed account is never picked. On phones a tab bar at the foot of the screen reaches Home, Transactions, Budget and Review in one tap, with Add in the middle; everything else stays in the menu, and notices sit above the bar.
+
+## 0.2.0-up.166
+
+- **The refined Dashboard is now the Dashboard.** The opening line says when your next pay arrives, and Left to spend leads the summary in a wider panel with a larger figure. The review prompt leads with the task and keeps the step count as a quieter link. Bills and income are labelled Next 30 days and link to the entries that don't fit, cards keep their own height, and the savings target is a quiet Target link that opens the dropdown. On phones, averages and savings follow the commitments. Customise saves for your device again, and the temporary `/dashboard/refined` route is gone. A `?theme=dark` or `?theme=light` link parameter pins one window's theme without changing your saved setting.
+
+## 0.2.0-up.165
+
+- **The Forecast page leads with the answer.** Long term opens with the plan select and a Plan actions menu, then one headline sentence and a large net-worth figure, with the supporting numbers in a compact row; duplicate and empty cards are gone and long-range amounts show in whole dollars. A forecast with no income now says so first, with buttons to enter take-home pay or set up a payday plan. Both charts draw a ring at today with dotted forecast lines, minimal gridlines and 12px labels, and the phone header keeps the dollars toggle full width. The Sort it link in the uncategorised notice has a 44px tap target on phones.
+
+## 0.2.0-up.164
+
+- **Dates read day-first, and Household is easier to scan.** The word date format now writes 5 Jan 2026, and full dates such as day headings write 5 January 2026; people who chose the old month-first format are moved to the new one and numeric formats are unchanged. On Household, the balance band is the one place to settle up, card titles are larger, and the header fits on phones with 44px tap targets. Two-person households set the split of a new shared expense with a 0–100 slider in steps of 5, which starts at 50.
+
+## 0.2.0-up.163
+
+- **A calmer account overview.** Asset and liability charts use muted teal, denim, mauve, ochre and clay, with lighter shades for dark mode. Category labels and balances remain the primary reading cues.
+
+## 0.2.0-up.162
+
+- **Accounts show where their money belongs.** Each account type is followed by For budget, Off budget, or its household name. Household accounts are labelled separately from the personal budget, and longer context wraps on phones.
+
+## 0.2.0-up.161
+
+- **Accounts are easier to reach and navigate.** Account rows support keyboard navigation, group disclosures announce their state, and phone group totals stay separate from change figures. Phones lead with a compact net-worth total and the account list, with the full overview available on request. Failed account loads offer Retry instead of first-account guidance; balance-comparison failures are reported. Net worth uses a single card boundary.
+
+## 0.2.0-up.160
+
+- **Inspect a grouped payee before categorising.** Each repeated payee in Review links to its uncategorised personal-budget transactions across all dates. Inspection and grouped categorisation share the same account and merchant selection; household, off-budget and already categorised entries stay outside the view.
+
+## 0.2.0-up.159
+
+- **Review can sort repeated payees together.** An optional grouped view reuses the first-import sorting flow for merchants with multiple uncategorised transactions. Each payee’s changes have one Undo and Redo. Future categorisation is opt-in, existing categories stay intact, and matching household or off-budget transactions stay separate. Failed grouped saves restore the previous payee default.
+
+## 0.2.0-up.158
+
+- **Review category changes offer Undo.** A notification names the transaction and category, with Undo even after the queue empties. Redo and the existing keyboard history also work. Only the category is restored, preserving later notes and amount changes; failed undo reports the error. Long names wrap and phone actions have 44px targets. The offline demo’s response context now supports the shared transaction route, fixing category saves there.
+
+## 0.2.0-up.157
+
+- **Review categories are searchable.** The transaction queue uses the existing grouped category picker with type-to-filter, arrow keys, Enter and Escape. Cancelling returns focus without saving; successful categorisation keeps keyboard focus in the queue and failed saves keep the row available to retry. Phone search uses 16px text and 44px targets; floating category menus stay within the viewport.
+
+## 0.2.0-up.156
+
+- **Review follows the work through to a check-in.** Setup checks sit beside the next actions, uncategorised spending begins with a short expandable queue, and guided steps open on request. The page header scrolls away on phones. Category detail filters explain their scope, negative Ready to assign explains overassignment, and **Record today’s review** at the end clearly saves figures without resolving outstanding work.
+
+## 0.2.0-up.155
+
+- **The iPhone web-app shell uses an opaque, isolated header.** Safari chooses its status-bar treatment without a legacy override; the root matches the header colour. Landscape uses the dynamic viewport height. Transactions search and custom dates use 16px phone text and 44px fields, and short viewports retain a scrollable ledger when filters are open. Safari-engine and simulated safe-area checks cover iPhone 14 Pro Max portrait, landscape and shorter browser viewports; native Home Screen blur still requires device confirmation.
+
+- **Common transaction review filters are one tap away.** Uncategorised, Not reviewed, and No receipts or files can be combined without opening advanced filters. They keep the current date range, account and search, use the existing shareable filter URL, and toggle off individually.
+
+- **Advanced transaction filters stay compact.** Categories, accounts, payees, money, status and tags appear one group at a time, leaving the ledger visible. Active chips remain available below; Done or Escape closes the panel and returns focus to Filters. Switching groups keeps searches and unfinished amount input.
+
+- **Transactions makes money direction explicit.** Money in, Money out and Net movement share a quieter summary inspired by Dashboard. Expenses and deposits show consistent signs on desktop and phones, including rounded-up purchases; folded transfer pairs stay neutral. Day headers label their existing aggregate as Total moved rather than implying a net balance.
+- **Transactions follows Budget’s register hierarchy.** Warm summary bands, readable search hints and explicit Uncategorised labels make the ledger easier to scan. On phones the receipt action becomes a labelled camera control, keeping the title and Add on one row.
+
+## 0.2.0-up.154
+
+The Dashboard:
+
+- **A separate refined Dashboard is available for comparison.** The `/dashboard/refined` design alternative prioritises upcoming commitments, reduces repeated information, labels the bill window and omitted entries, and quiets the savings-target editor. The original Dashboard remains available; the alternative’s layout customisation does not overwrite saved home layouts.
+- **Dashboard contrast and controls are more consistent.** The comparison chart uses a darker, theme-aware dashed line. Dropdowns share one finish with clearer borders and focus rings, chart hover follows the palette, and the definitions disclosure indicates when it is open.
+- **Dashboard controls fit phone viewports.** Chart selectors have room for their labels and larger text. Customise uses larger reorder targets and wraps card names instead of clipping them. Viewport checks cover 430×932 for iPhone 14 Pro Max and shorter, narrower phone screens.
+- **The phone dashboard summary is easier to scan.** One compact panel puts left to spend first, shares one period label across averages and savings, and keeps the savings target beside its rate. Definitions remain a tap away; desktop keeps its four tiles.
+- **Dashboard figures explain their periods and definitions.** Monthly averages and savings rate show their actual date range and note that the current month is included. An expandable explanation distinguishes unspent income from savings balances, explains the goal target and names what left to spend excludes. Cash flow and category spending show their periods too.
+- **Dashboard data failures are clear and recoverable.** Cards show a retry action instead of zero balances or empty lists when a read fails. If a refresh fails, earlier figures stay visible with a warning.
+- **The dashboard leads with everyday decisions.** The default desktop layout puts the spending summary, bills and budget progress before longer-term charts. A review prompt brings the existing next steps onto the home page. Custom card orders stay as saved, and the privacy tip moves below the cards. On phones Customise becomes a compact, labelled icon control.
+
+The Budget page, from the 9 November design critique (docs/critiques/2026-11-09-budget.md):
+
+- **Ready to assign leads the right rail,** as its largest figure. It stays green while the figure holds; uncategorised spending, overspending and card shortfalls get their own line under it with a **Review** link, instead of turning it yellow. Yellow is kept for balances that disagree with the bank or missing exchange rates.
+- **A budget in Australian dollars writes $, never A$,** on any device. Another currency that would then look the same is written as its code (USD beside an Australian $). Amounts drawn before the budget's currency had loaded no longer keep the wrong symbol.
+- **The working behind Ready to assign is folded under "How Ready to assign is worked out"** on desktop too, and its rows that are $0 are left out.
+- **The rail no longer repeats the table.** On desktop the Summary, Income and Expenses tabs are gone: the table's Total income and Total expenses rows and each section's totals already show them. The inspector's month total is **In envelopes** (it was "Available", which means something else in the table), smaller than Ready to assign, and its own fold is **What makes up In envelopes**. The second "November 2026" heading is gone. Phones keep the Income and expenses fold.
+- **Only envelopes that need a decision are pills:** overspent in red, short of a target in amber, with their caption in the same colour. An envelope with money in it is a plain figure. Hover a spending bar to see what it measures.
+- Section headers are in sentence case. The amount you assign is named **Assigned to Rent** (it was "Planned for"). The Move money button says **Cover overspending** only when an envelope is overspent, and **Move between envelopes** otherwise. Phones no longer ask you to tick envelopes in a table they don't have.
+- The category search hint is easier to read, the Review link sits beside its reason, and the amount editor's history shows past spending in the chart colour rather than red.
+- **The next step under Ready to assign says where the money goes:** **Put $3,476.51 in an envelope…** (it was "Put the rest in"). When a target is still short, **Fund targets (n)** leads and Put-in is the quieter button. "Hold money…" follows, and the uncategorised or overspent line sits under the buttons, in amber rather than red.
+- **An envelope that can't cover its upcoming bills is amber.** A $0 Charity envelope with a $25 Food bank debit still to come shows **$25 short for Food bank** (or "short of expected bills" for several), in the table, on phone cards and in the bar's hover text. A bill that has already posted isn't counted again. The inspector adds **After expected bills** under an envelope's Available.
+
 ## 0.2.0-up.153
 
 Follow-ups to linked categories (0.2.0-up.151):

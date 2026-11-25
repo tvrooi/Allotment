@@ -1,0 +1,28 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/PAYMENT-PLANS.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Pay later: Afterpay and other payment plans (up.67)",
+  "summary": "Specifies how pay-later plans (Afterpay and similar) are recorded: purchases once in their category, instalments linked to bank payments, and envelope funding rules.",
+  "scope": [
+    "Afterpay",
+    "Zip Plus",
+    "Klarna",
+    "PayPal Pay in 4",
+    "Humm",
+    "payment plans",
+    "credit account",
+    "Home improvement envelope",
+    "Afterpay payment envelope",
+    "payment_plans table",
+    "payment_plan_instalments table",
+    "payment_plan_dismissals table",
+    "Budget page",
+    "Forecast"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

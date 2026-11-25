@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { MAX_NOTE_LENGTH } from '../../api/budget';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { Field } from '../ui/Field';
+import { Textarea } from '../ui/Textarea';
 
 /**
  * A note on the budget (BUD-10): a month's, or a category's. It saves when the field is left, so
@@ -49,26 +51,21 @@ export function NoteField({
 
   return (
     <div className="grid gap-1">
-      <label htmlFor={id} className="text-xs font-medium text-text-secondary">
-        {label}
-      </label>
-      <textarea
-        id={id}
-        value={draft}
-        maxLength={MAX_NOTE_LENGTH}
-        rows={2}
-        readOnly={!canSave}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          if (status !== 'saving') setStatus('idle');
-        }}
-        onBlur={() => void save()}
-        aria-invalid={status === 'error' || undefined}
-        aria-describedby={`${id}-status`}
-        placeholder="Add a note"
-        className="w-full resize-y rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-brand-600 read-only:opacity-60"
-      />
-      <span id={`${id}-status`} role="status" className="text-xs">
+      <Field label={label} isReadOnly={!canSave} isInvalid={status === 'error'}>
+        <Textarea
+          value={draft}
+          maxLength={MAX_NOTE_LENGTH}
+          rows={2}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (status !== 'saving') setStatus('idle');
+          }}
+          onBlur={() => void save()}
+          aria-describedby={`${id}-status`}
+          placeholder="Add a note"
+        />
+      </Field>
+      <span id={`${id}-status`} role="status" className="text-nav">
         {status === 'saving' && <span className="text-text-tertiary">Saving…</span>}
         {status === 'saved' && <span className="text-text-tertiary">Note saved.</span>}
         {status === 'error' && <span className="text-negative">Note not saved. {error}</span>}

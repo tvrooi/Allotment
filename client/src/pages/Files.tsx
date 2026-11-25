@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, FolderOpen, Search, Star, Tag as TagIcon } from 'lucide-react';
+import { Download, FolderOpen, Search, Star, Tag as TagIcon, X } from 'lucide-react';
 import { filesExportUrl, type FileFilter, type FileKind } from '../api/files';
 import { FileDetailModal } from '../components/files/FileDetailModal';
 import { FileDrop, FileThumb, formatBytes, KIND_LABELS } from '../components/files/FileParts';
+import { EmptyState } from '../components/ui/EmptyState';
+import { useCanSave } from '../hooks/useConnection';
+import { SavingPausedHint } from '../components/connection/SavingPausedHint';
+import { formatExampleMoney } from '../utils/currency';
 import { Button } from '../components/ui/Button';
-import { Input, Select } from '../components/ui/Input';
+import { DatePicker } from '../components/ui/DatePicker';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
@@ -28,6 +34,12 @@ const VIEWS = [
 ] as const;
 type View = (typeof VIEWS)[number]['id'];
 const PAGE = 60;
+// The shared Select holds no '' option, so "Any kind" has its own value; the URL keeps no kind
+const ANY_KIND = 'any';
+const KIND_OPTIONS = [
+  { value: ANY_KIND, label: 'Any kind' },
+  ...(Object.keys(KIND_LABELS) as FileKind[]).map((k) => ({ value: k, label: KIND_LABELS[k] })),
+];
 
 function StorageCard() {
   const { data } = useFileStorage();
@@ -119,6 +131,34 @@ function StorageCard() {
 }
 
 /**
+ * A day picker's day, held here as the search box holds its text, and written to the URL by the
+ * caller. The DatePicker needs its value back in the same render it reports a day: read from the
+ * URL, which catches up a render later, a day typed one figure at a time lost its second. A URL
+ * day the page didn't write (Back, Forward, the Files link) replaces the held one, so the field
+ * never shows a day the list no longer uses.
+ */
+function useUrlHeldDay(urlDay: string) {
+  const [day, setDay] = useState(urlDay);
+  // Days written and not yet seen in the URL, oldest first
+  const pending = useRef<string[]>([]);
+  useEffect(() => {
+    const at = pending.current.indexOf(urlDay);
+    if (at >= 0) {
+      pending.current.splice(0, at + 1);
+      return;
+    }
+    pending.current = [];
+    setDay(urlDay);
+  }, [urlDay]);
+  const hold = (next: string) => {
+    setDay(next);
+    // Writing the day the URL will hold anyway changes nothing there, so nothing waits for it
+    if (next !== (pending.current.at(-1) ?? urlDay)) pending.current.push(next);
+  };
+  return [day, hold] as const;
+}
+
+/**
  * Files: every document kept with the budget (bills, warranties, policies, receipts), each linked
  * to any number of transactions, categories, goals and accounts. URL state: q, view, tag, kind,
  * from, to, and file (the one open).
@@ -132,6 +172,8 @@ export default function FilesPage() {
   const to = params.get('to') ?? '';
   const openId = params.get('file');
   const [search, setSearch] = useState(params.get('q') ?? '');
+  const [fromDay, setFromDay] = useUrlHeldDay(from);
+  const [toDay, setToDay] = useUrlHeldDay(to);
   const q = useDebounce(search.trim(), 250);
   const { data: tags = [] } = useTags();
 
@@ -159,6 +201,7 @@ export default function FilesPage() {
   const filesQuery = useFilePages(filter, PAGE);
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = filesQuery;
   const upload = useUploadFile();
+  const canSave = useCanSave();
   const [errors, setErrors] = useState<string[]>([]);
   const docs = data?.pages.flatMap((p) => p.documents) ?? [];
   const total = data?.pages[0]?.total ?? 0;
@@ -209,7 +252,9 @@ export default function FilesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shared]);
 
-  const filtered = !!(q || tag || kind || from || to || view);
+  const filtered = !!(search.trim() || q || tag || kind || from || to || view);
+  const emptyLibrary =
+    !isLoading && !loadFailed(filesQuery) && !!data && docs.length === 0 && !filtered;
 
   return (
     <div className="flex flex-col h-full">
@@ -272,54 +317,106 @@ export default function FilesPage() {
           </aside>
 
           <div className="flex-1 min-w-0 space-y-4">
-            <div data-guide="files.search" className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+            {!emptyLibrary && (
+              <div data-guide="files.search" className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-48">
+                  <Search
+                    size={14}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                    aria-hidden
+                  />
+                  <Input
+                    fieldSize="sm"
+                    className="w-full pl-8 pr-8 max-md:pr-11"
+                    placeholder="Search names, descriptions, labels and what files say"
+                    aria-label="Search files"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      set({ q: e.target.value.trim() || null });
+                    }}
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch('');
+                        set({ q: null });
+                      }}
+                      aria-label="Clear file search"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 min-w-8 min-h-8 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <Select
+                  aria-label="Kind of file"
+                  fieldSize="sm"
+                  value={kind || ANY_KIND}
+                  options={KIND_OPTIONS}
+                  onChange={(value) => set({ kind: value === ANY_KIND ? null : value })}
+                  className="w-40 max-md:w-full"
                 />
-                <Input
-                  className="w-full pl-8"
-                  placeholder="Search names, descriptions, labels and what files say"
-                  aria-label="Search files"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    set({ q: e.target.value.trim() || null });
+                <DatePicker
+                  label="From"
+                  hideLabel
+                  optional
+                  fieldSize="sm"
+                  value={fromDay}
+                  maxValue={toDay || undefined}
+                  onChange={(value) => {
+                    setFromDay(value);
+                    set({ from: value || null });
                   }}
+                  className="w-auto min-w-0"
+                />
+                <DatePicker
+                  label="To"
+                  hideLabel
+                  optional
+                  fieldSize="sm"
+                  value={toDay}
+                  minValue={fromDay || undefined}
+                  onChange={(value) => {
+                    setToDay(value);
+                    set({ to: value || null });
+                  }}
+                  className="w-auto min-w-0"
                 />
               </div>
-              <Select
-                aria-label="Kind of file"
-                value={kind}
-                onChange={(e) => set({ kind: e.target.value || null })}
-                className="w-auto"
-              >
-                <option value="">Any kind</option>
-                {(Object.keys(KIND_LABELS) as FileKind[]).map((k) => (
-                  <option key={k} value={k}>
-                    {KIND_LABELS[k]}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                type="date"
-                aria-label="From"
-                value={from}
-                onChange={(e) => set({ from: e.target.value || null })}
-                className="w-auto"
-              />
-              <Input
-                type="date"
-                aria-label="To"
-                value={to}
-                onChange={(e) => set({ to: e.target.value || null })}
-                className="w-auto"
-              />
-            </div>
+            )}
 
             <div data-guide="files.add">
-              <FileDrop onFiles={add} busy={upload.isPending} label="Add files" />
+              <FileDrop onFiles={add} busy={upload.isPending || !canSave} label="Add files">
+                {emptyLibrary
+                  ? (choose) => (
+                      <EmptyState
+                        title="Keep your files together"
+                        description="Keep receipts, warranties and bills linked to the money they belong to."
+                        example={{
+                          content: (
+                            <>
+                              <p>Fridge warranty · {formatDay('2026-11-01')}</p>
+                              <p>Linked to Home · {formatExampleMoney(149_900)}</p>
+                            </>
+                          ),
+                          description:
+                            'A fridge warranty linked to the Home category and a purchase of ' +
+                            formatExampleMoney(149_900) +
+                            '.',
+                        }}
+                        keepActions
+                        actions={
+                          <Button disabled={!canSave || upload.isPending} onClick={choose}>
+                            Add a file
+                          </Button>
+                        }
+                      />
+                    )
+                  : undefined}
+              </FileDrop>
+              <SavingPausedHint />
             </div>
             {sharedNote && (
               <p role="status" className="text-sm text-text-secondary">
@@ -338,11 +435,9 @@ export default function FilesPage() {
             ) : loadFailed(filesQuery) ? (
               <QueryProblem what="files" query={filesQuery} />
             ) : docs.length === 0 ? (
-              <p className="text-sm text-text-tertiary">
-                {filtered
-                  ? 'No files match.'
-                  : 'No files yet. Add bills, warranties, insurance policies or photos of what you own, then link each to the transactions, categories, goals and accounts it belongs to.'}
-              </p>
+              filtered ? (
+                <p className="text-sm text-text-tertiary">No files match.</p>
+              ) : null
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {docs.map((d) => (

@@ -1,3 +1,5 @@
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,8 +34,6 @@ import {
 // undoable, and an undone one can be redone.
 
 const DAYS = [7, 30, 90];
-const inputClass =
-  'w-full px-3 py-1.5 text-sm border border-border rounded-md bg-surface text-text focus:border-brand-600 focus:outline-none';
 
 function status(t: AccessToken) {
   if (t.revokedAt) return 'Revoked';
@@ -103,40 +103,31 @@ export function ReadOnlyAccess() {
       >
         <label className="flex-1 min-w-40">
           <span className="block text-xs font-medium text-text-secondary mb-1">Name</span>
-          <input
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Claude"
             maxLength={60}
-            className={inputClass}
           />
         </label>
-        <label>
-          <span className="block text-xs font-medium text-text-secondary mb-1">Expires after</span>
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className={inputClass}
-          >
-            {DAYS.map((d) => (
-              <option key={d} value={d}>
-                {d} days
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-text-secondary mb-1">Access</span>
-          <select
-            value={scope}
-            onChange={(e) => setScope(e.target.value as AccessTokenScope)}
-            className={inputClass}
-          >
-            <option value="read">Read only</option>
-            <option value="categorise">Read and categorise</option>
-            <option value="organise">Read, categorise and organise</option>
-          </select>
-        </label>
+        <Select
+          label="Expires after"
+          className="w-auto"
+          value={String(days)}
+          onChange={(value) => setDays(Number(value))}
+          options={DAYS.map((day) => ({ value: String(day), label: `${day} days` }))}
+        />
+        <Select
+          label="Access"
+          className="w-auto max-w-full"
+          value={scope}
+          onChange={(value) => setScope(value as AccessTokenScope)}
+          options={[
+            { value: 'read', label: 'Read only' },
+            { value: 'categorise', label: 'Read and categorise' },
+            { value: 'organise', label: 'Read, categorise and organise' },
+          ]}
+        />
         <Button type="submit" disabled={!name.trim() || create.isPending}>
           <KeyRound size={14} /> Create token
         </Button>

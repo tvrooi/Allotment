@@ -19,6 +19,17 @@ export interface HouseholdSummary {
   /** Its picture (small image data URL), shown on payments shared with it; null = initial */
   logo: string | null;
   people: { id: string; name: string; isSelf: boolean }[];
+  /** 1 = the Household page opens on it when none is named */
+  isDefault?: number;
+}
+
+/** The part of GET /households/:id that says who owes whom (the page's BalanceSummary) */
+export interface HouseholdBalances {
+  group: { id: string; name: string; currency: string; includeBills?: number };
+  people: { id: string; name: string; isSelf: number }[];
+  /** Per person, across everything shared: negative = owes, positive = is owed */
+  balances: Record<string, number>;
+  recurringBills: { name: string; payments: { shared: boolean }[] }[];
 }
 
 export interface RepaymentSuggestion {
@@ -41,6 +52,12 @@ export interface ShareResult {
 }
 
 export const getHouseholds = () => apiFetch<HouseholdSummary[]>('/households');
+
+export const setHouseholdIncludesBills = (groupId: string, includeBills: boolean) =>
+  apiFetch<unknown>(`/households/${groupId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ includeBills }),
+  });
 
 export const addPoolAccount = (groupId: string, accountId: string) =>
   apiFetch<unknown>(`/households/${groupId}/pool-accounts`, {
@@ -114,6 +131,31 @@ export interface SettleUpTransfer {
 }
 
 /** Records a suggested transfer as a repayment, with no bank payment linked */
+/** A shared expense, dated today, split with the household's default split (equal when none) */
+export const recordSharedExpense = (
+  groupId: string,
+  e: {
+    description: string;
+    amount: number;
+    payerId: string;
+    date: string;
+    people: { id: string }[];
+    split: HouseholdSplit | null;
+  },
+) =>
+  apiFetch<unknown>(`/households/${groupId}/events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'expense',
+      date: e.date,
+      description: e.description,
+      amount: e.amount,
+      payerId: e.payerId,
+      mode: e.split?.mode ?? 'equal',
+      shares: e.split?.shares ?? e.people.map((p) => ({ personId: p.id, value: 1 })),
+    }),
+  });
+
 export const recordSettleUp = (
   groupId: string,
   t: SettleUpTransfer,
@@ -292,6 +334,29 @@ export const updateRecurringBill = (
     body: JSON.stringify(changes),
   });
 /** Shares a bill's payments with the bill's own split */
+/** What sharing would record, with nothing recorded: `shares` is each person's part */
+export interface SharePreview {
+  results: (
+    | {
+        transactionId: string;
+        ok: true;
+        amount: number;
+        shares: { personId: string; amount: number }[];
+      }
+    | { transactionId: string; ok: false; error: string }
+  )[];
+}
+
+export const previewBillPayments = (
+  groupId: string,
+  scheduleId: string,
+  transactionIds: string[],
+) =>
+  apiFetch<SharePreview>(`/households/${groupId}/recurring-bills/${scheduleId}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ transactionIds, preview: true }),
+  });
+
 export const shareBillPayments = (groupId: string, scheduleId: string, transactionIds: string[]) =>
   apiFetch<ShareResult>(`/households/${groupId}/recurring-bills/${scheduleId}/share`, {
     method: 'POST',

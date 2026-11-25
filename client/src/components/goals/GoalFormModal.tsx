@@ -1,8 +1,13 @@
 import { useState, useEffect, useId } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import type { Goal } from '../../types';
@@ -23,6 +28,8 @@ const ICONS = [
   'Gift',
   'Baby',
 ];
+/** The Linked account list's "None" row (a Combobox option needs a value of its own) */
+const NO_ACCOUNT = '__none__';
 const COLORS = [
   '#2563EB',
   '#059669',
@@ -68,6 +75,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
   const { data: accounts = [] } = useAccounts();
 
   const { data: groups = [] } = useCategories();
+  const expenseGroups = groups.filter((g) => !g.isIncome);
   const [categoryId, setCategoryId] = useState('');
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState(0);
@@ -133,41 +141,29 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
       dirty={dirty && !saving}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <label htmlFor={`${fieldId}-name`} className="text-sm font-medium text-text-secondary">
-            Name
-          </label>
-          <input
-            id={`${fieldId}-name`}
+        <Field label="Name">
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Emergency Fund"
-            aria-label="Name"
-            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
             autoFocus
           />
-        </div>
+        </Field>
 
         <div className="space-y-1.5">
-          <label htmlFor={`${fieldId}-source`} className="text-sm font-medium text-text-secondary">
-            Progress source
-          </label>
-          <Select
+          <Label htmlFor={`${fieldId}-source`}>Progress source</Label>
+          {/* The expense categories, hidden ones included, as the list offered before (G3) */}
+          <CategorySelectButton
             id={`${fieldId}-source`}
-            aria-label="Progress source"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="">Manual tracking</option>
-            {groups
-              .filter((g) => !g.isIncome)
-              .flatMap((g) => g.categories)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-          </Select>
+            label="Progress source"
+            value={categoryId || null}
+            onChange={(id) => setCategoryId(id ?? '')}
+            groups={expenseGroups}
+            allowNone
+            noneLabel="Manual tracking"
+            allowCreate={false}
+            includeHidden
+          />
           <p className="text-xs text-text-secondary">
             Category goals use available budget money. Assigning funds increases progress; spending
             or moving funds reduces it. Each category can fund one goal. Account links are for
@@ -176,12 +172,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label
-              htmlFor={`${fieldId}-target`}
-              className="text-sm font-medium text-text-secondary"
-            >
-              Target
-            </label>
+            <Label htmlFor={`${fieldId}-target`}>Target</Label>
             <CurrencyInput
               id={`${fieldId}-target`}
               value={targetAmount}
@@ -192,12 +183,7 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
           </div>
           {!categoryId && (
             <div className="space-y-1.5">
-              <label
-                htmlFor={`${fieldId}-saved`}
-                className="text-sm font-medium text-text-secondary"
-              >
-                Saved so far
-              </label>
+              <Label htmlFor={`${fieldId}-saved`}>Saved so far</Label>
               <CurrencyInput
                 id={`${fieldId}-saved`}
                 value={currentAmount}
@@ -209,41 +195,26 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor={`${fieldId}-date`} className="text-sm font-medium text-text-secondary">
-            Target date (optional)
-          </label>
-          <input
-            id={`${fieldId}-date`}
-            type="date"
-            aria-label="Target date"
-            value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-          />
-        </div>
+        <DatePicker
+          label="Target date (optional)"
+          errorLabel="target date"
+          value={targetDate}
+          onChange={setTargetDate}
+          optional
+        />
 
-        <div className="space-y-1.5">
-          <label htmlFor={`${fieldId}-account`} className="text-sm font-medium text-text-secondary">
-            Linked account (optional)
-          </label>
-          <select
-            id={`${fieldId}-account`}
-            aria-label="Linked account"
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-          >
-            <option value="">None</option>
-            {accounts
-              .filter((a) => !a.closedAt)
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-          </select>
-        </div>
+        <Combobox
+          label="Linked account (optional)"
+          items={[
+            { value: NO_ACCOUNT, label: 'None' },
+            ...accounts.filter((a) => !a.closedAt).map((a) => ({ value: a.id, label: a.name })),
+          ]}
+          value={accountId || NO_ACCOUNT}
+          // Text that matches no account returns to the chosen one; it is never emptied
+          onChange={(v) => {
+            if (v) setAccountId(v === NO_ACCOUNT ? '' : v);
+          }}
+        />
 
         <div className="space-y-1.5">
           <span id={`${fieldId}-icon`} className="text-sm font-medium text-text-secondary">

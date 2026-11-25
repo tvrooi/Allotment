@@ -12,6 +12,7 @@ import {
   DESKTOP_PORT,
   ENABLE_BANKING_MOCK_PORT,
   FRANKFURTER_MOCK_PORT,
+  GALLERY_PORT,
   MAIL_CATCHER_PORT,
   MULTI_USER_BUDGET_PORT,
   MULTI_USER_PORT,
@@ -33,7 +34,9 @@ import { startUpMock } from './mockUp';
 // Settings the tests need are passed on through environment variables.
 //
 // It also builds the in-browser demo (`--mode demo`) and serves it as static files under
-// /demo/, as a static host would.
+// /demo/, as a static host would, and the development-only controls gallery (`--mode gallery`),
+// served at the root. With E2E_GALLERY_ONLY=1 it builds and serves only the gallery and starts
+// no server, so the gallery project runs without them (or the server's native modules).
 //
 // Tests can also stop and restart the desktop server (to check how the app behaves
 // while it can't reach it) through a small control server on 127.0.0.1:CONTROL_PORT,
@@ -192,9 +195,33 @@ const DEMO_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
 };
 
+/** Sends one file of a static build with the demo's headers, or 404 when it isn't there */
+function sendBuildFile(root: string, rel: string, res: http.ServerResponse) {
+  const file = path.join(root, rel);
+  if (
+    path.relative(root, file).startsWith('..') ||
+    !fs.existsSync(file) ||
+    fs.statSync(file).isDirectory()
+  ) {
+    res.writeHead(404).end();
+    return;
+  }
+  res.writeHead(200, {
+    ...DEMO_HEADERS,
+    'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream',
+  });
+  fs.createReadStream(file).pipe(res);
+}
+
+function listen(server: http.Server, port: number): Promise<http.Server> {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => resolve(server));
+  });
+}
+
 /** Serves the demo build at /demo/, as static files, as a static host would. */
 function startDemoServer(root: string): Promise<http.Server> {
-  const headers = DEMO_HEADERS;
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (!url.pathname.startsWith('/demo/')) {
@@ -202,44 +229,64 @@ function startDemoServer(root: string): Promise<http.Server> {
       return;
     }
     const rel = decodeURIComponent(url.pathname.slice('/demo/'.length)) || 'index.html';
-    const file = path.join(root, rel);
-    if (
-      path.relative(root, file).startsWith('..') ||
-      !fs.existsSync(file) ||
-      fs.statSync(file).isDirectory()
-    ) {
-      res.writeHead(404).end();
+    sendBuildFile(root, rel, res);
+  });
+  return listen(server, DEMO_PORT);
+}
+
+/**
+ * Serves the gallery build at the root. A path without a file extension is a page of the app
+ * (/dev/controls), so it gets index.html; anything else is a file of the build.
+ */
+function startGalleryServer(root: string): Promise<http.Server> {
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    sendBuildFile(root, path.extname(rel) ? rel : 'index.html', res);
+  });
+  return listen(server, GALLERY_PORT);
+}
+
+/** Removes the run's folder (SQLite may hold its files for a moment after a server ends on Windows) */
+async function removeRunDir(dir: string) {
+  for (let i = 0; i < 10; i++) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
       return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 300));
     }
-    res.writeHead(200, {
-      ...headers,
-      'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream',
-    });
-    fs.createReadStream(file).pipe(res);
-  });
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(DEMO_PORT, '127.0.0.1', () => resolve(server));
-  });
+  }
 }
 
 export default async function globalSetup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flybudget-e2e-'));
+  const galleryOnly = process.env.E2E_GALLERY_ONLY === '1';
+  const builds: (readonly [target: string, mode: string | undefined])[] = galleryOnly
+    ? [['client-gallery', 'gallery']]
+    : [
+        ['client-desktop', 'electron'],
+        ['client-web', undefined],
+        ['client-demo', 'demo'],
+        ['client-gallery', 'gallery'],
+      ];
   if (!process.env.E2E_SKIP_BUILD) {
-    buildClient(path.join(dir, 'client-desktop'), 'electron');
-    buildClient(path.join(dir, 'client-web'));
-    buildClient(path.join(dir, 'client-demo'), 'demo');
+    for (const [target, mode] of builds) buildClient(path.join(dir, target), mode);
   } else {
     // Reuse builds from a previous run (faster while writing tests)
-    for (const [target, mode] of [
-      ['client-desktop', 'electron'],
-      ['client-web', undefined],
-      ['client-demo', 'demo'],
-    ] as const) {
+    for (const [target, mode] of builds) {
       const cached = path.join(os.tmpdir(), `flybudget-e2e-cache-${target}`);
       if (!fs.existsSync(cached)) buildClient(cached, mode);
       fs.cpSync(cached, path.join(dir, target), { recursive: true });
     }
+  }
+
+  const gallery = await startGalleryServer(path.join(dir, 'client-gallery'));
+  if (galleryOnly) {
+    return async () => {
+      gallery.close();
+      await removeRunDir(dir);
+    };
   }
 
   const demo = await startDemoServer(path.join(dir, 'client-demo'));
@@ -362,6 +409,7 @@ export default async function globalSetup() {
 
   return async () => {
     control.close();
+    gallery.close();
     demo.close();
     enableBanking.close();
     await up.close();
@@ -370,14 +418,6 @@ export default async function globalSetup() {
     stop(desktop);
     stop(server);
     stop(multiUser);
-    // SQLite may hold the files for a moment after the process ends on Windows
-    for (let i = 0; i < 10; i++) {
-      try {
-        fs.rmSync(dir, { recursive: true, force: true });
-        return;
-      } catch {
-        await new Promise((r) => setTimeout(r, 300));
-      }
-    }
+    await removeRunDir(dir);
   };
 }

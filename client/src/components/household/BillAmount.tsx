@@ -8,7 +8,7 @@ import { todayIso } from '../../utils/calendarDay';
 import { formatDay } from '../../utils/dates';
 import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
-import { Select } from '../ui/Input';
+import { Select } from '../ui/Select';
 
 // A shared bill's amount, the Up "Edit Regular" way: its payments newest first with their total,
 // a prompt when real payments have moved away from what it expects (server billDrift; the
@@ -97,7 +97,7 @@ export function BillAmount({ bill, currency }: Props) {
       )}
       {bill.payments.length > 0 && (
         <details className="text-xs text-text-tertiary">
-          <summary className="cursor-pointer w-fit">
+          <summary className="cursor-pointer w-fit max-md:py-3.5">
             {bill.payments.length === 1 ? 'Last payment' : `Last ${bill.payments.length} payments`}:{' '}
             <span className="tabular-nums">{money(total)}</span>
           </summary>
@@ -130,19 +130,12 @@ export function BillAmount({ bill, currency }: Props) {
               aria-label="Expected amount"
             />
           </label>
-          <label className="grid gap-1 text-xs font-medium text-text-secondary">
-            How it varies
-            <Select
-              value={amountType}
-              onChange={(e) => setAmountType(e.target.value as AmountType)}
-            >
-              {AMOUNT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </Select>
-          </label>
+          <Select
+            label="How it varies"
+            value={amountType}
+            onChange={(value) => setAmountType(value as AmountType)}
+            options={AMOUNT_TYPES}
+          />
           <p className="text-xs text-text-tertiary">
             Changes the bill in Recurring too. Its household bills that aren&rsquo;t paid yet
             follow.

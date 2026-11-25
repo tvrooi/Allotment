@@ -8,7 +8,7 @@ import { useUndoStore } from '../../store/undoStore';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
 import type { Transaction } from '../../types';
 
 // "Paid ahead": your payment to someone you share costs with, towards a shared expense they
@@ -60,17 +60,21 @@ export function usePayAhead() {
     onSuccess: ({ tx, target }) => {
       refresh();
       const groupId = target.household.id;
-      useUndoStore.getState().push({
-        description: `Paid ahead to ${target.person.name}`,
-        undo: async () => {
-          await removeSharedEntries(groupId, [tx.id], 'settlement');
-          refresh();
+      useUndoStore.getState().push(
+        {
+          description: `Paid ahead to ${target.person.name}`,
+          undo: async () => {
+            await removeSharedEntries(groupId, [tx.id], 'settlement');
+            refresh();
+          },
+          redo: async () => {
+            await recordPaidAhead(groupId, tx, target.selfId, target.person);
+            refresh();
+          },
         },
-        redo: async () => {
-          await recordPaidAhead(groupId, tx, target.selfId, target.person);
-          refresh();
-        },
-      });
+        // The toast says what happened and offers Undo
+        { message: describePayAhead(target) },
+      );
     },
   });
 }
@@ -84,13 +88,13 @@ export function PayAhead({ tx }: { tx: Transaction }) {
   const { data: households = [] } = useHouseholds();
   const canSave = useCanSave();
   const [open, setOpen] = useState(false);
-  const [chosen, setChosen] = useState(0);
+  const [chosen, setChosen] = useState('');
   const [error, setError] = useState<string | null>(null);
   const payAhead = usePayAhead();
-  const announce = useUndoStore((s) => s.announce);
   const targets = payAheadTargets(households);
   if (!targets.length || whyNotPayAhead(tx, households)) return null;
-  const target = targets[Math.min(chosen, targets.length - 1)];
+  const targetKey = (item: PayAheadTarget) => `${item.household.id}:${item.person.id}`;
+  const target = targets.find((item) => targetKey(item) === chosen) ?? targets[0];
   const many = households.length > 1;
 
   return (
@@ -112,17 +116,16 @@ export function PayAhead({ tx }: { tx: Transaction }) {
         size="sm"
       >
         <div className="space-y-3 text-sm">
-          <Select
+          <Combobox
             aria-label="Paid to"
-            value={String(chosen)}
-            onChange={(e) => setChosen(Number(e.target.value))}
-          >
-            {targets.map((t, i) => (
-              <option key={`${t.household.id}:${t.person.id}`} value={i}>
-                {many ? `${t.person.name} (${t.household.name})` : t.person.name}
-              </option>
-            ))}
-          </Select>
+            value={targetKey(target)}
+            onChange={setChosen}
+            menuTrigger="focus"
+            items={targets.map((item) => ({
+              value: targetKey(item),
+              label: many ? `${item.person.name} (${item.household.name})` : item.person.name,
+            }))}
+          />
           <p className="text-text-secondary">
             For money you sent {target.person.name} towards something you share that hasn’t been
             recorded yet. Until it is, {target.person.name} owes it back to you. When the expense is
@@ -143,10 +146,7 @@ export function PayAhead({ tx }: { tx: Transaction }) {
                   {
                     // The payment is linked now, so the panel shows that instead of this button;
                     // the toast says what happened and offers Undo
-                    onSuccess: () => {
-                      setOpen(false);
-                      announce(describePayAhead(target), true);
-                    },
+                    onSuccess: () => setOpen(false),
                     onError: (e: Error) => setError(e.message),
                   },
                 )

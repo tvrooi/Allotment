@@ -1,0 +1,56 @@
+# Manifest for /gsd-ingest-docs (45 of the 71 docs under docs/).
+# Left out: docs/research/ (19), docs/agents/ (3), docs/ux-ui-evidence/ (2),
+# docs/handover/ARCHIVE.md, docs/UPSTREAM-README.md.
+# SPEC = design of a feature as built or agreed; PRD = phase or plan scope;
+# DOC = guides, audits, reviews and reference. There are no ADRs.
+docs:
+  # Feature designs
+  - { path: docs/ASSISTANT-ENDPOINTS.md, type: SPEC }
+  - { path: docs/ASSISTANT-PHASE-3.md, type: SPEC }
+  - { path: docs/BUDGET-REVIEW.md, type: SPEC }
+  - { path: docs/CARD-PAYMENTS.md, type: SPEC }
+  - { path: docs/CATEGORY-GOALS.md, type: SPEC }
+  - { path: docs/CATEGORY-TARGETS.md, type: SPEC }
+  - { path: docs/DESKTOP-UPDATES.md, type: SPEC }
+  - { path: docs/ENVELOPE-FUNDING.md, type: SPEC }
+  - { path: docs/FILES.md, type: SPEC }
+  - { path: docs/FORECASTS.md, type: SPEC }
+  - { path: docs/HOUSEHOLD-PARTNER-LINKS.md, type: SPEC }
+  - { path: docs/HOUSEHOLDS.md, type: SPEC }
+  - { path: docs/INVESTMENT-SALES-AND-INCOME.md, type: SPEC }
+  - { path: docs/INVESTMENTS.md, type: SPEC }
+  - { path: docs/LONG-TERM-FORECAST.md, type: SPEC }
+  - { path: docs/MULTI-USER-EMAIL-AND-REMINDERS.md, type: SPEC }
+  - { path: docs/PAYDAY-PLANS.md, type: SPEC }
+  - { path: docs/PAYMENT-PLANS.md, type: SPEC }
+  - { path: docs/READ-ONLY-ACCESS.md, type: SPEC }
+  - { path: docs/RECEIPTS-AND-TAX.md, type: SPEC }
+  - { path: docs/RESILIENCE.md, type: SPEC }
+  - { path: docs/TAX-CAR-AND-HOME.md, type: SPEC }
+
+  # Phase and plan scope
+  - { path: docs/DEPRECIATING-ASSETS-PLAN.md, type: PRD }
+  - { path: docs/MONARCH-DEVELOPMENT-PHASE.md, type: PRD }
+  - { path: docs/MULTI-USER-PLAN.md, type: PRD }
+  - { path: docs/PHASE-10-WARM-DESIGN.md, type: PRD }
+  - { path: docs/PHASE-8-PROPOSALS.md, type: PRD }
+  - { path: docs/PHASE-9-DEVELOPMENT-PHASE.md, type: PRD }
+  - { path: docs/PLAN-2026-11-HOUSEHOLDS-POOLS-ROUNDUPS.md, type: PRD }
+  - { path: docs/PSYCHOLOGY-OF-MONEY-DEVELOPMENT-PHASE.md, type: PRD }
+  - { path: docs/YNAB-DEVELOPMENT-PHASE.md, type: PRD }
+  - { path: docs/ui/WAVES.md, type: PRD }
+
+  # Guides, audits, reviews and reference
+  - { path: docs/AUDIT-2026-11.md, type: DOC }
+  - { path: docs/BRAND.md, type: DOC }
+  - { path: docs/DEVELOPMENT.md, type: DOC }
+  - { path: docs/GLOSSARY.md, type: DOC }
+  - { path: docs/GUIDES.md, type: DOC }
+  - { path: docs/START-HERE.md, type: DOC }
+  - { path: docs/UX-REVIEW.md, type: DOC }
+  - { path: docs/UX-UI-AUDIT.md, type: DOC }
+  - { path: docs/ui/HANDOVER-UI.md, type: DOC }
+  - { path: docs/ui/MAP.md, type: DOC }
+  - { path: docs/ui/README.md, type: DOC }
+  - { path: docs/critiques/2026-11-09-budget.md, type: DOC }
+  - { path: docs/investigations/2026-10-20-australian-budgeting.md, type: DOC }

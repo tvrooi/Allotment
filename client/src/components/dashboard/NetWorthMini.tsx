@@ -1,42 +1,37 @@
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useState, useMemo } from 'react';
 import { format, subMonths, subDays, startOfYear } from 'date-fns';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { areaY, defineChart, lineY } from '@tanstack/charts';
+import type { ChartPoint } from '@tanstack/charts';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
 import { useNetWorth } from '../../hooks/useReports';
 import { useAccounts } from '../../hooks/useAccounts';
 import { ButtonLink } from '../ui/Button';
+import { SegmentedControl, type Segment } from '../ui/SegmentedControl';
 import { Card } from '../ui/Card';
 import { formatCurrency } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
 import { formatDateAxisLabels, formatDateLabel } from '../../utils/chartTicks';
-import { useXAxisLayout } from '../../hooks/useXAxisLayout';
+import { FillChart } from '../charts/FillChart';
+import { areaGradient, pointScale, smooth } from '../charts/kit';
 import { useHideBalances } from '../../utils/safeMode';
 import { Private, PrivateChart } from '../ui/Private';
 import { TrendingUp } from 'lucide-react';
 import { useOnboardingActive } from './onboarding';
 
-function MiniTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-surface border border-border rounded-lg shadow-hover px-3 py-2">
-      <p className="text-xs text-text-tertiary mb-1">{label}</p>
-      {payload.map((p: any) => (
-        <p key={p.name} className="text-xs font-medium" style={{ color: p.color }}>
-          {p.name}: {formatCurrency(p.value)}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 type Preset = '1m' | '3m' | '6m' | 'ytd' | '1y' | 'all';
 
-const PRESETS: { value: Preset; label: string }[] = [
-  { value: '1m', label: '1 month' },
-  { value: '3m', label: '3 months' },
-  { value: '6m', label: '6 months' },
-  { value: 'ytd', label: 'Year to date' },
-  { value: '1y', label: '1 year' },
-  { value: 'all', label: 'All time' },
+// Short labels like Reports' range control, with the long wording on hover
+const PRESETS: Segment<Preset>[] = [
+  { value: '1m', label: '1M', title: '1 month' },
+  { value: '3m', label: '3M', title: '3 months' },
+  { value: '6m', label: '6M', title: '6 months' },
+  { value: 'ytd', label: 'YTD', title: 'Year to date' },
+  { value: '1y', label: '1Y', title: '1 year' },
+  { value: 'all', label: 'All', title: 'All time' },
 ];
 
 function computeRange(preset: Preset): {
@@ -85,21 +80,14 @@ export default function NetWorthMini() {
   const [preset, setPreset] = useState<Preset>('1m');
 
   const { from, to, granularity } = useMemo(() => computeRange(preset), [preset]);
-  const { data = [], isLoading } = useNetWorth(from, to, granularity);
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
-  const noAccounts = !accountsLoading && accounts?.length === 0;
+  const netWorthQuery = useNetWorth(from, to, granularity);
+  const { data = [] } = netWorthQuery;
+  const accountsQuery = useAccounts();
+  const { data: accounts } = accountsQuery;
+  const noAccounts = !accountsQuery.isLoading && accounts?.length === 0;
   const onboarding = useOnboardingActive();
 
   const dateLabels = useMemo(() => formatDateAxisLabels(data.map((d) => d.month)), [data]);
-  const xAxis = useXAxisLayout({
-    labels: dateLabels,
-    kind: 'point',
-    ordered: true,
-    fontSize: 11,
-    inset: { left: 8, right: 8 },
-    edgeRoom: { left: 8, right: 8 },
-  });
-
   const yDomain = useMemo(() => {
     if (data.length === 0) return [0, 100];
     const values = data.map((d) => d.netWorth);
@@ -116,7 +104,66 @@ export default function NetWorthMini() {
   const pct = first !== 0 ? (change / Math.abs(first)) * 100 : 0;
   const hide = useHideBalances();
 
-  if (isLoading) {
+  const labels = useMemo(
+    () => new Map(data.map((d, i) => [d.month, dateLabels[i]] as [string, string])),
+    [data, dateLabels],
+  );
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          decorative(
+            areaY(data, {
+              x: 'month',
+              y1: yDomain[0],
+              y2: 'netWorth',
+              fill: 'url(#gNetMini)',
+              fillOpacity: 1,
+              curve: smooth,
+            }),
+          ),
+          lineY(data, {
+            x: 'month',
+            y: 'netWorth',
+            z: () => 'Net worth',
+            stroke: chartColors.brand,
+            strokeWidth: 2,
+            curve: smooth,
+          }),
+        ],
+        scales: {
+          x: pointScale((k) => labels.get(k) ?? k, 28),
+          y: { scale: scaleLinear().domain(yDomain), axis: false },
+        },
+        gradients: [areaGradient('gNetMini', chartColors.brand, 0.2)],
+        focus: 'nearest-x',
+        maxFocusDistance: Number.POSITIVE_INFINITY,
+        tooltip: {
+          use: tooltip,
+          content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+            const d = points[0]?.datum as (typeof data)[number] | undefined;
+            return d
+              ? {
+                  title: formatDateLabel(d.month),
+                  rows: [
+                    {
+                      label: 'Net worth',
+                      value: formatCurrency(d.netWorth),
+                      color: chartColors.brand,
+                    },
+                  ],
+                }
+              : { rows: [] };
+          },
+        },
+      }),
+    [data, yDomain, labels],
+  );
+
+  const sources = [netWorthQuery, accountsQuery];
+  if (dataUnavailable(sources)) return <DataFeedback title="Net worth" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading)) {
     return (
       <Card>
         <div className="flex items-center justify-between mb-2">
@@ -130,6 +177,7 @@ export default function NetWorthMini() {
 
   return (
     <Card>
+      <DataFeedback title="Net worth" sources={sources} />
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-sm font-medium text-text-secondary">Net worth</p>
@@ -161,18 +209,12 @@ export default function NetWorthMini() {
             </ButtonLink>
           )
         ) : (
-          <select
-            aria-label="Net worth period"
+          <SegmentedControl
+            label="Net worth period"
+            options={PRESETS}
             value={preset}
-            onChange={(e) => setPreset(e.target.value as Preset)}
-            className="text-sm max-md:min-h-11 border border-border rounded-lg px-3 py-1.5 bg-surface text-text cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-600"
-          >
-            {PRESETS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+            onChange={setPreset}
+          />
         )}
       </div>
 
@@ -184,29 +226,9 @@ export default function NetWorthMini() {
         </div>
       )}
       {data.length > 1 && !noAccounts && (
-        <div className="mt-4" ref={xAxis.ref}>
+        <div className="mt-4">
           <PrivateChart height={112}>
-            <ResponsiveContainer width="100%" height={112}>
-              <AreaChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <defs>
-                  <linearGradient id="gNetMini" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={chartColors.brand} stopOpacity={0.15} />
-                    <stop offset="95%" stopColor={chartColors.brand} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-                <YAxis hide domain={yDomain} />
-                <Tooltip content={<MiniTooltip />} labelFormatter={formatDateLabel} />
-                <Area
-                  type="monotone"
-                  dataKey="netWorth"
-                  name="Net worth"
-                  stroke={chartColors.brand}
-                  strokeWidth={2}
-                  fill="url(#gNetMini)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <FillChart definition={definition} height={112} ariaLabel="Net worth over time" />
           </PrivateChart>
         </div>
       )}

@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { Checkbox } from '../ui/Checkbox';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { GuideLink } from '../guide/GuideLink';
 import { FilesSection } from '../files/FilesSection';
@@ -95,29 +98,21 @@ export function IncomeModal({
           </GuideLink>
         </p>
         <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-          <Field label="Kind" htmlFor="income-kind">
-            <Select
-              id="income-kind"
-              value={kind}
-              onChange={(e) => setKind(e.target.value as IncomeKind)}
-            >
-              {INCOME_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {INCOME_KIND_LABEL[k]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Paid on" htmlFor="income-date">
-            <Input
-              id="income-date"
-              type="date"
-              value={date}
-              max={today()}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </Field>
+          <Select
+            label="Kind"
+            id="income-kind"
+            value={kind}
+            onChange={(v) => setKind(v as IncomeKind)}
+            options={INCOME_KINDS.map((k) => ({ value: k, label: INCOME_KIND_LABEL[k] }))}
+          />
+          <DatePicker
+            label="Paid on"
+            id="income-date"
+            value={date}
+            onChange={setDate}
+            maxValue={today()}
+            isRequired
+          />
           <Field label="Amount paid" htmlFor="income-amount" hint="After any tax withheld.">
             <CurrencyInput
               id="income-amount"
@@ -182,14 +177,9 @@ export function IncomeModal({
           )}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-text-secondary">
-          <input
-            type="checkbox"
-            checked={reinvest}
-            onChange={(e) => setReinvest(e.target.checked)}
-          />
+        <Checkbox checked={reinvest} onCheckedChange={setReinvest}>
           Reinvested through a dividend plan
-        </label>
+        </Checkbox>
         {reinvest && (
           <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <Field label="Units allotted" htmlFor="income-units">

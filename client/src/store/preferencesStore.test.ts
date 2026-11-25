@@ -48,8 +48,19 @@ describe('dateFormatForLocale', () => {
   });
 
   it('keeps the written-out US style for US English and unknown languages', () => {
-    expect(dateFormatForLocale('en-US')).toBe('MMM d, yyyy');
-    expect(dateFormatForLocale('not a locale')).toBe('MMM d, yyyy');
+    expect(dateFormatForLocale('en-US')).toBe('d MMM yyyy');
+    expect(dateFormatForLocale('not a locale')).toBe('d MMM yyyy');
+  });
+});
+
+describe('date format', () => {
+  it('moves the old month-first word format to day-first and leaves other formats', () => {
+    expect(migratePreferences({ dateFormat: 'MMM d, yyyy' }, 3)).toEqual({
+      dateFormat: 'd MMM yyyy',
+    });
+    expect(migratePreferences({ dateFormat: 'dd/MM/yyyy' }, 3)).toEqual({
+      dateFormat: 'dd/MM/yyyy',
+    });
   });
 });
 

@@ -23,6 +23,7 @@ import {
 import { useSavedReports } from '../hooks/useCustomReports';
 import { dashboardDateRange, dayBounds, encodeRangeParam } from '../utils/dateRange';
 import { ScrollCue } from '../components/ui/ScrollCue';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 type DashboardModal = 'new' | 'rename' | 'delete' | null;
 
@@ -51,7 +52,7 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 pt-4 border-b border-border shrink-0">
+      <div className={`pt-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex flex-wrap items-center gap-x-4">
             <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text shrink-0">
@@ -138,7 +139,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 bg-page">
+      <div className={`flex-1 overflow-y-auto py-6 bg-page ${PAGE_GUTTER}`}>
         <MissingRatesBanner className="mb-4" />
         {active && (
           <UncategorisedBanner

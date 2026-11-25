@@ -21,6 +21,14 @@ learn Allotment where they use it.
     answering records it as seen (`bannerSeenUpdate`), and the guide stays under **?** → **Guide
     for this page**. The note for budgets used before guides stays until answered.
 
+## Feature discovery
+
+Optional navigation states and the list of setup features live in `client/src/utils/navFeatures.ts`.
+Setup rows stay in their fixed menu positions and link to their pages; only hidden features count
+under More features. Settings → Preferences keeps When in use, Always and Hidden choices.
+The welcome screen's feature switches use the same guides mutation: on chooses Always, off
+returns to the default. Guide banners, the Dashboard checklist and Review Guided setup are unchanged.
+
 ## Server
 
 - `guide_progress` (migration 0058): one row, id `default`. No row = a new budget. The migration

@@ -1,4 +1,13 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  typeAmount,
+  fillDate,
+  setToggle,
+  chooseOption,
+} from './fixtures';
 
 // P3 investments (docs/INVESTMENTS.md): manual holdings, prices and purchases, kept apart from
 // the ledger until the user records a value. Mock data only.
@@ -14,10 +23,15 @@ test('records a priced holding without touching the balance until asked', async 
   await dialog.getByRole('button', { name: "Add a security that isn't listed" }).click();
   dialog = page.getByRole('dialog', { name: 'Add security' });
   await dialog.getByLabel('Code').fill('mock');
-  await dialog.getByLabel('Name').fill('Mock index fund');
+  // exact: the currency Select's hidden native list is labelled by its options, and a
+  // substring 'Name' matches "Vietnamese Dong"
+  await dialog.getByLabel('Name', { exact: true }).fill('Mock index fund');
   await dialog.getByRole('button', { name: 'Save' }).click();
   dialog = page.getByRole('dialog', { name: 'Add holding' });
-  await expect(dialog.getByLabel('Security')).toContainText('MOCK · Mock index fund');
+  // The shared Combobox (G3) shows the chosen security as its field's text
+  await expect(dialog.getByRole('combobox', { name: 'Security' })).toHaveValue(
+    /^MOCK · Mock index fund/,
+  );
   await dialog.getByLabel('Units held').fill('10.5');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
@@ -27,7 +41,7 @@ test('records a priced holding without touching the balance until asked', async 
 
   await page.getByRole('button', { name: 'Add a price' }).click();
   dialog = page.getByRole('dialog', { name: 'Price of MOCK' });
-  await dialog.getByLabel('Date').fill(isoDay(-1));
+  await fillDate(dialog, 'Date', isoDay(-1));
   await dialog.getByLabel('Price per unit').fill('20');
   await dialog.getByRole('button', { name: 'Save' }).click();
   const row = page.getByRole('row', { name: /MOCK/ });
@@ -38,7 +52,7 @@ test('records a priced holding without touching the balance until asked', async 
   await page.getByRole('button', { name: 'Unknown' }).click();
   dialog = page.getByRole('dialog', { name: 'Purchases of MOCK' });
   await expect(dialog.getByLabel('Units', { exact: true })).toHaveValue('10.5');
-  await dialog.getByLabel('Bought on').fill(isoDay(-30));
+  await fillDate(dialog, 'Bought on', isoDay(-30));
   await dialog.getByLabel('Total cost').fill('150');
   await dialog.getByRole('button', { name: 'Add purchase' }).click();
   await expect(dialog).toContainText('Every unit has a known cost.');
@@ -89,7 +103,7 @@ test('sells chosen parcels and shows the capital gain on Tax time', async ({ pag
   await page.getByRole('menuitem', { name: 'Sell' }).click();
   const dialog = page.getByRole('dialog', { name: 'Sell SELL' });
   const soldOn = isoDay(-10);
-  await dialog.getByLabel('Sold on').fill(soldOn);
+  await fillDate(dialog, 'Sold on', soldOn);
   await dialog.getByLabel('Units sold').fill('15');
   await typeAmount(dialog.getByLabel('Proceeds before brokerage'), '2400');
   await typeAmount(dialog.getByLabel('Sale brokerage'), '10');
@@ -98,7 +112,7 @@ test('sells chosen parcels and shows the capital gain on Tax time', async ({ pag
   await expect(gain).toContainText(/Capital gain A?\$890(\.00)?/);
   await expect(gain).toContainText('the 50% discount applies');
 
-  await dialog.getByLabel('Choose parcels').check();
+  await setToggle(dialog.getByRole('radio', { name: 'Choose parcels' }));
   await dialog.getByLabel(/^Bought .*20 left/).fill('5');
   await dialog.getByLabel(/^Bought .*10 left/).fill('10');
   // 5 old units: $796.66 less $500; 10 recent ones: $1,593.34 less $1,500
@@ -122,9 +136,10 @@ test('sells chosen parcels and shows the capital gain on Tax time', async ({ pag
   const year =
     Number(soldOn.slice(5, 7)) >= 7 ? Number(soldOn.slice(0, 4)) : Number(soldOn.slice(0, 4)) - 1;
   await open(page, '/tax');
-  await page
-    .getByLabel('Financial year')
-    .selectOption({ label: `${year}–${String(year + 1).slice(2)}` });
+  await chooseOption(
+    page.getByRole('button', { name: /Financial year/ }),
+    `${year}–${String(year + 1).slice(2)}`,
+  );
   const section = page.getByRole('region', { name: 'Capital gains (item 18)' });
   await expect(
     section.getByRole('row', { name: /18H Total current year capital gains/ }),
@@ -165,7 +180,7 @@ test('records a franked dividend, links its deposit and shows item 11', async ({
   await row.getByRole('button', { name: 'Actions for DIVI' }).click();
   await page.getByRole('menuitem', { name: 'Record a payment' }).click();
   let dialog = page.getByRole('dialog', { name: 'Record a payment from DIVI' });
-  await dialog.getByLabel('Paid on').fill(paidOn);
+  await fillDate(dialog, 'Paid on', paidOn);
   await typeAmount(dialog.getByLabel('Amount paid'), '70');
   await typeAmount(dialog.getByLabel('Franked amount', { exact: true }), '70');
   await dialog.getByRole('button', { name: '30%' }).click();
@@ -186,9 +201,10 @@ test('records a franked dividend, links its deposit and shows item 11', async ({
   const year =
     Number(paidOn.slice(5, 7)) >= 7 ? Number(paidOn.slice(0, 4)) : Number(paidOn.slice(0, 4)) - 1;
   await open(page, '/tax');
-  await page
-    .getByLabel('Financial year')
-    .selectOption({ label: `${year}–${String(year + 1).slice(2)}` });
+  await chooseOption(
+    page.getByRole('button', { name: /Financial year/ }),
+    `${year}–${String(year + 1).slice(2)}`,
+  );
   const section = page.getByRole('region', { name: 'Dividends and interest (items 10 and 11)' });
   await expect(section.getByRole('row', { name: /11T Franked amount/ })).toContainText(
     /A?\$70(\.00)?/,
@@ -233,7 +249,7 @@ test('splits a holding after a part sale and keeps the earlier sale’s gain', a
   await row.getByRole('button', { name: 'Actions for SPLT' }).click();
   await page.getByRole('menuitem', { name: 'Split or consolidate' }).click();
   const dialog = page.getByRole('dialog', { name: 'Split or consolidate SPLT' });
-  await dialog.getByLabel('Effective on').fill(isoDay(-30));
+  await fillDate(dialog, 'Effective on', isoDay(-30));
   await dialog.getByLabel('New units').fill('2');
   await dialog.getByLabel('For every old unit(s)').fill('1');
   await expect(dialog).toContainText(

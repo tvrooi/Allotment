@@ -1,3 +1,4 @@
+import { useOpenFromLink } from '../../hooks/useOpenFromLink';
 import { useState } from 'react';
 import { ArrowLeftRight, ArrowRight } from 'lucide-react';
 import {
@@ -9,6 +10,7 @@ import { useCanSave } from '../../hooks/useConnection';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency } from '../../hooks/useCurrency';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
 import { Modal } from '../ui/Modal';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import type { Transaction, TransferSuggestion } from '../../types';
@@ -36,6 +38,9 @@ export function TransferSuggestions({ accountId, accountName }: Props) {
   const linkMany = useLinkTransfers();
   const dismiss = useDismissTransferSuggestion();
   const canSave = useCanSave();
+  useOpenFromLink('possible-transfers', () => setOpen(true), {
+    ready: !accountId && suggestions.length > 0,
+  });
 
   if (suggestions.length === 0 && !notice) return null;
 
@@ -238,13 +243,11 @@ function SuggestionRow({
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5">
-      <label className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer max-md:min-h-11">
-        <input
-          type="checkbox"
+      <div className="flex flex-1 min-w-0 items-center gap-3">
+        <Checkbox
           checked={checked}
-          onChange={onToggle}
+          onCheckedChange={onToggle}
           aria-label={`Link ${amount} from ${from} to ${to}`}
-          className="h-4 w-4 shrink-0 rounded border-border text-brand-600 focus:ring-brand-500"
         />
         <span className="flex-1 min-w-0 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           {side(outflow, from)}
@@ -252,7 +255,7 @@ function SuggestionRow({
           {side(inflow, to)}
         </span>
         <span className="text-sm font-medium tabular-nums text-text shrink-0">{amount}</span>
-      </label>
+      </div>
       <Button
         variant="ghost"
         size="sm"

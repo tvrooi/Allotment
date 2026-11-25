@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CandlestickChart, Plus } from 'lucide-react';
+import { CandlestickChart, ChevronDown, Plus } from 'lucide-react';
 import {
   useInvestments,
   useDeleteHolding,
@@ -13,7 +13,7 @@ import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import RowMenu from '../components/ui/RowMenu';
-import { StatCardRow, type StatCard } from '../components/reports/ChartHelpers';
+import { type StatCard } from '../components/reports/ChartHelpers';
 import { UpdateValueModal } from '../components/accounts/UpdateValueModal';
 import {
   HoldingModal,
@@ -67,6 +67,50 @@ const holdingsCount = (n: number) => (n === 1 ? '1 holding' : `${n} holdings`);
 
 const toneOf = (n: number | null) =>
   n === null || n === 0 ? 'text-text' : n > 0 ? 'text-positive' : 'text-negative';
+
+function holdingMenuItems(holding: Holding, onDialog: (d: Dialog) => void) {
+  return [
+    {
+      label: 'Update price',
+      onClick: () => onDialog({ kind: 'price', security: holding.security }),
+    },
+    {
+      label: 'Purchases and cost',
+      onClick: () => onDialog({ kind: 'lots', holdingId: holding.id }),
+    },
+    {
+      label: 'Sell',
+      hidden: holding.quantity === 0,
+      onClick: () => onDialog({ kind: 'sell', holdingId: holding.id }),
+    },
+    {
+      label: `Sales (${holding.sales.length})`,
+      hidden: !holding.sales.length,
+      onClick: () => onDialog({ kind: 'sales', holdingId: holding.id }),
+    },
+    {
+      label: 'Record a payment',
+      onClick: () => onDialog({ kind: 'income', holdingId: holding.id }),
+    },
+    {
+      label: `Income (${holding.income.length})`,
+      hidden: !holding.income.length,
+      onClick: () => onDialog({ kind: 'income-list', holdingId: holding.id }),
+    },
+    {
+      label: 'Split or consolidate',
+      onClick: () => onDialog({ kind: 'split', holdingId: holding.id }),
+    },
+    { label: 'Edit units', onClick: () => onDialog({ kind: 'holding', holding }) },
+    {
+      label: 'Remove holding',
+      danger: true,
+      // Its sales and income are the record for Tax time: it stays (under Sold once empty)
+      hidden: holding.sales.length > 0 || holding.income.length > 0,
+      onClick: () => onDialog({ kind: 'remove-holding', holding }),
+    },
+  ];
+}
 
 function HoldingRow({ holding, onDialog }: { holding: Holding; onDialog: (d: Dialog) => void }) {
   const currency = holding.security.currency;
@@ -143,50 +187,77 @@ function HoldingRow({ holding, onDialog }: { holding: Holding; onDialog: (d: Dia
       <td className="py-3 pl-1 text-right">
         <RowMenu
           label={`Actions for ${holding.security.symbol}`}
-          items={[
-            {
-              label: 'Update price',
-              onClick: () => onDialog({ kind: 'price', security: holding.security }),
-            },
-            {
-              label: 'Purchases and cost',
-              onClick: () => onDialog({ kind: 'lots', holdingId: holding.id }),
-            },
-            {
-              label: 'Sell',
-              hidden: holding.quantity === 0,
-              onClick: () => onDialog({ kind: 'sell', holdingId: holding.id }),
-            },
-            {
-              label: `Sales (${holding.sales.length})`,
-              hidden: !holding.sales.length,
-              onClick: () => onDialog({ kind: 'sales', holdingId: holding.id }),
-            },
-            {
-              label: 'Record a payment',
-              onClick: () => onDialog({ kind: 'income', holdingId: holding.id }),
-            },
-            {
-              label: `Income (${holding.income.length})`,
-              hidden: !holding.income.length,
-              onClick: () => onDialog({ kind: 'income-list', holdingId: holding.id }),
-            },
-            {
-              label: 'Split or consolidate',
-              onClick: () => onDialog({ kind: 'split', holdingId: holding.id }),
-            },
-            { label: 'Edit units', onClick: () => onDialog({ kind: 'holding', holding }) },
-            {
-              label: 'Remove holding',
-              danger: true,
-              // Its sales and income are the record for Tax time: it stays (under Sold once empty)
-              hidden: holding.sales.length > 0 || holding.income.length > 0,
-              onClick: () => onDialog({ kind: 'remove-holding', holding }),
-            },
-          ]}
+          items={holdingMenuItems(holding, onDialog)}
         />
       </td>
     </tr>
+  );
+}
+
+// Phones get a stacked card per holding: the table's six columns would scroll sideways
+function HoldingCard({ holding, onDialog }: { holding: Holding; onDialog: (d: Dialog) => void }) {
+  const currency = holding.security.currency;
+  return (
+    <li className="py-3 flex items-start justify-between gap-2 border-t border-border-light">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="font-medium text-text">{holding.security.symbol}</p>
+          <p className="font-medium tabular-nums text-text">
+            {holding.value === null ? (
+              <span className="text-text-tertiary font-normal">No price</span>
+            ) : (
+              formatMoney(holding.value, currency)
+            )}
+          </p>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-xs text-text-tertiary truncate">{holding.security.name}</p>
+          {holding.unrealizedGain !== null && (
+            <p
+              className={`shrink-0 whitespace-nowrap text-xs tabular-nums ${toneOf(holding.unrealizedGain)}`}
+            >
+              {signed(holding.unrealizedGain, currency)}
+              {holding.gainPercent !== null &&
+                ` (${holding.gainPercent > 0 ? '+' : ''}${holding.gainPercent.toFixed(2)}%)`}
+            </p>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-text-tertiary tabular-nums">
+          {formatUnits(holding.quantity)} units
+          {' · '}
+          {holding.price === null ? (
+            <button
+              type="button"
+              className="text-brand-600 hover:underline"
+              onClick={() => onDialog({ kind: 'price', security: holding.security })}
+            >
+              Add a price
+            </button>
+          ) : (
+            <span className={holding.priceStale ? 'text-caution' : undefined}>
+              {formatMoney(holding.price, currency)} on {formatDay(holding.priceDate!)}
+              {holding.priceStale ? ' (stale)' : ''}
+            </span>
+          )}
+          {' · '}
+          {holding.costBasis !== null ? (
+            `cost ${formatMoney(holding.costBasis, currency)}`
+          ) : (
+            <button
+              type="button"
+              className="hover:text-brand-600 hover:underline"
+              onClick={() => onDialog({ kind: 'lots', holdingId: holding.id })}
+            >
+              cost {holding.basisStatus === 'partial' ? 'partly known' : 'unknown'}
+            </button>
+          )}
+        </p>
+      </div>
+      <RowMenu
+        label={`Actions for ${holding.security.symbol}`}
+        items={holdingMenuItems(holding, onDialog)}
+      />
+    </li>
   );
 }
 
@@ -201,7 +272,28 @@ function HoldingsTable({
   inset?: boolean;
 }) {
   return (
-    <div className={`overflow-x-auto ${inset ? '' : 'px-5 pb-2'}`}>
+    <>
+      <ul className={`md:hidden ${inset ? '' : 'px-5 pb-2'}`}>
+        {holdings.map((h) => (
+          <HoldingCard key={h.id} holding={h} onDialog={onDialog} />
+        ))}
+      </ul>
+      <HoldingsTableDesktop holdings={holdings} onDialog={onDialog} inset={inset} />
+    </>
+  );
+}
+
+function HoldingsTableDesktop({
+  holdings,
+  onDialog,
+  inset,
+}: {
+  holdings: Holding[];
+  onDialog: (d: Dialog) => void;
+  inset: boolean;
+}) {
+  return (
+    <div className={`overflow-x-auto max-md:hidden ${inset ? '' : 'px-5 pb-2'}`}>
       <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="text-xs text-text-tertiary">
@@ -224,6 +316,50 @@ function HoldingsTable({
   );
 }
 
+const TONE_TEXT = { positive: 'text-positive', negative: 'text-negative' } as const;
+
+function SummaryStrip({
+  cards,
+  recorded,
+  budget,
+}: {
+  cards: StatCard[];
+  recorded: number | null;
+  budget: string | null;
+}) {
+  const [priced, ...rest] = cards;
+  return (
+    <section aria-label="Summary" className="rounded-xl bg-surface-alt border border-border-light">
+      {recorded !== null && (
+        <p className="px-5 pt-4 text-sm text-text-secondary">
+          Priced holdings come to{' '}
+          <span className="font-semibold tabular-nums text-text">{priced.value}</span> of the{' '}
+          <span className="font-semibold tabular-nums text-text">
+            {formatMoney(recorded, budget)}
+          </span>{' '}
+          recorded across your investment accounts.{priced.sub ? ` ${priced.sub}.` : ''}
+        </p>
+      )}
+      <dl className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-x-8 gap-y-3 px-5 py-4">
+        {(recorded !== null ? rest : [priced, ...rest]).map((c) => (
+          <div
+            key={c.label}
+            className="flex md:block items-baseline justify-between gap-3 max-md:flex-wrap"
+          >
+            <dt className="text-xs text-text-tertiary">{c.label}</dt>
+            <dd
+              className={`text-lg font-semibold tabular-nums md:mt-0.5 ${c.tone ? TONE_TEXT[c.tone as 'positive' | 'negative'] : 'text-text'}`}
+            >
+              {c.value}
+            </dd>
+            {c.sub && <p className="text-xs text-text-tertiary max-md:basis-full">{c.sub}</p>}
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 function AccountCard({
   account,
   onDialog,
@@ -235,6 +371,31 @@ function AccountCard({
   // Every unit sold: kept for its sales, out of the way
   const held = account.holdings.filter((h) => h.quantity > 0 || !h.sales.length);
   const sold = account.holdings.filter((h) => h.quantity === 0 && h.sales.length > 0);
+  if (!account.holdings.length) {
+    // Nothing to tabulate: one row instead of a card of empty space
+    return (
+      <Card padding="none">
+        <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <Link to={`/accounts/${account.id}`} className="font-medium text-text hover:underline">
+              {account.name}
+            </Link>
+            <p className="text-xs text-text-tertiary">
+              {accountTypeLabel(account.type)} · Recorded balance{' '}
+              {formatMoney(account.recordedBalance, currency)} · No holdings recorded
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onDialog({ kind: 'holding', accountId: account.id })}
+          >
+            <Plus size={14} /> Add holding
+          </Button>
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card padding="none" className="overflow-hidden">
       <div className="px-5 py-4 flex flex-wrap items-start justify-between gap-3">
@@ -257,15 +418,14 @@ function AccountCard({
         </div>
       </div>
       {account.difference !== null && account.difference !== 0 && (
-        <div className="mx-5 mb-3 rounded-lg bg-surface-alt px-3 py-2 text-xs text-text-secondary flex flex-wrap items-center justify-between gap-2">
-          <span>
+        <div className="mx-5 mb-4 rounded-lg bg-brand-50 border border-brand-200 px-4 py-3 text-sm text-text flex flex-wrap items-center justify-between gap-3">
+          <span className="min-w-0 flex-1 basis-64">
             The holdings are worth {formatMoney(Math.abs(account.difference), currency)}{' '}
             {account.difference > 0 ? 'more' : 'less'} than the recorded balance. The balance only
             changes if you record it.
           </span>
           <Button
             size="sm"
-            variant="secondary"
             onClick={() =>
               onDialog({ kind: 'record', accountId: account.id, value: account.holdingsValue! })
             }
@@ -312,6 +472,7 @@ export default function InvestmentsPage() {
   const { data, isLoading, error } = useInvestments();
   const { data: allAccounts = [] } = useAccounts();
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [securitiesOpen, setSecuritiesOpen] = useState(false);
   const removeHolding = useDeleteHolding();
   const removeSecurity = useDeleteSecurity();
   const refresh = useRefreshInvestments();
@@ -322,7 +483,7 @@ export default function InvestmentsPage() {
   const cards: StatCard[] = totals
     ? [
         {
-          label: 'Holdings value',
+          label: 'Priced holdings',
           value: formatMoney(totals.value, budget),
           sub: totals.unvalued
             ? `${holdingsCount(totals.unvalued)} without a price or rate left out`
@@ -347,6 +508,16 @@ export default function InvestmentsPage() {
       ]
     : [];
 
+  // Accounts with something to look at lead; empty ones follow as one-line rows
+  const accountsInOrder = [...(data?.accounts ?? [])].sort(
+    (a, b) => Number(!a.holdings.length) - Number(!b.holdings.length),
+  );
+  // A single total only means something when every balance is in the budget's currency
+  const recordedTotal =
+    data && data.accounts.every((a) => a.currency === budget)
+      ? data.accounts.reduce((sum, a) => sum + a.recordedBalance, 0)
+      : null;
+
   const holdingFor = (id: string) =>
     data?.accounts.flatMap((a) => a.holdings).find((h) => h.id === id) ?? null;
   const lotsHolding = dialog?.kind === 'lots' ? holdingFor(dialog.holdingId) : null;
@@ -362,32 +533,29 @@ export default function InvestmentsPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 max-md:px-4 border-b border-border shrink-0 flex flex-wrap items-center justify-between gap-3">
-        <div data-guide="investments.header" className="min-w-0">
-          <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
-            Investments
-          </h1>
-          <p className="text-sm text-text-tertiary mt-0.5">
-            Holdings you record and price yourself. They don't change account balances, your budget
-            or net worth until you record a value.{' '}
-            <GuideLink
-              page="investments"
-              className="font-medium text-brand-600 hover:text-brand-700"
-            >
-              How investments work
-            </GuideLink>
-          </p>
-        </div>
-        {!!data?.accounts.length && (
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={() => setDialog({ kind: 'security' })}>
-              Add security
-            </Button>
+      <div className="border-b border-border shrink-0">
+        <div className="max-w-6xl mx-auto px-6 py-4 max-md:px-4 flex flex-wrap items-center justify-between gap-3">
+          <div data-guide="investments.header" className="min-w-0">
+            <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
+              Investments
+            </h1>
+            <p className="text-sm text-text-tertiary mt-0.5">
+              Holdings you record and price yourself. Balances stay as they are until you record a
+              value.{' '}
+              <GuideLink
+                page="investments"
+                className="font-medium text-brand-600 hover:text-brand-700"
+              >
+                How investments work
+              </GuideLink>
+            </p>
+          </div>
+          {!!data?.accounts.length && (
             <Button onClick={() => setDialog({ kind: 'holding' })} data-guide="investments.add">
               <Plus size={16} /> Add holding
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -412,67 +580,95 @@ export default function InvestmentsPage() {
               />
             ) : (
               <>
-                <StatCardRow cards={cards} />
-                {data.accounts.map((a) => (
-                  <AccountCard key={a.id} account={a} onDialog={setDialog} />
-                ))}
+                <SummaryStrip cards={cards} recorded={recordedTotal} budget={budget} />
+                <div className="space-y-4">
+                  {accountsInOrder.map((a) => (
+                    <AccountCard key={a.id} account={a} onDialog={setDialog} />
+                  ))}
+                </div>
 
                 <section aria-labelledby="securities-heading">
-                  <h2 id="securities-heading" className="text-sm font-semibold text-text mb-2">
-                    Securities
-                  </h2>
-                  {data.securities.length ? (
-                    <Card padding="none">
-                      <ul className="divide-y divide-border-light">
-                        {data.securities.map((s) => (
-                          <li
-                            key={s.id}
-                            className="px-5 py-3 flex items-center justify-between gap-3 text-sm"
-                          >
-                            <div className="min-w-0">
-                              <p className="font-medium text-text">
-                                {s.symbol}{' '}
-                                <span className="text-text-tertiary font-normal">
-                                  {s.name} · {KIND_LABEL[s.kind]} · {s.currency}
-                                </span>
-                              </p>
-                              <p className="text-xs text-text-tertiary">
-                                {s.latestPrice === null
-                                  ? 'No price entered'
-                                  : `${formatMoney(s.latestPrice, s.currency)} on ${formatDay(s.latestPriceDate!)}`}
-                                {' · '}
-                                {s.holdingCount === 1 ? '1 holding' : `${s.holdingCount} holdings`}
-                              </p>
-                            </div>
-                            <RowMenu
-                              label={`Actions for ${s.symbol}`}
-                              items={[
-                                {
-                                  label: 'Update price',
-                                  onClick: () => setDialog({ kind: 'price', security: s }),
-                                },
-                                {
-                                  label: 'Edit',
-                                  onClick: () => setDialog({ kind: 'security', security: s }),
-                                },
-                                {
-                                  label: 'Delete',
-                                  danger: true,
-                                  hidden: s.holdingCount > 0,
-                                  onClick: () =>
-                                    setDialog({ kind: 'remove-security', security: s }),
-                                },
-                              ]}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    </Card>
-                  ) : (
-                    <p className="text-sm text-text-tertiary">
-                      Add the shares, funds or coins you hold, then record holdings of them.
-                    </p>
-                  )}
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 id="securities-heading" className="text-sm font-semibold text-text">
+                      <button
+                        type="button"
+                        aria-expanded={securitiesOpen}
+                        aria-controls="securities-list"
+                        onClick={() => setSecuritiesOpen((o) => !o)}
+                        className="inline-flex items-center gap-1.5 py-1.5 hover:text-brand-700"
+                      >
+                        <ChevronDown
+                          size={16}
+                          aria-hidden
+                          className={`transition-transform ${securitiesOpen ? '' : '-rotate-90'}`}
+                        />
+                        Securities ({data.securities.length})
+                      </button>
+                    </h2>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setDialog({ kind: 'security' })}
+                    >
+                      <Plus size={14} /> Add security
+                    </Button>
+                  </div>
+                  <div id="securities-list" hidden={!securitiesOpen} className="mt-2">
+                    {data.securities.length ? (
+                      <Card padding="none">
+                        <ul className="divide-y divide-border-light">
+                          {data.securities.map((s) => (
+                            <li
+                              key={s.id}
+                              className="px-5 py-3 flex items-center justify-between gap-3 text-sm"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium text-text">
+                                  {s.symbol}{' '}
+                                  <span className="text-text-tertiary font-normal">
+                                    {s.name} · {KIND_LABEL[s.kind]} · {s.currency}
+                                  </span>
+                                </p>
+                                <p className="text-xs text-text-tertiary">
+                                  {s.latestPrice === null
+                                    ? 'No price entered'
+                                    : `${formatMoney(s.latestPrice, s.currency)} on ${formatDay(s.latestPriceDate!)}`}
+                                  {' · '}
+                                  {s.holdingCount === 1
+                                    ? '1 holding'
+                                    : `${s.holdingCount} holdings`}
+                                </p>
+                              </div>
+                              <RowMenu
+                                label={`Actions for ${s.symbol}`}
+                                items={[
+                                  {
+                                    label: 'Update price',
+                                    onClick: () => setDialog({ kind: 'price', security: s }),
+                                  },
+                                  {
+                                    label: 'Edit',
+                                    onClick: () => setDialog({ kind: 'security', security: s }),
+                                  },
+                                  {
+                                    label: 'Delete',
+                                    danger: true,
+                                    hidden: s.holdingCount > 0,
+                                    onClick: () =>
+                                      setDialog({ kind: 'remove-security', security: s }),
+                                  },
+                                ]}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      </Card>
+                    ) : (
+                      <p className="text-sm text-text-tertiary">
+                        Add the shares, funds or coins you hold, then record holdings of them.
+                      </p>
+                    )}
+                  </div>
                 </section>
 
                 <p className="text-xs text-text-tertiary">

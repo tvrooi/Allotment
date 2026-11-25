@@ -6,7 +6,9 @@ import { StatCardRow } from '../components/reports/ChartHelpers';
 import { ReceiptDrop, ReceiptThumb } from '../components/tax/ReceiptsSection';
 import { Button } from '../components/ui/Button';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
-import { Input, Select } from '../components/ui/Input';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { DatePicker } from '../components/ui/DatePicker';
 import {
   receiptFileUrl,
   taxYearArchiveUrl,
@@ -37,6 +39,7 @@ import { useSetCarriedLosses } from '../hooks/useInvestments';
 import { useCanSave } from '../hooks/useConnection';
 import { formatUnits } from '../utils/units';
 import { INCOME_KIND_LABEL, UNKNOWN_TEXT } from '../api/investments';
+import { ApiFileLink } from '../components/files/FileParts';
 
 // Tax time (docs/RECEIPTS-AND-TAX.md): a financial year's deductions by return label, with
 // their receipts, and the inbox of receipts not yet matched to a transaction. Record keeping
@@ -128,20 +131,15 @@ function Deductions() {
   return (
     <div className="space-y-5 max-w-5xl">
       <div data-guide="tax.year" className="flex flex-wrap items-end gap-3">
-        <label className="text-xs font-medium text-text-secondary space-y-1">
+        <div className="text-xs font-medium text-text-secondary space-y-1">
           <span className="block">Financial year (1 July to 30 June)</span>
           <Select
             aria-label="Financial year"
-            value={fy ?? ''}
-            onChange={(e) => setFy(Number(e.target.value))}
-          >
-            {years.map((y) => (
-              <option key={y.financialYear} value={y.financialYear}>
-                {y.name}
-              </option>
-            ))}
-          </Select>
-        </label>
+            value={fy === null ? '' : String(fy)}
+            onChange={(value) => setFy(Number(value))}
+            options={years.map((year) => ({ value: String(year.financialYear), label: year.name }))}
+          />
+        </div>
         {year &&
           (year.claims.length > 0 ||
             year.assets.length > 0 ||
@@ -285,16 +283,16 @@ function Deductions() {
                             {c.receipts.length || c.files.length ? (
                               <>
                                 {c.receipts.map((r) => (
-                                  <a
+                                  <ApiFileLink
                                     key={r.id}
-                                    href={receiptFileUrl(r.id)}
+                                    url={receiptFileUrl(r.id)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="flex items-center gap-1 text-brand-600 hover:text-brand-700"
                                   >
                                     <Paperclip size={12} />
                                     <span className="truncate max-w-40">{r.fileName}</span>
-                                  </a>
+                                  </ApiFileLink>
                                 ))}
                                 {c.files.map((f) => (
                                   <Link
@@ -755,6 +753,14 @@ function InboxItem({ receipt }: { receipt: Receipt }) {
   const remove = useDeleteReceipt();
   const { data: matches = [] } = useReceiptMatches(receipt.id);
   const [merchant, setMerchant] = useState(receipt.merchant ?? '');
+  const [receiptDate, setReceiptDate] = useState(receipt.receiptDate ?? '');
+  // The receipt reader fills these in after the row is on screen; show what it found when it lands
+  const [read, setRead] = useState({ merchant: receipt.merchant, date: receipt.receiptDate });
+  if (receipt.merchant !== read.merchant || receipt.receiptDate !== read.date) {
+    setRead({ merchant: receipt.merchant, date: receipt.receiptDate });
+    if (receipt.merchant !== read.merchant) setMerchant(receipt.merchant ?? '');
+    if (receipt.receiptDate !== read.date) setReceiptDate(receipt.receiptDate ?? '');
+  }
   const save = (change: Parameters<typeof update.mutate>[0]['change']) =>
     update.mutate({ id: receipt.id, change });
   return (
@@ -785,11 +791,13 @@ function InboxItem({ receipt }: { receipt: Receipt }) {
               (merchant || null) !== receipt.merchant && save({ merchant: merchant || null })
             }
           />
-          <Input
-            aria-label="Receipt date"
-            type="date"
-            value={receipt.receiptDate ?? ''}
-            onChange={(e) => save({ receiptDate: e.target.value || null })}
+          <DatePicker
+            label="Receipt date"
+            hideLabel
+            optional
+            value={receiptDate}
+            onChange={setReceiptDate}
+            onCommit={(date) => save({ receiptDate: date || null })}
           />
           <CurrencyInput
             aria-label="Receipt total"

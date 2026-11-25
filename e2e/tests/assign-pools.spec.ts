@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, setToggle } from './fixtures';
 
 test('an Essentials account has its own Ready to assign for the bills paid from it', async ({
   page,
@@ -11,7 +11,7 @@ test('an Essentials account has its own Ready to assign for the bills paid from 
   await open(page, `/accounts/${essentials.id}`);
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Edit account' });
-  await dialog.getByRole('checkbox', { name: /Own Ready to assign/ }).check();
+  await setToggle(dialog.getByRole('checkbox', { name: /Own Ready to assign/ }), true);
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   await api.call('PUT', `/categories/${rent.id}`, { poolAccountId: essentials.id });

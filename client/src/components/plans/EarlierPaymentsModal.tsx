@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { usePlanHistory } from '../../hooks/usePaymentPlans';
 import { formatCurrency } from '../../utils/currency';
 import { formatShortDay } from '../../utils/dates';
@@ -35,13 +35,14 @@ export function EarlierPaymentsModal({ isOpen, onClose, provider, onRecord }: Pr
           <div className="w-40">
             <Select
               aria-label="How far back"
-              value={months}
-              onChange={(e) => setMonths(Number(e.target.value))}
-            >
-              <option value={6}>Last 6 months</option>
-              <option value={12}>Last 12 months</option>
-              <option value={24}>Last 2 years</option>
-            </Select>
+              value={String(months)}
+              onChange={(value) => setMonths(Number(value))}
+              options={[
+                { value: '6', label: 'Last 6 months' },
+                { value: '12', label: 'Last 12 months' },
+                { value: '24', label: 'Last 2 years' },
+              ]}
+            />
           </div>
         </div>
         {isLoading && <p className="text-sm text-text-tertiary">Looking…</p>}

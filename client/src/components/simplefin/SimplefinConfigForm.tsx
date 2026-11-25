@@ -1,3 +1,4 @@
+import { Input } from '../ui/Input';
 import { useState, useId } from 'react';
 import { Link2, ExternalLink, Loader2 } from 'lucide-react';
 import { useSetupSimplefin } from '../../hooks/useSimplefin';
@@ -58,13 +59,13 @@ export function SimplefinConfigForm({ onSetupComplete }: Props) {
           >
             Setup token
           </label>
-          <input
+          <Input
             id={`${fieldId}-token`}
             type="text"
             value={token}
             onChange={(e) => setToken(e.target.value)}
             placeholder="Paste your SimpleFIN setup token"
-            className="w-full text-sm border border-border rounded-md px-3 py-2 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600 font-mono"
+            className="font-mono"
           />
         </div>
         <Button type="submit" disabled={!token.trim() || setup.isPending}>

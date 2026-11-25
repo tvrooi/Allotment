@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import { test, expect, open, isoDay, typeAmount, chooseOption } from './fixtures';
 
 test.describe('accounts', () => {
   test('a new user adds their first account from the welcome screen', async ({ page, api }) => {
@@ -8,7 +8,7 @@ test.describe('accounts', () => {
 
     const dialog = page.getByRole('dialog', { name: 'Add account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Chase Checking');
-    await dialog.getByRole('combobox', { name: 'Account type' }).selectOption('checking');
+    await chooseOption(dialog.getByRole('button', { name: 'Account type' }), 'Everyday');
     await dialog.getByRole('textbox', { name: 'Current balance' }).fill('1234.56');
     await dialog.getByRole('button', { name: 'Add account' }).click();
 
@@ -58,7 +58,7 @@ test.describe('accounts', () => {
     await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
     const dialog = page.getByRole('dialog', { name: 'Add account' });
     await dialog.getByRole('textbox', { name: 'Account name' }).fill('Home');
-    await dialog.getByRole('combobox', { name: 'Account type' }).selectOption('real_estate');
+    await chooseOption(dialog.getByRole('button', { name: 'Account type' }), 'Real estate');
     await expect(dialog.getByRole('checkbox', { name: /Off budget/ })).toBeChecked();
     await dialog.getByRole('textbox', { name: 'Current value' }).fill('350000');
     await dialog.getByRole('button', { name: 'Add account' }).click();
@@ -155,7 +155,8 @@ test.describe('accounts', () => {
     await expect.poll(async () => (await api.accounts()).map((a) => a.name)).toEqual(['Keep Me']);
     await open(page, '/accounts');
     await expect(page.getByRole('heading', { level: 1, name: 'Accounts' })).toBeVisible();
-    await expect(page.getByText('Old Card')).toBeHidden();
+    // In the page (the undo toast names it too, offering Undo, #245)
+    await expect(page.getByRole('main').getByText('Old Card')).toBeHidden();
   });
 
   test('updating an investment value records the change', async ({ page, api }) => {
@@ -189,4 +190,54 @@ test.describe('accounts', () => {
     await expect(main).toContainText(/Liabilities\s*-\$12,450/);
     await expect(main).toContainText(/Loans\s*-\$12,000/);
   });
+});
+
+test('the Up connection is two clicks from Accounts (#244)', async ({ page, api }) => {
+  await api.createAccount('Everyday', 0);
+  await open(page, '/accounts');
+  const main = page.getByRole('main');
+  // Click 1: the header link opens the Connected banks page
+  await main.getByRole('link', { name: 'Connected banks' }).click();
+  await expect(page).toHaveURL(/#\/accounts\/connections$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Connected banks');
+  // Click 2: Up in the provider toggle
+  const up = page
+    .getByRole('group', { name: 'Bank connection provider' })
+    .getByRole('button', { name: 'Up', exact: true });
+  await up.click();
+  await expect(up).toHaveAttribute('aria-pressed', 'true');
+  // Up's own panel (Connect Up, or the connection when one is left from another test)
+  await expect(page.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+  // The breadcrumb goes back to Accounts
+  await main.getByRole('link', { name: 'Accounts', exact: true }).click();
+  await expect(page).toHaveURL(/#\/accounts$/);
+});
+
+test('a budget with no accounts yet can connect a bank from Accounts (#244)', async ({ page }) => {
+  await open(page, '/accounts');
+  await page.getByRole('link', { name: 'Connect a bank' }).click();
+  await expect(page).toHaveURL(/#\/accounts\/connections$/);
+  await expect(
+    page
+      .getByRole('group', { name: 'Bank connection provider' })
+      .getByRole('button', { name: 'Up', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('a link to Connected banks opens the provider it names (#244)', async ({ page }) => {
+  const providers = page.getByRole('group', { name: 'Bank connection provider' });
+  const button = (name: string) => providers.getByRole('button', { name, exact: true });
+
+  await open(page, '/accounts/connections?provider=plaid');
+  await expect(button('Plaid')).toHaveAttribute('aria-pressed', 'true');
+  await expect(button('Up')).toHaveAttribute('aria-pressed', 'false');
+
+  // A provider the page does not know opens Up
+  await open(page, '/accounts/connections?provider=bogus');
+  await expect(button('Up')).toHaveAttribute('aria-pressed', 'true');
+
+  // Choosing a bank keeps it in the address, so the page can be linked back to
+  await button('SimpleFIN').click();
+  await expect(page).toHaveURL(/\?provider=simplefin$/);
+  await expect(button('SimpleFIN')).toHaveAttribute('aria-pressed', 'true');
 });

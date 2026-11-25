@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { deleteTarget, saveTarget, type TargetInput } from '../../api/budget';
 import { useCanSave } from '../../hooks/useConnection';
 import type { TargetStatus } from '../../types';
-import { centsToInput, formatCurrency, isUnreadableAmount, parseCents } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { targetLabel } from '../../utils/targets';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Label } from '../ui/Label';
+import { NumberField } from '../ui/NumberField';
+import { Select } from '../ui/Select';
 
 const TYPES: { value: TargetInput['type']; label: string; help: string }[] = [
   { value: 'monthly', label: 'Monthly amount', help: 'Assign the same amount every month.' },
@@ -22,7 +27,9 @@ const TYPES: { value: TargetInput['type']; label: string; help: string }[] = [
     help: 'Top the balance up to this amount each month.',
   },
 ];
-const field = 'flex flex-col gap-1 text-xs text-text-secondary';
+/** The server's bounds on a recurring target's cycle (`cycleMonths` in server/src/services/targetConfig.ts) */
+const CYCLE_MIN = 1;
+const CYCLE_MAX = 60;
 
 /** Edit a category's target. Saving a target never assigns money. */
 export function TargetCard({
@@ -35,14 +42,17 @@ export function TargetCard({
   const qc = useQueryClient();
   const canSave = useCanSave();
   const [type, setType] = useState<TargetInput['type']>(target?.type ?? 'monthly');
-  const [amount, setAmount] = useState(target ? centsToInput(target.amount) : '');
+  /** Minor units; 0 until an amount is typed */
+  const [amount, setAmount] = useState(target?.amount ?? 0);
   const [dueDate, setDueDate] = useState(target?.dueDate ?? '');
   const [cycle, setCycle] = useState(target?.cycleMonths ?? 12);
   const [error, setError] = useState<string | null>(null);
+  const { allValid, report } = useAmountValidity();
+  const amountId = useId();
   useEffect(() => {
     if (!target) return;
     setType(target.type);
-    setAmount(centsToInput(target.amount));
+    setAmount(target.amount);
     setCycle(target.cycleMonths ?? 12);
   }, [target?.type, target?.amount, target?.cycleMonths]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -57,9 +67,8 @@ export function TargetCard({
   }
   function save(e: React.FormEvent) {
     e.preventDefault();
-    if (isUnreadableAmount(amount) || parseCents(amount) <= 0)
-      return setError('Enter a target amount above zero.');
-    const cents = Math.abs(parseCents(amount));
+    if (amount <= 0) return setError('Enter a target amount above zero.');
+    const cents = Math.abs(amount);
     const input: TargetInput =
       type === 'by-date'
         ? { type, amount: cents, dueDate }
@@ -75,51 +84,55 @@ export function TargetCard({
       aria-label="Category target"
       className="bg-surface rounded-lg shadow-card border border-border-light p-4 space-y-3"
     >
-      <h2 className="text-sm font-semibold text-text">Target</h2>
+      <h2 className="text-base font-semibold text-text">Target</h2>
       {target && (
         <p className={`text-sm ${target.underfunded ? 'text-caution' : 'text-text-secondary'}`}>
           {targetLabel(target)}. This month needs {formatCurrency(target.required)}
           {target.periodsLeft ? ` over ${target.periodsLeft} month(s) left` : ''}.
         </p>
       )}
-      <label className={field}>
-        Target type
-        <Select value={type} onChange={(e) => setType(e.target.value as TargetInput['type'])}>
-          {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </Select>
-        <span>{TYPES.find((t) => t.value === type)!.help}</span>
-      </label>
-      <label className={field}>
-        Target amount
-        <Input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      </label>
-      {needsDate && (
-        <label className={field}>
-          {type === 'recurring' ? 'Next due date' : 'Due date'}
-          <Input
-            type="date"
-            required
+      <AmountFields report={report}>
+        <Select
+          label="Target type"
+          value={type}
+          onChange={(v) => setType(v as TargetInput['type'])}
+          options={TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          description={TYPES.find((t) => t.value === type)!.help}
+        />
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={amountId}>Target amount</Label>
+          <CurrencyInput
+            id={amountId}
+            value={amount}
+            // Signed, so a typed negative meets the positive-amount check instead of becoming positive
+            allowNegative
+            onChange={setAmount}
+            // Enter submits without leaving the field, so what is typed counts at once
+            onTextChange={(cents) => {
+              if (cents !== null) setAmount(cents);
+            }}
+          />
+        </div>
+        {needsDate && (
+          <DatePicker
+            label={type === 'recurring' ? 'Next due date' : 'Due date'}
+            isRequired
             value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
+            onChange={setDueDate}
           />
-        </label>
-      )}
-      {type === 'recurring' && (
-        <label className={field}>
-          Repeats every (months)
-          <Input
-            type="number"
-            min={1}
-            max={60}
+        )}
+        {type === 'recurring' && (
+          <NumberField
+            label="Repeats every (months)"
+            min={CYCLE_MIN}
+            max={CYCLE_MAX}
             value={cycle}
-            onChange={(e) => setCycle(Math.min(60, Math.max(1, Math.round(+e.target.value))))}
+            onChange={(months) => {
+              if (months !== null) setCycle(months);
+            }}
           />
-        </label>
-      )}
+        )}
+      </AmountFields>
       <p className="text-xs text-text-tertiary">
         Targets suggest funding from money you already have. Use Fund targets on the budget to
         review and assign it.
@@ -130,7 +143,7 @@ export function TargetCard({
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={!canSave}>
+        <Button type="submit" size="sm" disabled={!canSave || !allValid || (needsDate && !dueDate)}>
           Save target
         </Button>
         {target && (

@@ -21,7 +21,7 @@ export function BillsCoverage({ coverage, currency, people }: Props) {
   const monthStart = `${coverage.from.slice(0, 7)}-01`;
   return (
     <section className={card} aria-labelledby="bills-coverage">
-      <h2 id="bills-coverage" className="text-sm font-semibold text-text">
+      <h2 id="bills-coverage" className="text-base font-semibold text-text">
         Bills coverage
       </h2>
       {needed === 0 ? (

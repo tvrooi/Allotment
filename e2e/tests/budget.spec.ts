@@ -1,24 +1,33 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  thisMonth,
+  chooseOption,
+  setToggle,
+  typeAmount,
+} from './fixtures';
 
 // The zero-based budget: To Be Budgeted = income + carry-over − planned.
 
 const toBeBudgeted = (page: Page) => page.getByRole('status', { name: 'Ready to assign' });
 
 async function plan(page: Page, category: string, amount: string) {
-  const button = page.getByRole('button', { name: new RegExp(`^Planned for ${category}:`) });
+  const button = page.getByRole('button', { name: new RegExp(`^Assigned to ${category}:`) });
   // Categories with no activity sit under "Show N inactive categories" in each section
-  await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
   const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
   while (!(await button.isVisible()) && (await showInactive.count()) > 0) {
     await showInactive.first().click();
   }
   await button.click();
-  const input = page.getByRole('textbox', { name: `Planned for ${category}` });
+  const input = page.getByRole('textbox', { name: `Assigned to ${category}` });
   await input.fill(amount);
   await input.press('Enter');
   await expect(
-    page.getByRole('button', { name: new RegExp(`^Planned for ${category}: \\$`) }),
+    page.getByRole('button', { name: new RegExp(`^Assigned to ${category}: \\$`) }),
   ).toBeVisible();
 }
 
@@ -42,7 +51,7 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$2,600');
     await plan(page, 'Rent / Mortgage', '2600');
     await expect(toBeBudgeted(page)).toContainText('$0');
-    await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+    await expect(toBeBudgeted(page)).toContainText('Every dollar has a job');
 
     const summary = await api.call('GET', `/budget/${thisMonth()}/summary`);
     expect(summary).toMatchObject({ income: 300_000, totalBudgeted: 300_000, toBeBudgeted: 0 });
@@ -88,16 +97,21 @@ test.describe('budget', () => {
     });
 
     const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
-    const restaurants = page.getByRole('button', { name: /^Planned for Restaurants:/ });
+    const restaurants = page.getByRole('button', { name: /^Assigned to Restaurants:/ });
     while (!(await restaurants.isVisible()) && (await showInactive.count()) > 0) {
       await showInactive.first().click();
     }
+    const restaurantsRow = page.getByRole('row').filter({ hasText: 'Restaurants' });
+    const idleHeight = (await restaurantsRow.boundingBox())!.height;
     await restaurants.click();
-    const input = page.getByRole('textbox', { name: 'Planned for Restaurants' });
+    const input = page.getByRole('textbox', { name: 'Assigned to Restaurants' });
     await input.fill('50');
     await input.press('Enter');
     await expect(page.getByText('Saving…')).toBeVisible();
     await expect(input).toHaveAttribute('readonly', '');
+    // Saving… must not grow the h-14 row while the save is in flight
+    const savingHeight = (await restaurantsRow.boundingBox())!.height;
+    expect(Math.abs(savingHeight - idleHeight)).toBeLessThanOrEqual(1);
 
     // Refused: the amount is still there to correct, with the reason beside it
     await expect(page.getByText(/^Not saved\./)).toBeVisible();
@@ -127,7 +141,7 @@ test.describe('budget', () => {
       categoryId: paychecks.id,
     });
     await open(page, '/budget');
-    await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
     await page.route('**/api/budget/*/*', async (route) => {
       if (route.request().method() === 'PUT') await new Promise((r) => setTimeout(r, 800));
       await route.continue();
@@ -137,19 +151,19 @@ test.describe('budget', () => {
     while ((await showInactive.count()) > 0) await showInactive.first().click();
     const first = 'Groceries';
     const second = 'Restaurants';
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${first}:`) }).click();
-    const a = page.getByRole('textbox', { name: `Planned for ${first}` });
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${first}:`) }).click();
+    const a = page.getByRole('textbox', { name: `Assigned to ${first}` });
     await a.fill('10');
     await a.press('Enter');
     await expect(page.getByText('Saving…')).toBeVisible();
 
     // Another envelope is opened and typed in while the first save is on its way
-    await page.getByRole('button', { name: new RegExp(`^Planned for ${second}:`) }).click();
-    const b = page.getByRole('textbox', { name: `Planned for ${second}` });
+    await page.getByRole('button', { name: new RegExp(`^Assigned to ${second}:`) }).click();
+    const b = page.getByRole('textbox', { name: `Assigned to ${second}` });
     await b.fill('5');
     await expect(page.getByText('Saving…')).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: new RegExp(`^Planned for ${first}: \\$10`) }),
+      page.getByRole('button', { name: new RegExp(`^Assigned to ${first}: \\$10`) }),
     ).toBeVisible();
     await expect(b).toHaveValue('5');
   });
@@ -181,14 +195,14 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$0');
 
     const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
-    const button = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const button = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     while (!(await button.isVisible()) && (await showInactive.count()) > 0) {
       await showInactive.first().click();
     }
     await button.click();
     await page.getByRole('button', { name: /^Cover \$50(\.00)? overspent/ }).click();
     await expect(page.getByText(/^Not saved\./)).toBeVisible();
-    await expect(page.getByRole('textbox', { name: 'Planned for Groceries' })).toHaveValue(/^50/);
+    await expect(page.getByRole('textbox', { name: 'Assigned to Groceries' })).toHaveValue(/^50/);
   });
 
   test('spending shows against its categories, including split parts', async ({ page, api }) => {
@@ -300,7 +314,7 @@ test.describe('budget', () => {
     await expect(toBeBudgeted(page)).toContainText('$700');
     // Held money can't be given to an envelope, but the rest can: the month is fully budgeted
     await plan(page, 'Groceries', '700');
-    await expect(toBeBudgeted(page)).toContainText('Fully budgeted');
+    await expect(toBeBudgeted(page)).toContainText('Every dollar has a job');
     const refused = await api.request.put(`/api/budget/${thisMonth()}/${groceries.id}`, {
       data: { budgeted: 70_100 },
     });
@@ -331,12 +345,63 @@ test.describe('budget', () => {
       categoryId: groceries.id,
     });
     await open(page, '/budget');
-    await page.getByRole('row').filter({ hasText: 'Groceries' }).getByRole('link').click();
+    await page.getByRole('link', { name: 'Open Groceries' }).click();
     await expect(page).toHaveURL(new RegExp(`#/budget/category/${groceries.id}$`));
     await expect(
       page.getByTestId('transaction-row').filter({ hasText: 'Farm Stand' }),
     ).toBeVisible();
   });
+  test('a category with no spending this month opens on all its history, not an empty month', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 100000);
+    const groceries = await api.category('Groceries');
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(-45),
+      amount: -4_321,
+      payeeName: 'Old Market',
+      categoryId: groceries.id,
+    });
+    await open(page, `/budget/category/${groceries.id}`);
+    // The chart shows that spending, so the list and summary show it too, under a chosen tab
+    await expect(page.getByRole('img', { name: 'Spending by month' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'All time' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(
+      page.getByTestId('transaction-row').filter({ hasText: 'Old Market' }),
+    ).toBeVisible();
+    await expect(page.getByText('No transactions found')).toHaveCount(0);
+    await expect(page.getByText('No data')).toHaveCount(0);
+  });
+
+  test('the transactions sit right under the spending history on a wide screen', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 100000);
+    const groceries = await api.category('Groceries');
+    await api.createTransaction({
+      accountId: checking.id,
+      date: isoDay(),
+      amount: -4_321,
+      payeeName: 'Farm Stand',
+      categoryId: groceries.id,
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, `/budget/category/${groceries.id}`);
+    // The Budget and Target cards beside the chart are taller than it; the list doesn't wait
+    const chart = page.getByRole('heading', { name: 'Spending history' }).locator('..');
+    const search = page.getByRole('textbox', { name: 'Search payee or notes' });
+    await expect(page.getByRole('heading', { name: 'Target' })).toBeVisible();
+    const chartBox = (await chart.boundingBox())!;
+    const listBox = (await search.boundingBox())!;
+    expect(listBox.y - (chartBox.y + chartBox.height)).toBeLessThan(48);
+  });
+
   test('switching months keeps the budget on screen while the next month loads', async ({
     page,
     api,
@@ -345,7 +410,7 @@ test.describe('budget', () => {
     const groceries = await api.category('Groceries');
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 20_000 });
     await open(page, '/budget');
-    const groceriesPlanned = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const groceriesPlanned = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     await expect(groceriesPlanned).toBeVisible();
 
     // Make next month slow to load, so the moment in between can be checked
@@ -365,20 +430,20 @@ test.describe('budget', () => {
     // Then next month's figures replace it
     await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: /^Planned for Groceries: \$0(\.00)?$/ }),
+      page.getByRole('button', { name: /^Assigned to Groceries: \$0(\.00)?$/ }),
     ).toBeVisible();
   });
 
   test('an open editor never saves into the month that is still loading', async ({ page, api }) => {
     await api.createAccount('Checking', 100_000);
     await open(page, '/budget');
-    const groceries = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const groceries = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     const showInactive = page.getByRole('button', { name: /^Show \d+ inactive/ });
-    await expect(page.getByRole('button', { name: /^Planned for / }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to / }).first()).toBeVisible();
     while (!(await groceries.isVisible()) && (await showInactive.count()) > 0)
       await showInactive.first().click();
     await groceries.click();
-    await page.getByRole('textbox', { name: 'Planned for Groceries' }).fill('75');
+    await page.getByRole('textbox', { name: 'Assigned to Groceries' }).fill('75');
 
     // Hold the next month back, as a slow connection would
     let release!: () => void;
@@ -393,8 +458,8 @@ test.describe('budget', () => {
       await route.fallback();
     });
     await page.getByRole('button', { name: 'Next month' }).click({ force: true });
-    // The editor closed with the month change (blur may save October: that's its own month)
-    await expect(page.getByRole('textbox', { name: 'Planned for Groceries' })).toHaveCount(0);
+    // The editor closed with the month change (clicking away cancels, so nothing is saved)
+    await expect(page.getByRole('textbox', { name: 'Assigned to Groceries' })).toHaveCount(0);
     const loading = page.locator('[aria-busy="true"]');
     await expect(loading).toHaveAttribute('inert', '');
     release();
@@ -405,6 +470,13 @@ test.describe('budget', () => {
     expect(writes.filter((u) => u.includes(`/budget/${nextMonth}/`))).toEqual([]);
   });
 });
+
+/** Assign opens a menu only when targets are underfunded; otherwise Auto-assign… is a button */
+async function openAutoAssign(page: Page) {
+  await page.getByRole('button', { name: /^(Assign|Auto-assign…)$/ }).click();
+  const item = page.getByRole('menuitem', { name: /Auto-assign/ });
+  if (await item.isVisible()) await item.click();
+}
 
 test('overspending is covered from the amount editor or by auto-assign', async ({ page, api }) => {
   const checking = await api.createAccount('Checking', 100_000);
@@ -422,16 +494,15 @@ test('overspending is covered from the amount editor or by auto-assign', async (
     });
   }
   await open(page, '/budget');
-  await page.getByRole('button', { name: /^Planned for Groceries:/ }).click();
+  await page.getByRole('button', { name: /^Assigned to Groceries:/ }).click();
   // Nothing typed yet: no "Use $0 for the next 12 months"
   await expect(page.getByRole('button', { name: /next 12 months/ })).toHaveCount(0);
-  await page.getByRole('textbox', { name: 'Planned for Groceries' }).fill('50');
+  await page.getByRole('textbox', { name: 'Assigned to Groceries' }).fill('50');
   await expect(page.getByRole('button', { name: /Use \$50 for the next 12 months/ })).toBeVisible();
   await page.getByRole('button', { name: 'Cover $120 overspent' }).click();
-  await expect(page.getByRole('button', { name: /^Planned for Groceries: \$120/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Assigned to Groceries: \$120/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
+  await openAutoAssign(page);
   const preview = page.getByRole('region', { name: 'Auto-assign preview' });
   await expect(preview).toContainText('Electric');
   await expect(preview).not.toContainText('Groceries');
@@ -461,8 +532,7 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
     });
   }
   await open(page, '/budget');
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
+  await openAutoAssign(page);
   const preview = page.getByRole('region', { name: 'Auto-assign preview' });
   await expect(preview).toContainText('Groceries');
   await expect(preview).toContainText('Electric');
@@ -474,7 +544,7 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
     await held;
     await route.continue();
   });
-  await page.getByRole('checkbox', { name: 'Include Groceries' }).uncheck();
+  await setToggle(page.getByRole('checkbox', { name: 'Include Groceries' }), false);
   await expect(page.getByRole('button', { name: /^Assign \$/ })).toBeDisabled();
   release();
   await expect(preview.getByText('left out')).toBeVisible();
@@ -490,14 +560,80 @@ test('a quick fill can leave envelopes out, and Replace or Set to zero takes mon
   expect(await budgeted('Groceries')).toBe(0);
 
   // Set to zero takes the $80 back, and says so
-  await page.getByRole('button', { name: 'Assign', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Auto-assign/ }).click();
-  await page.getByRole('radio', { name: /Set to zero/ }).check();
+  await openAutoAssign(page);
+  await setToggle(page.getByRole('radio', { name: /Set to zero/ }), true);
   await expect(preview).toContainText('take back $80');
   await expect(preview).toContainText('will be overspent');
   await page.getByRole('button', { name: 'Take back $80' }).click();
   await expect(preview).toBeHidden();
   await expect.poll(() => budgeted('Electric')).toBe(0);
+});
+
+test('Auto-assign Months to average Select and How to apply Replace RadioGroup send chosen options and apply', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 200_000);
+  const groceries = await api.category('Groceries');
+  const d = new Date(`${thisMonth()}-15T12:00:00`);
+  d.setMonth(d.getMonth() - 1);
+  const lastMonthDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`;
+  await api.createTransaction({
+    accountId: checking.id,
+    date: lastMonthDay,
+    amount: -60_000,
+    payeeName: 'Supermarket',
+    categoryId: groceries.id,
+  });
+  await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 40_000 });
+
+  const previewBodies: Array<{ strategy: string; months?: number; mode?: string }> = [];
+  page.on('request', (req) => {
+    if (req.method() === 'POST' && req.url().includes('/auto-assign/preview')) {
+      previewBodies.push(req.postDataJSON());
+    }
+  });
+
+  await open(page, '/budget');
+  await openAutoAssign(page);
+  const dialog = page.getByRole('dialog', { name: 'Auto-assign' });
+  const preview = dialog.getByRole('region', { name: 'Auto-assign preview' });
+
+  await setToggle(
+    dialog
+      .getByRole('radiogroup', { name: 'Auto-assign option' })
+      .getByRole('radio', { name: /Average spent/ }),
+    true,
+  );
+  await chooseOption(dialog.getByRole('button', { name: /Months to average/ }), '6 months');
+  await expect(dialog).toContainText('Last 6 months’ average spending');
+  await expect
+    .poll(() => previewBodies.at(-1))
+    .toMatchObject({ strategy: 'average_spent', months: 6, mode: 'add' });
+
+  // Switch How to apply to Replace: $400 assigned drops to the 6-month average ($100), taking back $300
+  await setToggle(
+    dialog
+      .getByRole('radiogroup', { name: 'How to apply' })
+      .getByRole('radio', { name: /Replace/ }),
+    true,
+  );
+  await expect
+    .poll(() => previewBodies.at(-1))
+    .toMatchObject({ strategy: 'average_spent', months: 6, mode: 'replace' });
+  await expect(preview).toContainText('Money taken back becomes ready to assign.');
+  await expect(preview).toContainText('take back $300');
+  await dialog.getByRole('button', { name: 'Take back $300' }).click();
+  await expect(dialog).toBeHidden();
+
+  await expect
+    .poll(async () => {
+      const groups = await api.call('GET', `/budget/${thisMonth()}`);
+      return groups
+        .flatMap((g: { categories: { name: string; budgeted: number }[] }) => g.categories)
+        .find((c: { name: string }) => c.name === 'Groceries')?.budgeted;
+    })
+    .toBe(10_000);
 });
 
 test('a recurring bill shows as expected in its category before it is debited', async ({
@@ -517,8 +653,323 @@ test('a recurring bill shows as expected in its category before it is debited', 
 
   await open(page, '/budget');
   const expected = page.getByTestId('expected-debit');
-  await expect(expected).toContainText(/\$45(\.00)? expected/);
-  await expect(expected).toHaveAttribute('title', /Mobile plan/);
-  // Orange, not the red of overspending
+  await expect(expected).toContainText(/\$45(\.00)? needed by the/);
+  await expected.click();
+  const details = page.getByRole('dialog', { name: 'Expected bills for Phone' });
+  await expect(details).toContainText('Mobile plan');
+  await expect(details).toContainText('After expected bills');
+  await expect(
+    details.getByRole('progressbar', { name: 'Expected bills covered' }),
+  ).toHaveAttribute('aria-valuenow', '0');
+  await page.keyboard.press('Escape');
+  await expect(details).toBeHidden();
+  await expect(expected).toBeFocused();
+  await expected.press('Enter');
+  await expect(details).toBeVisible();
+  await details.getByRole('button', { name: 'Close expected bills' }).click();
+  await expect(details).toBeHidden();
   await expect(expected).toHaveClass(/text-expected/);
+
+  // The phone disclosure is independent of the activity link, and fits a narrow viewport.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expected.click();
+  await expect(details).toBeVisible();
+  await expect(page).toHaveURL(/\/budget$/);
+  const bounds = await details.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await details.getByRole('button', { name: 'Close expected bills' }).click();
+  await expect(details).toBeHidden();
+});
+
+for (const width of [1400, 390]) {
+  test(`expected bills open their recurring editor at ${width}px`, async ({ page, api }) => {
+    const checking = await api.createAccount('Checking', 100_000);
+    const phone = await api.category('Phone');
+    await api.call('POST', '/schedules', {
+      name: 'Mobile plan',
+      amount: -4_500,
+      recurrenceType: 'once',
+      startDate: isoDay(),
+      accountId: checking.id,
+      categoryId: phone.id,
+    });
+    await page.setViewportSize({ width, height: 844 });
+    await open(page, '/budget');
+    await page.getByTestId('expected-debit').click();
+    const breakdown = page.getByRole('dialog', { name: 'Expected bills for Phone' });
+    await breakdown.getByRole('button', { name: 'Assign to Phone…' }).click();
+    await expect(breakdown).toBeHidden();
+    const amount = page.getByRole('textbox', { name: 'Assigned to Phone', exact: true });
+    await expect(amount).toBeVisible();
+    // The existing amount editor represents an unassigned zero as an empty field.
+    await expect(amount).toHaveValue('');
+    if (width === 1400) {
+      await expect(amount).toBeFocused();
+      await amount.press('Escape');
+    } else {
+      await page
+        .getByRole('dialog', { name: 'Plan Phone', exact: true })
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .click();
+    }
+    await page.getByTestId('expected-debit').click();
+    await page.getByRole('link', { name: 'Open recurring bill: Mobile plan' }).click();
+    const edit = page.getByRole('dialog', { name: 'Edit recurring', exact: true });
+    await expect(edit.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+      'Mobile plan',
+    );
+    await expect(page).toHaveURL(/\/recurring$/);
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Recurring', exact: true })).toBeVisible();
+    await expect(edit).toBeHidden();
+  });
+}
+
+test('a deleted schedule link does not open a new recurring form', async ({ page }) => {
+  await open(page, '/recurring?schedule=missing-schedule');
+  await expect(page).toHaveURL(/\/recurring$/);
+  await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('the next funding gap separates bills due by the deadline from later bills', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  const phone = await api.category('Phone');
+  for (const [name, day, amount] of [
+    ['Earlier bill', '01', -3000],
+    ['Next bill', '10', -4000],
+    ['Later bill', '25', -9000],
+  ] as const) {
+    await api.call('POST', '/schedules', {
+      name,
+      amount,
+      recurrenceType: 'once',
+      startDate: `${thisMonth()}-${day}`,
+      accountId: checking.id,
+      categoryId: phone.id,
+    });
+  }
+  await open(page, '/budget');
+  await plan(page, 'Phone', '50');
+  const trigger = page.getByTestId('expected-debit');
+  await expect(trigger).toContainText('$20 needed by the 10th');
+  for (const width of [1400, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: 'Expected bills for Phone' });
+    const gap = dialog.getByRole('region', { name: 'Next funding gap', exact: true });
+    await expect(gap).toContainText('Bills due by then$70');
+    await expect(gap).toContainText('Covered by this envelope$50');
+    await expect(gap).toContainText('Still needed$20');
+    const due = dialog.getByRole('region', { name: /^Due by / });
+    await expect(due.getByRole('link')).toHaveCount(2);
+    await expect(due).toContainText('Earlier bill');
+    await expect(due).toContainText('Next bill');
+    await expect(dialog.getByRole('region', { name: 'Later this month' })).toContainText(
+      'Later bill',
+    );
+    await dialog.getByRole('button', { name: 'Close expected bills' }).click();
+    await expect(dialog).toBeHidden();
+  }
+});
+
+test('Categories opens the category page from Budget, and the breadcrumb returns (#244)', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Checking', 0);
+  await open(page, '/budget');
+  await expect(toBeBudgeted(page)).toBeVisible();
+  const main = page.getByRole('main');
+  await main.getByRole('link', { name: 'Categories', exact: true }).click();
+  await expect(page).toHaveURL(/#\/budget\/categories$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit Groceries' })).toBeVisible();
+
+  await main
+    .getByRole('navigation', { name: 'Breadcrumb' })
+    .getByRole('link', { name: 'Budget', exact: true })
+    .click();
+  await expect(toBeBudgeted(page)).toBeVisible();
+  await expect(page).toHaveURL(/#\/budget$/);
+});
+
+test('reaching $0 Ready to assign says every dollar has a job, in normal colour (#241)', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  const ready = toBeBudgeted(page);
+  await expect(ready).toContainText('$500');
+  await expect(ready).not.toContainText('Every dollar has a job');
+
+  await plan(page, 'Groceries', '500');
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    await expect(ready).toContainText('Every dollar has a job');
+    await expect(ready.getByTestId('ready-glyph')).toBeVisible();
+    // Zero is said plainly, in the normal text colour (GLOSSARY.md)
+    await expect(ready.getByText('$0', { exact: true })).toHaveClass(/(^|\s)text-text(\s|$)/);
+  }
+});
+
+test('at $0 with an overspent envelope the label names it instead of praising (#241)', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 0);
+  const paychecks = await api.category('Paychecks');
+  const groceries = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: paychecks.id,
+  });
+  await open(page, '/budget');
+  await plan(page, 'Groceries', '500');
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: -60_000,
+    payeeName: 'Supermarket',
+    categoryId: groceries.id,
+  });
+  await page.reload();
+
+  const ready = toBeBudgeted(page);
+  const label = ready.getByText('All assigned, but envelopes are overspent', { exact: true });
+  await expect(ready.getByText('$0', { exact: true })).toBeVisible();
+  await expect(label).toBeVisible();
+  await expect(ready).not.toContainText('Every dollar has a job');
+  await expect(ready.getByTestId('ready-glyph')).toHaveCount(0);
+  // The hero names the job; the line under it gives the one next step
+  const todo = page.getByText('Resolve overspent envelopes.', { exact: true });
+  await expect(todo).toBeVisible();
+  await expect(
+    page.locator('p').filter({ has: todo }).getByRole('link', { name: 'Review' }),
+  ).toBeVisible();
+
+  // On a phone the label wraps beside a figure that stays on one line, with no sideways scroll
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(label).toBeVisible();
+  const figure = ready.getByText('$0', { exact: true });
+  expect(
+    await figure.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    }),
+  ).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('phone budget sheet formats sums on blur and marks unreadable text on blur', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 0);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 100_000,
+    payeeName: 'Employer',
+    categoryId: (await api.category('Paychecks')).id,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '/budget');
+  const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
+  await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
+  const amount = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
+
+  // Leaving after a sum formats the result in place
+  await typeAmount(amount, '20*3');
+  await expect(amount).toHaveValue('$60');
+
+  // Leaving unreadable text keeps it, marks invalid with the amount hint, and refuses to save
+  await typeAmount(amount, 'abc');
+  await expect(amount).toHaveValue('abc');
+  await expect(amount).toHaveAttribute('aria-invalid', 'true');
+  await expect(sheet.getByRole('alert')).toContainText("That isn't an amount.");
+  await sheet.getByRole('button', { name: 'Save' }).click();
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole('alert')).toHaveCount(1);
+
+  // Fixing the text clears the error and saves the sum
+  await typeAmount(amount, '20*3');
+  await expect(amount).toHaveValue('$60');
+  await sheet.getByRole('button', { name: 'Save' }).click();
+  await expect(sheet).toBeHidden();
+  await expect(card.getByRole('button', { name: 'Assigned to Groceries: $60' })).toBeVisible();
+});
+
+test('tapping a suggestion on the phone budget sheet fills the formatted amount without focusing the input', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  const groceries = await api.category('Groceries');
+  const d = new Date(`${thisMonth()}-15T12:00:00`);
+  d.setMonth(d.getMonth() - 1);
+  const lastMonthDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`;
+  await api.createTransaction({
+    accountId: checking.id,
+    date: lastMonthDay,
+    amount: -7_500,
+    payeeName: 'Market',
+    categoryId: groceries.id,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '/budget');
+  const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
+  await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
+  const amount = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
+  await expect(amount).toBeFocused();
+
+  await sheet.getByRole('button', { name: /Spent last month/ }).click();
+  await expect(amount).toHaveValue('$75');
+  await expect(amount).not.toBeFocused();
+});
+
+test('pressing Enter on unreadable text in the phone budget sheet shows an alert without blurring', async ({
+  page,
+  api,
+}) => {
+  const checking = await api.createAccount('Checking', 100_000);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 50_000,
+    payeeName: 'Employer',
+    categoryId: (await api.category('Paychecks')).id,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '/budget');
+  const card = page.getByTestId('budget-card').filter({ hasText: 'Groceries' });
+  await card.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Plan Groceries' });
+  const amount = sheet.getByRole('textbox', { name: 'Assigned to Groceries' });
+  await expect(amount).toBeFocused();
+
+  await page.keyboard.type('abc');
+  await amount.press('Enter');
+  await expect(sheet.getByRole('alert')).toContainText("That isn't an amount.");
+  await expect(sheet).toBeVisible();
 });

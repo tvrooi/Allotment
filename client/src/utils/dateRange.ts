@@ -121,11 +121,46 @@ export function decodeRangeParam(param: string | null): ReportDateRange | undefi
 export const formatMonth = (m: string) =>
   isMonth(m) ? format(parseISO(`${m}-01`), 'MMM yyyy') : m;
 
+/**
+ * A YYYY-MM month's names as the month grid shows them: `short` "Oct" on its button, `long`
+ * "October 2026" as its accessible name. Formatted by date-fns, as formatMonth is, so the grid
+ * and the trigger's "Oct 2026" come from one source (02-REVIEW IN-02).
+ */
+export function monthNames(m: string): { short: string; long: string } {
+  const first = parseISO(`${m}-01`);
+  return { short: format(first, 'MMM'), long: format(first, 'MMMM yyyy') };
+}
+
+/** A month range as one line: "Nov 2026" when it is one month, else "Jan 2025 – Nov 2026" */
+export const formatMonthRange = (from: string, to: string) =>
+  from === to ? formatMonth(from) : `${formatMonth(from)} – ${formatMonth(to)}`;
+
 export function formatDateRange(range: ReportDateRange): string {
   if (!isFrozen(range)) return DATE_PRESETS.find((p) => p.id === range.preset)?.long ?? '';
-  return range.from === range.to
-    ? formatMonth(range.from)
-    : `${formatMonth(range.from)} – ${formatMonth(range.to)}`;
+  return formatMonthRange(range.from, range.to);
+}
+
+/** A month range: two yyyy-MM months, `from` on or before `to` */
+export interface MonthRange {
+  from: string;
+  to: string;
+}
+
+/**
+ * The one rule a month range picker follows for every pick (MonthRangePicker, desktop and
+ * phone): the month lands on its side and drags the other side with it, so a range never ends
+ * before it starts. A pick that is not a real month, or is after `max`, changes nothing and
+ * returns `range` itself. Months compare as strings only once `isMonth` has accepted them.
+ */
+export function pickRangeMonth(
+  range: MonthRange,
+  side: 'from' | 'to',
+  month: string,
+  max: string,
+): MonthRange {
+  if (!isMonth(month) || month > max) return range;
+  if (side === 'from') return { from: month, to: range.to < month ? month : range.to };
+  return { from: range.from > month ? month : range.from, to: month };
 }
 
 /** Month ranges up to this long plot a point per day instead of per month. */

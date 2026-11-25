@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, type Api } from './fixtures';
+import { test, expect, open, isoDay, categoryOption, setToggle, type Api } from './fixtures';
 
 async function seed(api: Api) {
   const checking = await api.createAccount('Checking', 100_000);
@@ -50,12 +50,17 @@ test.describe('payees', () => {
   test('merges payees and moves their transactions', async ({ page, api }) => {
     await seed(api);
     await open(page, '/payees');
-    await page.getByRole('checkbox', { name: 'Select AMZN Mktp' }).check();
-    await page.getByRole('checkbox', { name: 'Select Amazon' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Select AMZN Mktp' }), true);
+    await expect(page.getByRole('checkbox', { name: 'Select all payees' })).toHaveJSProperty(
+      'indeterminate',
+      true,
+    );
+    await setToggle(page.getByRole('checkbox', { name: 'Select Amazon' }), true);
     await page.getByRole('button', { name: 'Merge 2 payees' }).click();
 
     const dialog = page.getByRole('dialog', { name: 'Merge payees' });
-    await dialog.getByRole('radio', { name: /Amazon/ }).check();
+    const keepGroup = dialog.getByRole('radiogroup', { name: 'Payee to keep' });
+    await setToggle(keepGroup.getByRole('radio', { name: /Amazon/ }), true);
     await dialog.getByRole('button', { name: 'Merge' }).click();
 
     await expect(row(page, 'AMZN Mktp')).toBeHidden();
@@ -68,9 +73,13 @@ test.describe('payees', () => {
     const checking = await seed(api);
     const shopping = await api.category('Groceries');
     await open(page, '/payees');
-    await page
-      .getByRole('combobox', { name: 'Default category for Amazon' })
-      .selectOption(shopping.id);
+    // The searchable category picker, as everywhere a category is chosen (#240)
+    await page.getByRole('button', { name: 'Default category for Amazon: none' }).click();
+    await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('button', { name: 'Default category for Amazon: Groceries' }),
+    ).toBeVisible();
     await expect
       .poll(async () => (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Amazon'))
       .toMatchObject({ defaultCategoryId: shopping.id });
@@ -84,11 +93,31 @@ test.describe('payees', () => {
     expect(tx.categoryId).toBe(shopping.id);
   });
 
-  test('renames a payee in place', async ({ page, api }) => {
+  test('renames a payee in place with its Rename button', async ({ page, api }) => {
     await seed(api);
     await open(page, '/payees');
-    await page.getByTitle('Double-click to rename').filter({ hasText: 'AMZN Mktp' }).dblclick();
+    await page.getByRole('button', { name: 'Rename AMZN Mktp' }).click();
     const input = page.getByRole('textbox', { name: 'Rename AMZN Mktp' });
+    await expect(input).toBeFocused();
+    // Escape cancels without saving: no PUT request and server keeps the original name
+    let renameRequests = 0;
+    const onRequest = (req: import('@playwright/test').Request) => {
+      if (req.method() === 'PUT' && /\/api\/payees\/[^/]+$/.test(new URL(req.url()).pathname)) {
+        renameRequests += 1;
+      }
+    };
+    page.on('request', onRequest);
+    await input.fill('Should Not Save');
+    await input.press('Escape');
+    await expect(input).toBeHidden();
+    expect(
+      (await api.call<{ name: string }[]>('GET', '/payees')).map((p) => p.name).sort(),
+    ).toEqual(['AMZN Mktp', 'Amazon']);
+    expect(renameRequests).toBe(0);
+    page.off('request', onRequest);
+    await expect(row(page, 'AMZN Mktp')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Rename AMZN Mktp' }).click();
     await input.fill('Amazon Marketplace');
     await input.press('Enter');
     await expect(row(page, 'Amazon Marketplace')).toBeVisible();
@@ -107,5 +136,118 @@ test.describe('payees', () => {
       .click();
     await expect(row(page, 'AMZN Mktp')).toBeHidden();
     expect(await api.transactions()).toHaveLength(3);
+  });
+
+  test("a payee's page: spending, default category, rules and transactions (#235)", async ({
+    page,
+    api,
+  }) => {
+    await seed(api);
+    const groceries = await api.category('Groceries');
+    const amazon = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+      (p) => p.name === 'Amazon',
+    )!;
+    await api.call('POST', '/rules', {
+      conditions: [{ field: 'payee', op: 'is', value: amazon.id }],
+      actions: [{ type: 'set_category', value: groceries.id }],
+    });
+    await api.call('POST', '/rules', {
+      conditions: [{ field: 'notes', op: 'contains', value: 'unrelated' }],
+      actions: [{ type: 'set_category', value: groceries.id }],
+    });
+    await open(page, '/payees');
+    await row(page, 'Amazon').getByRole('link', { name: 'Amazon', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`#/payees/${amazon.id}$`));
+    await expect(page.getByRole('heading', { level: 1, name: 'Amazon' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Total spent$16');
+    // Only the rule that names this payee
+    const rules = page.getByRole('region', { name: 'Rules' });
+    await expect(rules.getByRole('link')).toHaveCount(1);
+    await expect(rules.getByRole('link')).toContainText('Set category to Groceries');
+    // Its transactions, through the shared register
+    const list = page.getByRole('region', { name: 'Amazon transactions' });
+    await expect(list.getByTestId('transaction-row')).toHaveCount(2);
+
+    await page.getByRole('button', { name: 'Default category for Amazon: none' }).click();
+    await page.getByRole('textbox', { name: 'Search categories' }).fill('Groceries');
+    await page.keyboard.press('Enter');
+    await expect
+      .poll(async () => (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Amazon'))
+      .toMatchObject({ defaultCategoryId: groceries.id });
+    // And back to no default
+    await page.getByRole('button', { name: 'Default category for Amazon: Groceries' }).click();
+    await categoryOption(page, 'No default category').click();
+    await expect
+      .poll(async () => (await api.call<any[]>('GET', '/payees')).find((p) => p.name === 'Amazon'))
+      .toMatchObject({ defaultCategoryId: null });
+
+    await rules.getByRole('link').click();
+    await expect(page).toHaveURL(/#\/rules$/);
+    await page.goBack();
+    await page.getByRole('link', { name: 'Payees', exact: true }).first().click();
+    await expect(page).toHaveURL(/#\/payees$/);
+  });
+
+  test('an unknown payee shows a plain not-found page with a way back', async ({ page }) => {
+    await open(page, '/payees/no-such-payee');
+    await expect(
+      page.getByRole('main').getByText('Payee not found', { exact: true }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Go to payees' }).click();
+    await expect(page).toHaveURL(/#\/payees$/);
+  });
+
+  test('the search stays in the link, so Back returns to it (#245)', async ({ page, api }) => {
+    await seed(api);
+    await open(page, '/payees');
+    await page.getByPlaceholder('Search payees…').fill('amz');
+    await expect(page).toHaveURL(/search=amz/);
+    await row(page, 'AMZN Mktp').getByRole('link', { name: 'AMZN Mktp' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'AMZN Mktp' })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByPlaceholder('Search payees…')).toHaveValue('amz');
+    await expect(row(page, 'Amazon')).toBeHidden();
+  });
+
+  test("a payee page's failed requests say so, never zeros or 'no rules' (#235)", async ({
+    page,
+    api,
+  }) => {
+    await seed(api);
+    const amazon = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+      (p) => p.name === 'Amazon',
+    )!;
+    let refusing = true;
+    const refuse = (path: string) =>
+      page.route(
+        (url) => url.pathname === path,
+        (route) =>
+          refusing && route.request().method() === 'GET'
+            ? route.fulfill({
+                status: 422,
+                contentType: 'application/json',
+                body: JSON.stringify({ error: 'The server refused this for the test.' }),
+              })
+            : route.continue(),
+      );
+    await refuse('/api/transactions/summary');
+    await refuse('/api/rules');
+    await refuse('/api/transactions');
+    await open(page, `/payees/${amazon.id}`);
+    const summary = page.getByRole('region', { name: 'Summary' });
+    await expect(summary.getByRole('alert')).toContainText('Couldn’t load your totals');
+    await expect(summary).not.toContainText('$0');
+    const rules = page.getByRole('region', { name: 'Rules' });
+    await expect(rules.getByRole('alert')).toContainText('Couldn’t load your rules');
+    await expect(rules).not.toContainText('No rules');
+    const chart = page.getByRole('region', { name: 'Spending by month' });
+    await expect(chart.getByRole('alert')).toContainText('Couldn’t load your spending');
+    await expect(chart).not.toContainText('No spending');
+
+    refusing = false;
+    await summary.getByRole('button', { name: 'Retry' }).click();
+    await expect(summary).toContainText('Total spent$16');
+    await rules.getByRole('button', { name: 'Retry' }).click();
+    await expect(rules).toContainText('No rules mention Amazon.');
   });
 });

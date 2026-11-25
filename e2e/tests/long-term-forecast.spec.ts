@@ -1,4 +1,42 @@
-import { test, expect, open, isoDay } from './fixtures';
+import type { Page } from '@playwright/test';
+import { test, expect, open, isoDay, typeAmount } from './fixtures';
+
+/** Duplicate, Rename and Delete are items of the "Plan actions" menu */
+async function planAction(page: Page, name: 'Duplicate' | 'Rename' | 'Delete') {
+  await page.getByRole('button', { name: 'Plan actions' }).click();
+  await page.getByRole('menuitem', { name, exact: true }).click();
+}
+
+/**
+ * Plan, Compare with and Add an account are the shared Combobox (D-06, user-grown lists), at
+ * every width: type to narrow the list, then click the option
+ */
+async function pick(page: Page, name: string, option: string) {
+  const field = page.getByRole('combobox', { name, exact: true });
+  // Centre the field before opening its list. Scrolling the plan's container closes the list.
+  await field.evaluate((input) => input.scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await field.click();
+  // Emptied first, as recurring.spec.ts does: typing over a chosen label does not search
+  await field.fill('');
+  await field.fill(option);
+  const list = page.getByRole('listbox');
+  await list.getByRole('option', { name: option, exact: true }).click();
+  await expect(list).toHaveCount(0);
+}
+
+/**
+ * "See what made up a year" is the shared Select. Its options name a calendar year and an age,
+ * which depend on today's date, so this picks the nth year (1 is the first after today)
+ */
+async function chooseYear(page: Page, nth: number) {
+  await page.getByRole('button', { name: /See what made up a year/ }).click();
+  const list = page.getByRole('listbox');
+  await list
+    .getByRole('option')
+    .nth(nth - 1)
+    .click();
+  await expect(list).toHaveCount(0);
+}
 
 // The long-term forecast (docs/LONG-TERM-FORECAST.md): the Forecast page opens on it, plans
 // and events are saved only when asked, and nothing it does touches the budget.
@@ -47,6 +85,7 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
 
   // First visit: set up a plan. Opening the form saved nothing.
   expect(await api.call('GET', `${LT}/plans`)).toEqual([]);
+  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
   await page.getByLabel('Plan name').fill('Main plan');
   await page.getByRole('button', { name: 'Create plan' }).click();
   await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
@@ -59,7 +98,7 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   );
   await expect(page.getByText('Preserved super', { exact: true })).toBeVisible();
   await expect(page.getByText('Super opens', { exact: true }).locator('..')).toContainText(
-    'At 65Super opensReached 65, while still working',
+    'Super opensReached 65, while still workingAt 65',
   );
   const plans = await api.call('GET', `${LT}/plans`);
   expect(plans).toHaveLength(1);
@@ -87,7 +126,7 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   await expect(page.getByText('Retirement · ').first()).toBeVisible();
 
   // A year's change adds up to the cent, in either dollars
-  await page.getByLabel('Year', { exact: true }).selectOption({ index: 5 });
+  await chooseYear(page, 5);
   await expect(page.getByText('The parts add up to the change, to the cent')).toBeVisible();
   const todayEnd = await page
     .getByText(/^Net worth at 9\d$/)
@@ -128,8 +167,8 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
 
   // Savings order, with a worked example
   await page.getByRole('tab', { name: 'Savings' }).click();
-  await page.getByLabel('Add an account to the savings order').selectOption({ label: 'Everyday' });
-  await page.getByLabel('Add an account to the savings order').selectOption({ label: 'Shares' });
+  await pick(page, 'Add an account to the savings order', 'Everyday');
+  await pick(page, 'Add an account to the savings order', 'Shares');
   const example = page.getByRole('region', { name: 'Worked example' });
   await expect(example).toContainText('50% of what is left');
   await expect(example.getByRole('row', { name: /Everyday/ })).toContainText('$5,000');
@@ -143,18 +182,21 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
     .toBe(2);
   // A second plan, compared: the percentage names its denominator
   await page.getByRole('tab', { name: 'Life events' }).click();
-  await page.getByRole('button', { name: 'Duplicate' }).click();
+  // Plan actions live in one menu since fa588b5
+  await planAction(page, 'Duplicate');
   await page.getByRole('dialog').getByLabel('Plan name').fill('Retire early');
   await page.getByRole('dialog').getByRole('button', { name: 'Duplicate' }).click();
-  await expect(page.getByLabel('Plan', { exact: true }).locator('option:checked')).toHaveText(
+  await expect(page.getByRole('combobox', { name: 'Plan', exact: true })).toHaveValue(
     'Retire early',
   );
   await page.getByRole('button', { name: 'Edit Retirement' }).click();
   await page.getByRole('dialog').getByLabel('When: age').fill('55');
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
+  // The new projection changes the height above Compare. Wait for it before opening the list.
+  await expect(page.getByText('Retiring at 55', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Compare' }).click();
-  await page.getByLabel('Compare with').selectOption({ label: 'Main plan' });
+  await pick(page, 'Compare with', 'Main plan');
   const comparison = page.getByRole('region', { name: 'Comparison' });
   await expect(comparison).toContainText('Retire early compared with Main plan');
   await expect(comparison).toContainText(
@@ -165,7 +207,7 @@ test('the long-term forecast: plans, drafts, years, dollars and comparison', asy
   ).toBeVisible();
 
   // Deleting a plan deletes only the plan
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await planAction(page, 'Delete');
   await page.getByRole('dialog').getByRole('button', { name: 'Delete plan' }).click();
   await expect.poll(async () => (await api.call('GET', `${LT}/plans`)).length).toBe(1);
 
@@ -223,6 +265,7 @@ test('typing, Enter and the first click work the way a person uses them', async 
   await open(page, '/forecast');
 
   // A year can be typed, one key at a time, without being clamped on the way
+  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
   await page.getByLabel('Plan name').fill('Typed plan');
   const birth = page.getByLabel('Birth year');
   await birth.click();
@@ -275,6 +318,59 @@ test('typing, Enter and the first click work the way a person uses them', async 
     .toBe(300);
 });
 
+test("a recurring event's last year is blank for no end, or a whole year from 1900 to 2300", async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Everyday', 1_000_000);
+  const { startYear } = await api.call('GET', `${LT}/starting-point`);
+  const created = await api.call('POST', `${LT}/plans`, {
+    plan: { name: 'Yearly plan', settings: { birthYear: startYear - 40 } },
+  });
+  const events = async () => (await api.call('GET', `${LT}/plans/${created.id}`)).plan.events;
+  await open(page, '/forecast');
+  await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Add an event' }).click();
+  await page.getByRole('button', { name: /^Recurring income or expense/ }).click();
+  const dialog = page.getByRole('dialog');
+  await typeAmount(dialog.getByLabel('Amount each time (negative for an expense)'), '-1200');
+  const lastYear = dialog.getByLabel('Last year', { exact: true });
+  const message = dialog.getByText(
+    'Enter a whole year between 1900 and 2300, or leave this blank.',
+  );
+  const create = dialog.getByRole('button', { name: 'Create' });
+
+  // Outside the server's range (longTermConfig.ts) or not a whole year: kept as typed, marked,
+  // and Create waits
+  for (const typed of ['1800', '2301', '2025.5']) {
+    await lastYear.fill(typed);
+    await expect(lastYear).toHaveValue(typed);
+    await expect(message).toBeVisible();
+    await expect(create).toBeDisabled();
+  }
+  // Both ends of the range are years
+  for (const typed of ['1900', '2300']) {
+    await lastYear.fill(typed);
+    await expect(message).toHaveCount(0);
+    await expect(create).toBeEnabled();
+  }
+  // Blank is no end year
+  await lastYear.fill('');
+  await expect(message).toHaveCount(0);
+  await create.click();
+  await expect(dialog).toBeHidden();
+  expect(await events()).toEqual([
+    expect.objectContaining({ kind: 'recurring', amount: -120_000, endYear: null }),
+  ]);
+
+  await page.getByRole('button', { name: 'Edit Recurring income or expense' }).click();
+  await lastYear.fill('2045');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+  expect(await events()).toEqual([expect.objectContaining({ endYear: 2045 })]);
+});
+
 test('plans: a taken name is not a conflict, and unsaved edits are not dropped silently', async ({
   page,
   api,
@@ -285,10 +381,10 @@ test('plans: a taken name is not a conflict, and unsaved edits are not dropped s
   await api.call('POST', `${LT}/plans`, { plan: plan('First') });
   await api.call('POST', `${LT}/plans`, { plan: plan('Second') });
   await open(page, '/forecast');
-  await expect(page.getByLabel('Plan', { exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Plan', exact: true })).toBeVisible();
 
   // Renaming to a name another plan has says so, in the dialog
-  await page.getByRole('button', { name: 'Rename' }).click();
+  await planAction(page, 'Rename');
   await page.getByRole('dialog').getByLabel('Plan name').fill('second');
   await page.getByRole('dialog').getByRole('button', { name: 'Rename' }).click();
   const dialog = page.getByRole('dialog');
@@ -299,19 +395,17 @@ test('plans: a taken name is not a conflict, and unsaved edits are not dropped s
   // Switching plans with unsaved edits asks first
   await page.getByRole('tab', { name: 'Assumptions' }).click();
   await page.getByLabel('Inflation', { exact: true }).fill('4');
-  await page.getByLabel('Plan', { exact: true }).selectOption({ label: 'Second' });
+  const planField = page.getByRole('combobox', { name: 'Plan', exact: true });
+  await pick(page, 'Plan', 'Second');
   // By name: the Rename dialog may still be fading out as this one opens
   const leave = page.getByRole('dialog', { name: 'Leave without saving?' });
   await expect(leave).toBeVisible();
   await leave.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByLabel('Plan', { exact: true }).locator('option:checked')).toHaveText(
-    'First',
-  );
-  await page.getByLabel('Plan', { exact: true }).selectOption({ label: 'Second' });
+  await expect(leave).toBeHidden();
+  await expect(planField).toHaveValue('First');
+  await pick(page, 'Plan', 'Second');
   await leave.getByRole('button', { name: 'Discard changes' }).click();
-  await expect(page.getByLabel('Plan', { exact: true }).locator('option:checked')).toHaveText(
-    'Second',
-  );
+  await expect(planField).toHaveValue('Second');
 });
 
 test('the simulation shows a chance of success, and the same seed shows the same picture', async ({
@@ -402,7 +496,10 @@ test('a HECS-HELP debt is repaid from pay, and extra payments bring it forward',
 
   await page.getByRole('tab', { name: 'Accounts' }).click();
   const row = page.getByRole('listitem', { name: 'Study loan: HECS' });
-  await expect(row.getByLabel('HECS: kind of loan')).toHaveValue('help');
+  // The kind of loan is the shared Select: its trigger shows the chosen kind's label
+  await expect(row.getByRole('button', { name: /HECS: kind of loan/ })).toContainText(
+    'HECS-HELP or FEE-HELP',
+  );
   await row.getByLabel("HECS: extra payment per year (today's dollars)").fill('5000');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect
@@ -413,4 +510,47 @@ test('a HECS-HELP debt is repaid from pay, and extra payments bring it forward',
     .toEqual([{ accountId: hecs.id, kind: 'help', extraAnnual: 500_000 }]);
   await expect(summary).toContainText('With compulsory repayments only they would be repaid in');
   await expect(summary).toContainText('of indexation');
+});
+
+for (const width of [1280, 390])
+  test('Wave D: empty state at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/forecast');
+    const main = page.getByRole('main');
+    await expect(
+      main.getByRole('heading', { name: 'See where your plans could take you', exact: true }),
+    ).toBeVisible();
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await expect(
+      main.locator('[aria-hidden="true"]').filter({ hasText: '$' }).first(),
+    ).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    const action = main.getByRole('button', { name: 'Create a plan', exact: true });
+    await expect(action).toHaveCount(1);
+    await expect(action).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(main.getByLabel('Plan name')).toHaveCount(0);
+    await action.click();
+    await expect(main.getByLabel('Plan name')).toBeVisible();
+  });
+
+test('Fix round 1: deleting the first plan restores the empty state in the same visit', async ({
+  page,
+}) => {
+  await open(page, '/forecast');
+  await page.getByRole('button', { name: 'Create a plan', exact: true }).click();
+  await page.getByLabel('Plan name').fill('Temporary plan');
+  await page.getByRole('button', { name: 'Create plan', exact: true }).click();
+  await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
+  await planAction(page, 'Delete');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete plan', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'See where your plans could take you', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create a plan', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Plan name')).toHaveCount(0);
 });

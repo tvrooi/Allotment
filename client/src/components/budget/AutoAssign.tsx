@@ -15,6 +15,8 @@ import { useScopedPlan } from '../../hooks/useScopedPlan';
 import { formatCurrency } from '../../utils/currency';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { Radio, RadioGroup } from '../ui/RadioGroup';
+import { Select } from '../ui/Select';
 import { FundingRows } from './FundingRows';
 
 const STRATEGIES: { key: AutoAssignStrategy; label: string; hint: (months: number) => string }[] = [
@@ -120,61 +122,53 @@ export const AutoAssign = forwardRef<OpensDialog, { month: string; hideButton?: 
           size="lg"
         >
           <div className="space-y-3 text-sm">
-            <div role="radiogroup" aria-label="Auto-assign option" className="grid gap-1">
+            <RadioGroup
+              aria-label="Auto-assign option"
+              value={strategy}
+              onChange={(v) => choose({ strategy: v as AutoAssignStrategy })}
+            >
               {STRATEGIES.map((s) => (
-                <label
-                  key={s.key}
-                  className="flex items-baseline gap-2 rounded-md px-2 py-1 hover:bg-hover cursor-pointer"
-                >
-                  <input
-                    type="radio"
-                    name="auto-assign"
-                    checked={strategy === s.key}
-                    onChange={() => choose({ strategy: s.key })}
-                    className="accent-brand-600"
-                  />
-                  <span className="text-text">{s.label}</span>
-                  <span className="text-xs text-text-tertiary">{s.hint(months)}</span>
-                </label>
+                <Radio key={s.key} value={s.key}>
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-text">{s.label}</span>
+                    <span className="text-xs text-text-tertiary">{s.hint(months)}</span>
+                  </span>
+                </Radio>
               ))}
-            </div>
+            </RadioGroup>
             {strategy === 'average_spent' && (
-              <label className="flex items-center gap-2 px-2 text-text-secondary">
-                Months to average
-                <select
-                  value={months}
-                  onChange={(e) => choose({ months: Number(e.target.value) as AverageMonths })}
-                  className="rounded-md border border-border bg-surface px-2 py-1 text-text"
-                >
-                  {AVERAGE_MONTH_CHOICES.map((n) => (
-                    <option key={n} value={n}>
-                      {n} months
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <Select
+                label="Months to average"
+                fieldSize="sm"
+                value={String(months)}
+                onChange={(v) => choose({ months: Number(v) as AverageMonths })}
+                options={AVERAGE_MONTH_CHOICES.map((n) => ({
+                  value: String(n),
+                  label: `${n} months`,
+                }))}
+                className="w-40"
+              />
             )}
             {HAS_MODE.includes(strategy) && (
-              <div role="radiogroup" aria-label="How to apply" className="grid gap-1 px-2">
+              <RadioGroup
+                aria-label="How to apply"
+                value={mode}
+                onChange={(v) => choose({ mode: v as AutoAssignMode })}
+              >
                 {(
                   [
                     ['add', 'Add', 'Top up envelopes that have less; never lower one'],
                     ['replace', 'Replace', 'Set every envelope to this, taking money back'],
                   ] as const
                 ).map(([key, label, hint]) => (
-                  <label key={key} className="flex items-baseline gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="auto-assign-mode"
-                      checked={mode === key}
-                      onChange={() => choose({ mode: key })}
-                      className="accent-brand-600"
-                    />
-                    <span className="text-text">{label}</span>
-                    <span className="text-xs text-text-tertiary">{hint}</span>
-                  </label>
+                  <Radio key={key} value={key}>
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-text">{label}</span>
+                      <span className="text-xs text-text-tertiary">{hint}</span>
+                    </span>
+                  </Radio>
                 ))}
-              </div>
+              </RadioGroup>
             )}
             {preview && (
               <div role="region" aria-label="Auto-assign preview" className="space-y-3">

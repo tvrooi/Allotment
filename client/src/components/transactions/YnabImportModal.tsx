@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle, Upload } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
+import { Combobox } from '../ui/Combobox';
+import { Input } from '../ui/Input';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -56,8 +59,11 @@ const DATE_LABELS: Record<DateFormat, string> = {
   ymd: 'YY/MM/DD',
 };
 const NUMBER_LABELS: Record<NumberFormat, string> = { dot: '1,234.56', comma: '1.234,56' };
+const DATE_OPTIONS = Object.entries(DATE_LABELS).map(([value, label]) => ({ value, label }));
+const NUMBER_OPTIONS = Object.entries(NUMBER_LABELS).map(([value, label]) => ({ value, label }));
 const READY_TO_ASSIGN = /^(ready to assign|available this month|to be budgeted)$/i;
-const selectClass = 'w-full text-xs border border-border rounded px-1.5 py-1 bg-surface text-text';
+/** The account choice that makes a new account for the YNAB account */
+const NEW_ACCOUNT = '__new';
 
 /** Where one YNAB account's rows go: an account made for the import, or one that exists */
 type Target = { kind: 'new'; name: string } | { kind: 'existing'; accountId: string };
@@ -252,6 +258,10 @@ function YnabImportDialog({ onClose }: Props) {
   }
 
   const accountNames = parsed ? [...parsed.byAccount.keys()] : [];
+  const accountItems = [
+    { value: NEW_ACCOUNT, label: 'Create a new account' },
+    ...accounts.filter((a) => !a.closedAt).map((a) => ({ value: a.id, label: `Add to ${a.name}` })),
+  ];
   const skippedAll =
     built && typeof built !== 'string' ? [...built.values()].flatMap((b) => b.skipped) : [];
   const total = allRows.length;
@@ -315,38 +325,26 @@ function YnabImportDialog({ onClose }: Props) {
               {accountNames.length} account{accountNames.length === 1 ? '' : 's'}.
             </p>
             <div className="grid grid-cols-2 gap-3 max-w-sm">
-              <label className="text-xs font-medium text-text-tertiary space-y-1">
-                <span>Dates</span>
-                <select
-                  aria-label="Date format"
-                  value={dateFormat ?? ''}
-                  onChange={(e) => setDateChoice(e.target.value as DateFormat)}
-                  className={selectClass}
-                >
-                  {!dateFormat && <option value="">Choose…</option>}
-                  {Object.entries(DATE_LABELS).map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-medium text-text-tertiary space-y-1">
-                <span>Amounts</span>
-                <select
-                  aria-label="Amount format"
-                  value={numberFormat ?? ''}
-                  onChange={(e) => setNumberChoice(e.target.value as NumberFormat)}
-                  className={selectClass}
-                >
-                  {!numberFormat && <option value="">Choose…</option>}
-                  {Object.entries(NUMBER_LABELS).map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <Select
+                label="Date format"
+                fieldSize="sm"
+                placeholder="Choose…"
+                value={dateFormat ?? ''}
+                onChange={(v) => {
+                  if (v) setDateChoice(v as DateFormat);
+                }}
+                options={DATE_OPTIONS}
+              />
+              <Select
+                label="Amount format"
+                fieldSize="sm"
+                placeholder="Choose…"
+                value={numberFormat ?? ''}
+                onChange={(v) => {
+                  if (v) setNumberChoice(v as NumberFormat);
+                }}
+                options={NUMBER_OPTIONS}
+              />
             </div>
             {(!dateFormat || !numberFormat) && (
               <p className="flex items-start gap-2 px-3 py-2 text-sm bg-caution-subtle text-caution rounded-lg">
@@ -383,34 +381,30 @@ function YnabImportDialog({ onClose }: Props) {
                             </span>
                           </p>
                           <div className="space-y-1">
-                            <select
+                            <Combobox
                               aria-label={`Allotment account for ${name}`}
-                              className={selectClass}
-                              disabled={busy || done.some((d) => d.name === name)}
-                              value={target?.kind === 'existing' ? target.accountId : '__new'}
-                              onChange={(e) =>
+                              fieldSize="sm"
+                              // A click shows the list, as the select it replaces did
+                              menuTrigger="focus"
+                              isDisabled={busy || done.some((d) => d.name === name)}
+                              value={target?.kind === 'existing' ? target.accountId : NEW_ACCOUNT}
+                              onChange={(v) => {
+                                // Emptying the text is not a choice: the account stays as it was
+                                if (!v) return;
                                 setTargets((t) => ({
                                   ...t,
                                   [name]:
-                                    e.target.value === '__new'
+                                    v === NEW_ACCOUNT
                                       ? { kind: 'new', name }
-                                      : { kind: 'existing', accountId: e.target.value },
-                                }))
-                              }
-                            >
-                              <option value="__new">Create a new account</option>
-                              {accounts
-                                .filter((a) => !a.closedAt)
-                                .map((a) => (
-                                  <option key={a.id} value={a.id}>
-                                    Add to {a.name}
-                                  </option>
-                                ))}
-                            </select>
+                                      : { kind: 'existing', accountId: v },
+                                }));
+                              }}
+                              items={accountItems}
+                            />
                             {target?.kind === 'new' && (
-                              <input
+                              <Input
                                 aria-label={`Name for ${name}`}
-                                className={selectClass}
+                                fieldSize="sm"
                                 value={target.name}
                                 maxLength={200}
                                 disabled={busy}

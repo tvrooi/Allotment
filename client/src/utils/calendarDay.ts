@@ -39,3 +39,10 @@ export function localDayIso(date: Date = new Date()): string {
 
 /** Today as `YYYY-MM-DD` on this device */
 export const todayIso = (): string => localDayIso();
+
+/**
+ * This month as `YYYY-MM`: the month of todayIso, so the controls' "This month" and their today
+ * can never come from two clocks (02-REVIEW WR-07). A real day's first seven characters are its
+ * month.
+ */
+export const thisMonthIso = (): string => todayIso().slice(0, 7);

@@ -46,9 +46,10 @@ export function HoldMoney({ summary }: { summary: BudgetSummary }) {
               {formatCurrency(held)} held for next month.
             </p>
           )}
+          {/* A quiet alternative to "Put $X in an envelope…", which leads */}
           <Button
             size="sm"
-            variant="secondary"
+            variant="ghost"
             aria-expanded={false}
             onClick={() => {
               mutation.reset();

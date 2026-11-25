@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, Search } from 'lucide-react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -19,6 +19,21 @@ import { GuideBanner } from '../guide/GuideBanner';
 import { GuideTour } from '../guide/GuideTour';
 import { GuidesDialog } from '../guide/GuidesDialog';
 import { PullToRefresh } from './PullToRefresh';
+import { PhoneTabBar } from './PhoneTabBar';
+import { AddTransactionModal } from '../transactions/AddTransactionModal';
+import { useAddTransactionStore } from '../../store/addTransactionStore';
+import { useAddTransactionKeyboard } from '../../hooks/useAddTransactionKeyboard';
+import { useCommandPaletteStore } from '../../store/commandPaletteStore';
+import { useCommandPaletteKeyboard } from '../../hooks/useCommandPaletteKeyboard';
+import { Modal } from '../ui/Modal';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
+import { Button } from '../ui/Button';
+import { retryingImport } from '../../utils/retryingImport';
+
+// Out of the first download: fetched once the app is idle (so it's also kept for offline use)
+// or when Search first opens, whichever comes first
+const commandPalette = retryingImport(() => import('./CommandPalette'));
+type PaletteComponent = ComponentType<{ isOpen: boolean; onClose: () => void }>;
 
 /** Where opening the app lands: the root, which goes on to the dashboard */
 const FRONT_DOOR = new Set(['/', '/dashboard']);
@@ -28,12 +43,17 @@ export function AppShell() {
   useSafeModeKeyboard();
   useUpFreshness();
   useGuideKeyboard();
-  const { data: accounts = [], isLoading } = useAccounts();
+  useAddTransactionKeyboard();
+  useCommandPaletteKeyboard();
+  const { data: accounts = [], isLoading, isError } = useAccounts();
   const setupSkipped = usePreferencesStore((s) => s.setupSkipped);
   const isPhone = useIsPhone();
   const { pathname } = useLocation();
+  const mainScroll = useScrollMemory('main');
 
-  if (isLoading) {
+  // Direct routes own their loading/error UI. Unmounting them on a shared account
+  // retry remounts observers and can keep an initial failure in a fetch loop.
+  if (isLoading && FRONT_DOOR.has(pathname)) {
     return (
       <div className="h-screen flex items-center justify-center bg-page">
         <Loader2 size={32} className="animate-spin text-text-tertiary" />
@@ -43,7 +63,7 @@ export function AppShell() {
 
   // A new budget opens on the welcome page, but only from the front door: a link to another
   // page (opened on a phone, or a second browser that hasn't seen "Skip for now") goes there
-  if (accounts.length === 0 && !setupSkipped && FRONT_DOOR.has(pathname)) {
+  if (!isError && accounts.length === 0 && !setupSkipped && FRONT_DOOR.has(pathname)) {
     return <Navigate to="/welcome" replace />;
   }
 
@@ -52,7 +72,7 @@ export function AppShell() {
   return (
     // A landscape iPhone is wide enough for this layout, so it keeps clear of the notch and
     // home bar too (viewport-fit=cover in index.html); elsewhere the insets are 0
-    <div className="flex h-screen bg-page overflow-hidden pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
+    <div className="flex h-dvh bg-page overflow-hidden pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
       <SkipToContent />
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
@@ -64,15 +84,76 @@ export function AppShell() {
         <DemoBanner />
         <ConnectionBanner />
         <GuideBanner />
-        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
+        <main
+          ref={mainScroll}
+          id="main"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto focus:outline-none"
+        >
           <Outlet />
         </main>
       </div>
       <Toasts />
       <GuideTour />
       <GuidesDialog />
+      <ShellAddTransaction />
+      <ShellCommandPalette />
     </div>
   );
+}
+
+/**
+ * The search palette (store/commandPaletteStore.ts opens it). If its code can't be fetched (the
+ * device went offline before it was ever loaded) the shell stays up and says so; opening Search
+ * again tries again.
+ */
+function ShellCommandPalette() {
+  const open = useCommandPaletteStore((s) => s.open);
+  const hide = useCommandPaletteStore((s) => s.hide);
+  const [Palette, setPalette] = useState<PaletteComponent | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  // Fetched in the background once the page has settled, while it can still be reached
+  useEffect(() => {
+    const t = setTimeout(commandPalette.warm, 3_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!open || Palette) return;
+    let current = true;
+    commandPalette.load().then(
+      (m) => current && setPalette(() => m.default),
+      () => current && setFailed(true),
+    );
+    return () => {
+      current = false;
+    };
+  }, [open, Palette]);
+
+  if (Palette) return <Palette isOpen={open} onClose={hide} />;
+  const close = () => {
+    hide();
+    setFailed(false);
+  };
+  return (
+    <Modal isOpen={open && failed} onClose={close} title="Search" size="sm">
+      <p className="text-sm text-text-secondary">
+        Search isn’t on this device yet, and Allotment can’t be reached to fetch it. It works once
+        Allotment reconnects.
+      </p>
+      <div className="mt-4 flex justify-end">
+        <Button onClick={close}>OK</Button>
+      </div>
+    </Modal>
+  );
+}
+
+/** The one Add transaction dialog, for every page (store/addTransactionStore.ts opens it) */
+function ShellAddTransaction() {
+  const open = useAddTransactionStore((s) => s.open);
+  const hide = useAddTransactionStore((s) => s.hide);
+  return <AddTransactionModal isOpen={open} onClose={hide} />;
 }
 
 /**
@@ -95,7 +176,8 @@ function SkipToContent() {
 }
 
 /**
- * Phones: a top bar with a menu button; the sidebar slides in as a drawer. Escape, the
+ * Phones: a top bar with a menu button, and a tab bar at the foot for the everyday pages and
+ * Add; the sidebar slides in as a drawer. Escape, the
  * backdrop, the close button or following a link closes it, and focus goes back to the
  * menu button. While it's open the page behind is inert.
  */
@@ -103,8 +185,10 @@ function PhoneShell() {
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const phoneMain = useRef<HTMLElement>(null);
+  const mainScroll = useScrollMemory('main');
   const refocusMenuButton = useRef(false);
   const location = useLocation();
+  const showSearch = useCommandPaletteStore((s) => s.show);
 
   // Closing by hand (Escape, backdrop, close button) puts focus back on the menu button,
   // once the page behind is no longer inert
@@ -142,8 +226,11 @@ function PhoneShell() {
       <SidebarDrawer open={open} onClose={close} />
       <div inert={open} className="flex-1 min-h-0 flex flex-col">
         {/* macOS desktop app (a narrow window): clear of the traffic lights, and moves the window.
-            iPhone home-screen app: the header runs up behind the status bar and notch. */}
-        <header className="shrink-0 flex items-center gap-2 box-content h-12 pt-[env(safe-area-inset-top)] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] mac-window:pl-20 mac-window:drag-region bg-sidebar-bg border-b border-sidebar-border">
+            iPhone Home Screen app: keep controls clear of the status bar and notch. */}
+        <header
+          data-testid="phone-header"
+          className="sticky top-0 z-30 isolate shrink-0 flex items-center gap-2 box-content h-12 pt-[env(safe-area-inset-top)] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] mac-window:pl-20 mac-window:drag-region bg-sidebar-bg border-b border-sidebar-border"
+        >
           <button
             ref={menuButton}
             onClick={() => setOpen(true)}
@@ -157,7 +244,15 @@ function PhoneShell() {
           </button>
           <img src={logoUrl} alt="" className="w-6 h-6" />
           <BrandName className="text-base" textClassName="text-sidebar-text-hi" />
-          <SafeModeButton className="relative ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
+          <button
+            type="button"
+            onClick={showSearch}
+            aria-label="Search"
+            className="ml-auto p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region"
+          >
+            <Search size={18} aria-hidden />
+          </button>
+          <SafeModeButton className="relative p-2 min-w-11 min-h-11 flex items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi no-drag-region" />
         </header>
         <DemoBanner />
         <ConnectionBanner />
@@ -165,16 +260,23 @@ function PhoneShell() {
         <div className="relative flex-1 min-h-0 flex flex-col">
           <PullToRefresh scroller={phoneMain} />
           <main
-            ref={phoneMain}
-            className="flex-1 min-h-0 overflow-y-auto pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+            ref={(node) => {
+              phoneMain.current = node;
+              mainScroll(node);
+            }}
+            className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
           >
             <Outlet />
           </main>
         </div>
+        {/* Inert with the rest while the drawer is open */}
+        <PhoneTabBar />
       </div>
-      <Toasts />
+      <Toasts aboveTabBar />
       <GuideTour />
       <GuidesDialog />
+      <ShellAddTransaction />
+      <ShellCommandPalette />
     </div>
   );
 }

@@ -1,14 +1,15 @@
-const PAYEE_COLORS = [
-  '#6366F1',
-  '#EC4899',
-  '#F59E0B',
-  '#10B981',
-  '#3B82F6',
-  '#8B5CF6',
-  '#EF4444',
-  '#14B8A6',
-  '#F97316',
-  '#06B6D4',
+// Behind a white initial, so each is at least 4.5:1 against white (transactionColors.test.ts)
+export const PAYEE_COLORS = [
+  '#4F46E5',
+  '#DB2777',
+  '#B45309',
+  '#047857',
+  '#2563EB',
+  '#7C3AED',
+  '#DC2626',
+  '#0F766E',
+  '#C2410C',
+  '#0E7490',
 ];
 
 export function payeeColor(name: string): string {

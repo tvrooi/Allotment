@@ -8,6 +8,7 @@ import {
   amountToInput,
   formatAmount,
   formatAxisAmount,
+  formatWholeAmount,
   localeAmountStyle,
   isUnreadableAmount,
   parseAmount,
@@ -192,6 +193,15 @@ describe('currency helpers (property-based)', () => {
     );
   });
 
+  it('formatWholeAmount rounds to the whole unit, half away from zero', () => {
+    expect(formatWholeAmount(-108_279_411, US)).toBe('-$1,082,794');
+    expect(formatWholeAmount(16_484_955, US)).toBe('$164,850');
+    expect(formatWholeAmount(149, US)).toBe('$1');
+    expect(formatWholeAmount(150, US)).toBe('$2');
+    expect(formatWholeAmount(-150, US)).toBe('-$2');
+    expect(formatWholeAmount(-49, US)).toBe('$0');
+  });
+
   it('uses the preferences when no style is given', () => {
     expect(
       amountStyle({ amountFormat: 'comma', symbolPosition: 'after', currencySymbol: '' }),
@@ -330,6 +340,26 @@ describe('amounts in other currencies', () => {
     expect(written('EUR', { symbol: 'EUR', position: 'after' })).toBe('12.50 EUR');
     // A symbol that is not letters stays tight
     expect(written('USD', { symbol: 'US$', position: 'before' })).toBe('US$12.50');
+  });
+
+  it("writes the budget's own currency plainly, and another that would look the same by its code", () => {
+    const prefs = {
+      amountFormat: 'dot' as const,
+      symbolPosition: 'auto' as const,
+      currencySymbol: '$',
+      currencyStyles: {},
+    };
+    const written = (currency: string, budget: string) =>
+      formatAmount(1250, currencyAmountStyle(currency, prefs, budget)).replace(' ', ' ');
+    // An Australian budget is in dollars on any device: $, never A$
+    expect(written('AUD', 'AUD')).toBe('$12.50');
+    expect(written('CAD', 'CAD')).toBe('$12.50');
+    // Another dollar beside it can't also be $
+    expect(written('USD', 'AUD')).not.toBe('$12.50');
+    expect(written('NZD', 'AUD')).not.toBe('$12.50');
+    // Symbols nobody shares are unchanged
+    expect(written('EUR', 'AUD')).toContain('€');
+    expect(written('PLN', 'PLN')).toMatch(/^12\.50\szł$/);
   });
 
   it("puts each currency's symbol where its country does", () => {

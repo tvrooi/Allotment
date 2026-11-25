@@ -19,3 +19,9 @@ export const MULTI_USER_PORT = 3178;
 export const MULTI_USER_BUDGET_PORT = 3180;
 /** Catches the multi-user gateway's emails (mailCatcher.ts) */
 export const MAIL_CATCHER_PORT = 3170;
+/**
+ * Static server for the development-only controls gallery (`vite build --mode gallery`), which
+ * the gallery project tests. Below the others, not 3181: from 3180 up, ports belong to the
+ * multi-user budgets.
+ */
+export const GALLERY_PORT = 3169;

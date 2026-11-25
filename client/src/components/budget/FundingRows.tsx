@@ -1,4 +1,5 @@
 import { formatCurrency } from '../../utils/currency';
+import { Checkbox } from '../ui/Checkbox';
 
 interface PlannedRow {
   categoryId: string;
@@ -31,13 +32,11 @@ export function FundingRows({
         const on = checked.has(c.categoryId);
         const overspends = !!row && row.proposed < 0 && (row.balance ?? 0) + row.proposed < 0;
         return (
-          <li key={c.categoryId} className="flex items-baseline gap-2 tabular-nums">
-            <input
-              type="checkbox"
+          <li key={c.categoryId} className="flex items-center gap-2 tabular-nums">
+            <Checkbox
               checked={on}
-              onChange={() => onToggle(c.categoryId)}
+              onCheckedChange={() => onToggle(c.categoryId)}
               aria-label={`Include ${c.name}`}
-              className="accent-brand-600 self-center"
             />
             <span className={`flex-1 ${on ? 'text-text' : 'text-text-tertiary'}`}>{c.name}</span>
             <span className="text-right text-text-secondary">

@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, isoDay } from './fixtures';
 
 // Menus, tab bars and buttons behave like a desktop app's: keyboard, Escape, outside clicks,
 // a mouse wheel over a tab bar, and the right pointer.
@@ -46,6 +46,34 @@ test('the Views menu closes on Escape or a click outside, and its ⋮ menu still
   await expect(page.getByRole('dialog', { name: 'Rename view' })).toBeVisible();
 });
 
+// The menu removes the outline from its items, so each draws its own brand ring on keyboard focus
+test('a context menu item shows a focus ring from the keyboard', async ({ page, api }) => {
+  const acct = await api.createAccount('Checking', 100_000);
+  await api.createTransaction({
+    accountId: acct.id,
+    date: isoDay(0),
+    amount: -1_500,
+    payeeName: 'Mock Grocer',
+  });
+  await open(page, `/accounts/${acct.id}`);
+  const row = page.getByTestId('transaction-row').filter({ hasText: 'Mock Grocer' });
+  const menu = page.getByRole('menu', { name: 'Actions for Mock Grocer' });
+  const ring = () =>
+    page.evaluate(() => getComputedStyle(document.activeElement as Element).boxShadow);
+
+  for (const dark of [false, true]) {
+    await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark);
+    await row.focus();
+    await page.keyboard.press('Shift+F10');
+    await expect(menu.getByRole('menuitem', { name: 'Open details' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(menu.getByRole('menuitem').nth(1)).toBeFocused();
+    expect(await ring()).not.toBe('none');
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+  }
+});
+
 test('tab bars move with the arrow keys', async ({ page, api }) => {
   await api.createAccount('Checking', 100_000);
   await open(page, '/transactions');
@@ -82,10 +110,15 @@ test('buttons show the pointer, but not when disabled, and drag handles show a h
   api,
 }) => {
   await api.createAccount('Checking', 100_000);
-  await open(page, '/settings?tab=categories');
+  // The category manager is the Budget area's Categories page (#244), so a plain button there
+  // stands in for the Settings tab this used to check
+  await open(page, '/budget/categories');
   const handle = page.getByRole('button', { name: /^Drag to reorder / }).first();
   await expect(handle).toHaveCSS('cursor', 'grab');
-  await expect(page.getByRole('tab', { name: 'Tags' })).toHaveCSS('cursor', 'pointer');
+  await expect(page.getByRole('button', { name: 'Create group' }).first()).toHaveCSS(
+    'cursor',
+    'pointer',
+  );
   const disabled = await page.evaluate(() => {
     const b = document.createElement('button');
     b.disabled = true;

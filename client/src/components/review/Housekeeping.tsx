@@ -11,7 +11,8 @@ import { useUndoStore } from '../../store/undoStore';
 import { formatCurrency } from '../../utils/currency';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Input';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
+import { CATEGORIES_PATH, connectedBanksLink } from '../../utils/movedSections';
 
 // Review → Tidy up: setup problems that quietly make a budget less useful. Each one is fixed
 // here in one step, or links to where it is fixed. Nothing changes until you act.
@@ -33,64 +34,69 @@ export function Housekeeping() {
     return null;
   return (
     <Card>
-      <section aria-labelledby="tidy-up" className="space-y-4">
-        <div>
-          <h2 id="tidy-up" className="text-base font-semibold text-text">
-            Tidy up
-          </h2>
-          <p className="text-xs text-text-secondary">
-            Setup problems that make the budget harder to trust.
-          </p>
-        </div>
-        {budgetStart.suggestion && <BudgetStartItem data={budgetStart} />}
-        {missingRoundUps.map((r) => (
-          <div key={r.accountId} className="text-sm">
-            <p className="font-medium text-text">{r.accountName} is missing round-ups</p>
-            <p className="text-text-secondary">
-              Up's balance is {formatCurrency(r.total)} lower than Allotment's, exactly the{' '}
-              {r.count} round-up {r.count === 1 ? 'debit' : 'debits'} that never imported. Spending
-              looks smaller than it is until they're added.
-            </p>
-            <Link to="/settings?tab=connections" className="text-brand-700 underline text-sm">
-              Check round-ups in Up settings
-            </Link>
-          </div>
-        ))}
-        {unlinkedSavers.length > 0 && <SaverItem savers={unlinkedSavers} />}
-        {uncategorisedRecurring.length > 0 && (
-          <div className="text-sm">
-            <p className="font-medium text-text">
-              {uncategorisedRecurring.length} recurring{' '}
-              {uncategorisedRecurring.length === 1 ? 'bill has' : 'bills have'} no category
-            </p>
-            <p className="text-text-secondary">
-              No envelope expects them and your payday plan sets nothing aside for them. Give each
-              one a category in Recurring.
-            </p>
-            <ul aria-label="Recurring bills with no category" className="mt-1 text-text-secondary">
-              {uncategorisedRecurring.map((r) => (
-                <li key={r.id}>
-                  {r.name}: {formatCurrency(-r.amount)}
-                </li>
-              ))}
-            </ul>
-            <Link to="/recurring?filter=needs-category" className="text-brand-700 underline">
-              Open Recurring
-            </Link>
-          </div>
-        )}
-        {unusedCategories > 0 && (
-          <div className="text-sm">
-            <p className="font-medium text-text">
-              {unusedCategories} {unusedCategories === 1 ? 'category was' : 'categories were'} never
-              used
-            </p>
-            <Link to="/settings?tab=categories" className="text-brand-700 underline">
-              Hide unused categories
-            </Link>
-          </div>
-        )}
-      </section>
+      <details className="group">
+        <summary className="cursor-pointer text-sm text-text-secondary min-h-11">
+          <span id="tidy-up" className="font-semibold text-text">
+            Check budget setup
+          </span>
+          <span className="block mt-1">
+            Before moving money, check imported history, transfers and bill categories.
+          </span>
+        </summary>
+        <section aria-labelledby="tidy-up" className="space-y-4 pt-4">
+          {budgetStart.suggestion && <BudgetStartItem data={budgetStart} />}
+          {missingRoundUps.map((r) => (
+            <div key={r.accountId} className="text-sm">
+              <p className="font-medium text-text">{r.accountName} is missing round-ups</p>
+              <p className="text-text-secondary">
+                Up's balance is {formatCurrency(r.total)} lower than Allotment's, exactly the{' '}
+                {r.count} round-up {r.count === 1 ? 'debit' : 'debits'} that never imported.
+                Spending looks smaller than it is until they're added.
+              </p>
+              <Link to={connectedBanksLink('up')} className="text-brand-700 underline text-sm">
+                Check round-ups in Up settings
+              </Link>
+            </div>
+          ))}
+          {unlinkedSavers.length > 0 && <SaverItem savers={unlinkedSavers} />}
+          {uncategorisedRecurring.length > 0 && (
+            <div className="text-sm">
+              <p className="font-medium text-text">
+                {uncategorisedRecurring.length} recurring{' '}
+                {uncategorisedRecurring.length === 1 ? 'bill has' : 'bills have'} no category
+              </p>
+              <p className="text-text-secondary">
+                No envelope expects them and your payday plan sets nothing aside for them. Give each
+                one a category in Recurring.
+              </p>
+              <ul
+                aria-label="Recurring bills with no category"
+                className="mt-1 text-text-secondary"
+              >
+                {uncategorisedRecurring.map((r) => (
+                  <li key={r.id}>
+                    {r.name}: {formatCurrency(-r.amount)}
+                  </li>
+                ))}
+              </ul>
+              <Link to="/recurring?filter=needs-category" className="text-brand-700 underline">
+                Open Recurring
+              </Link>
+            </div>
+          )}
+          {unusedCategories > 0 && (
+            <div className="text-sm">
+              <p className="font-medium text-text">
+                {unusedCategories} {unusedCategories === 1 ? 'category was' : 'categories were'}{' '}
+                never used
+              </p>
+              <Link to={CATEGORIES_PATH} className="text-brand-700 underline">
+                Hide unused categories
+              </Link>
+            </div>
+          )}
+        </section>
+      </details>
     </Card>
   );
 }
@@ -108,13 +114,12 @@ function BudgetStartItem({ data }: { data: HousekeepingData['budgetStart'] }) {
   });
   return (
     <div className="text-sm">
-      <p className="font-medium text-text">
-        Your budget counts every month since {monthLabel(data.historyStartMonth!)}
-      </p>
+      <p className="font-medium text-text">Check where your budget starts</p>
       <p className="text-text-secondary">
-        Imported history you never budgeted for shows as overspending. Starting the budget in{' '}
-        {monthLabel(data.suggestion!)} keeps that history in accounts and reports, without the old
-        deficits. You can change it in Settings → Budget.
+        Your accounts include history from {monthLabel(data.historyStartMonth!)}. Imported spending
+        from before you began budgeting can leave old deficits. Setting a budget start month keeps
+        transactions in accounts and reports, and excludes earlier months from envelope
+        calculations. You can change it in Settings → Budget.
       </p>
       <Button
         className="mt-1.5"
@@ -123,7 +128,7 @@ function BudgetStartItem({ data }: { data: HousekeepingData['budgetStart'] }) {
         disabled={!canSave || start.isPending}
         onClick={() => start.mutate()}
       >
-        Start budgeting in {monthLabel(data.suggestion!)}
+        Set budget start to {monthLabel(data.suggestion!)}
       </Button>
       {start.error && <p className="text-negative text-xs mt-1">{start.error.message}</p>}
     </div>
@@ -142,22 +147,28 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
     },
     onSuccess: ({ result, ids, categoryId }) => {
       void qc.invalidateQueries();
-      useUndoStore.getState().push({
-        description: `Categorise ${result.changed} saver transfers`,
-        undo: async () => {
-          await restoreBulkEdit(result.restore);
-          void qc.invalidateQueries();
+      const message = `Categorised ${result.changed} saver transfer${result.changed === 1 ? '' : 's'}.`;
+      // Nothing changed (every row skipped, for example reconciled): say so, with no Undo
+      if (!result.restore.length) {
+        useUndoStore.getState().announce(message, false);
+        return;
+      }
+      useUndoStore.getState().push(
+        {
+          description: `Categorise ${result.changed} saver transfers`,
+          undo: async () => {
+            await restoreBulkEdit(result.restore);
+            void qc.invalidateQueries();
+          },
+          redo: async () => {
+            await bulkEditTransactions({ params: {}, ids }, { categoryId }, ids.length);
+            void qc.invalidateQueries();
+          },
         },
-        redo: async () => {
-          await bulkEditTransactions({ params: {}, ids }, { categoryId }, ids.length);
-          void qc.invalidateQueries();
-        },
-      });
+        { message },
+      );
     },
   });
-  const options = groups.flatMap((g) =>
-    g.categories.filter((c) => !c.hidden).map((c) => ({ ...c, group: g.name })),
-  );
   return (
     <div className="text-sm">
       <p className="font-medium text-text">Movements to savers that aren't in Allotment</p>
@@ -174,18 +185,15 @@ function SaverItem({ savers }: { savers: HousekeepingData['unlinkedSavers'] }) {
               {formatCurrency(s.net)}
             </span>
             <span className="w-52">
-              <Select
-                aria-label={`Category for ${s.name}`}
-                value={choice[s.name] ?? ''}
-                onChange={(e) => setChoice((c) => ({ ...c, [s.name]: e.target.value }))}
-              >
-                <option value="">Choose a category</option>
-                {options.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.group}: {c.name}
-                  </option>
-                ))}
-              </Select>
+              <CategorySelectButton
+                label={`Category for ${s.name}`}
+                placeholder="Choose a category"
+                value={choice[s.name] ?? null}
+                onChange={(id) => setChoice((c) => ({ ...c, [s.name]: id ?? '' }))}
+                groups={groups}
+                allowNone={false}
+                allowCreate={false}
+              />
             </span>
             <Button
               size="sm"

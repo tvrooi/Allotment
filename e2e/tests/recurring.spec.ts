@@ -1,8 +1,27 @@
-import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay, typeAmount, type Api } from './fixtures';
+import type { Locator, Page } from '@playwright/test';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  typeAmount,
+  categoryOption,
+  chooseOption,
+  fillDate,
+  toggleTarget,
+  type Api,
+} from './fixtures';
 
 // Recurring bills and income: create one, see it in the month, mark it paid, pause it,
 // and let "Find recurring" discover one from history.
+
+async function pickCombobox(page: Page, field: Locator, label: string) {
+  await field.fill('');
+  await field.fill(label);
+  const list = page.getByRole('listbox');
+  await list.getByRole('option', { name: label, exact: true }).click();
+  await expect(list).toHaveCount(0);
+}
 
 /** The row for a schedule in the "All recurring" table */
 const scheduleRow = (page: Page, name: string) =>
@@ -43,9 +62,26 @@ test.describe('recurring', () => {
       'aria-pressed',
       'true',
     );
-    await dialog.getByRole('combobox', { name: 'Frequency' }).selectOption('monthly');
-    await dialog.getByRole('combobox', { name: 'Account' }).selectOption({ label: 'Checking' });
-    await dialog.getByRole('textbox', { name: 'Start date' }).fill(isoDay(1));
+    await chooseOption(dialog.getByRole('button', { name: 'Frequency' }), 'Monthly');
+    await pickCombobox(page, dialog.getByRole('combobox', { name: 'Account' }), 'Checking');
+
+    // Clearing Start date shows the required line and disables Save (WR-03)
+    const startGroup = dialog.getByRole('group', { name: 'Start date', exact: true });
+    for (const type of ['day', 'month', 'year'] as const) {
+      const seg = startGroup.locator(`[data-type="${type}"]`);
+      await seg.click();
+      await expect(seg).toBeFocused();
+      for (let i = 0; i < 6 && (await seg.getAttribute('data-placeholder')) === null; i++) {
+        await seg.press('Backspace');
+      }
+      await expect(seg).toHaveAttribute('data-placeholder', 'true');
+    }
+    await dialog.getByRole('heading', { name: 'Add recurring' }).click();
+    await expect(dialog.getByText('Select Start date to continue', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Add recurring' })).toBeDisabled();
+
+    await fillDate(dialog, 'Start date', isoDay(1));
+    await expect(dialog.getByText('Select Start date to continue')).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Add recurring' }).click();
     await expect(dialog).toBeHidden();
 
@@ -76,15 +112,14 @@ test.describe('recurring', () => {
 
     await name.fill('Gym membership');
     await typeAmount(dialog.getByRole('textbox', { name: 'Amount' }), '45');
-    await account.selectOption({ label: 'Savings' });
+    await pickCombobox(page, account, 'Savings');
 
     // A brand-new payee (creating it refreshes the payee list)
-    await dialog.getByRole('textbox', { name: 'Payee' }).fill('Iron Temple Gym');
+    await dialog.getByRole('combobox', { name: 'Payee' }).fill('Iron Temple Gym');
     await dialog.getByRole('button', { name: /Create new payee/ }).click();
-    await expect(dialog.getByRole('textbox', { name: 'Payee' })).toHaveValue('Iron Temple Gym');
+    await expect(dialog.getByRole('combobox', { name: 'Payee' })).toHaveValue('Iron Temple Gym');
     await expect(name).toHaveValue('Gym membership');
-    await expect(account).toHaveValue(/.+/);
-    await expect(account.locator('option:checked')).toHaveText('Savings');
+    await expect(account).toHaveValue('Savings');
 
     // A brand-new category: none of its buttons may submit the form
     await dialog.getByRole('button', { name: /^Category:/ }).click();
@@ -94,8 +129,8 @@ test.describe('recurring', () => {
     await expect(dialog.getByRole('button', { name: 'Category: Fitness' })).toBeVisible();
     await expect(dialog).toBeVisible();
     await expect(name).toHaveValue('Gym membership');
-    await expect(account.locator('option:checked')).toHaveText('Savings');
-    await expect(dialog.getByRole('textbox', { name: 'Payee' })).toHaveValue('Iron Temple Gym');
+    await expect(account).toHaveValue('Savings');
+    await expect(dialog.getByRole('combobox', { name: 'Payee' })).toHaveValue('Iron Temple Gym');
 
     await dialog.getByRole('button', { name: 'Add recurring' }).click();
     await expect(dialog).toBeHidden();
@@ -191,6 +226,45 @@ test.describe('recurring', () => {
       source: 'detected',
     });
   });
+
+  test('"Find recurring" Shift+clicking a row checkbox selects the range', async ({
+    page,
+    api,
+  }) => {
+    const checking = await api.createAccount('Checking', 500_000);
+    const now = new Date();
+    const series = [
+      { payeeName: 'Alpha Stream', day: 5, amount: -1_000 },
+      { payeeName: 'Beta Cloud', day: 10, amount: -2_000 },
+      { payeeName: 'Gamma News', day: 15, amount: -3_000 },
+    ];
+    for (const s of series) {
+      for (let i = 4; i >= 1; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, s.day);
+        const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(s.day).padStart(2, '0')}`;
+        await api.createTransaction({
+          accountId: checking.id,
+          date,
+          amount: s.amount,
+          payeeName: s.payeeName,
+        });
+      }
+    }
+
+    await open(page, '/recurring');
+    await page.getByRole('main').getByRole('button', { name: 'Find recurring' }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Search for recurring transactions' });
+    const boxes = dialog.getByRole('checkbox', { name: /^Track / });
+    await expect(boxes).toHaveCount(3);
+
+    await toggleTarget(boxes.nth(0)).click();
+    await expect(boxes.nth(0)).toBeChecked();
+    await toggleTarget(boxes.nth(2)).click({ modifiers: ['Shift'] });
+    await expect(boxes.nth(0)).toBeChecked();
+    await expect(boxes.nth(1)).toBeChecked();
+    await expect(boxes.nth(2)).toBeChecked();
+    await expect(dialog.getByRole('button', { name: 'Create 3 recurring' })).toBeVisible();
+  });
   test('shows which bills need a category and lets the owner choose one inline', async ({
     page,
     api,
@@ -231,10 +305,99 @@ test.describe('recurring', () => {
       .filter({ hasText: 'Gym' })
       .getByRole('button', { name: /^Category:/ })
       .click();
-    await page.getByRole('button', { name: 'Power', exact: true }).click();
+    await categoryOption(page, 'Power', { exact: true }).click();
     await expect(list.getByRole('listitem')).toHaveCount(1);
     const after = await api.call<any>('GET', `/schedules/${gym.id}`);
     expect(after).toMatchObject({ categoryId: power.id, amount: before.amount });
     expect(after.amountConfirmedAt).toBe(before.amountConfirmedAt);
+  });
+
+  test('date flexibility refuses out-of-range values and saves a valid day count', async ({
+    page,
+    api,
+  }) => {
+    await api.createAccount('Checking', 500_000);
+    await open(page, '/recurring');
+    await page.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
+
+    const dialog = page.getByRole('dialog', { name: 'Add recurring' });
+    await dialog.getByRole('textbox', { name: 'Name' }).fill('Internet');
+    await typeAmount(dialog.getByRole('textbox', { name: 'Amount' }), '79');
+    await dialog.getByRole('button', { name: /Advanced/ }).click();
+
+    const flex = dialog.getByRole('textbox', { name: 'Date flexibility' });
+    const save = dialog.getByRole('button', { name: 'Add recurring' });
+
+    // Type '15' key by key: '1' commits 1, then '15' is invalid; attempting to collapse Advanced
+    // must keep it open with the error message visible and Save disabled (WR-02, WR-06)
+    await flex.fill('');
+    await flex.pressSequentially('15');
+    await expect(dialog.getByText('Enter a whole number from 0 to 14.')).toBeVisible();
+    await expect(save).toBeDisabled();
+
+    await dialog.getByRole('button', { name: /Advanced/ }).click();
+    await expect(dialog.getByText('Enter a whole number from 0 to 14.')).toBeVisible();
+    await expect(flex).toHaveValue('15');
+    await expect(save).toBeDisabled();
+
+    await flex.fill('-1');
+    await expect(dialog.getByText('Enter a whole number from 0 to 14.')).toBeVisible();
+    await expect(save).toBeDisabled();
+
+    await flex.fill('5');
+    await expect(dialog.getByText('Enter a whole number from 0 to 14.')).toHaveCount(0);
+    await expect(save).toBeEnabled();
+    await save.click();
+    await expect(dialog).toBeHidden();
+
+    const [schedule] = await api.call<any[]>('GET', '/schedules');
+    expect(schedule.dateFlexibility).toBe(5);
+
+    // Read back by reopening the form (dateFlexibility !== 3 opens Advanced automatically)
+    await page.getByRole('tab', { name: 'All recurring' }).click();
+    await scheduleRow(page, 'Internet').first().getByRole('button', { name: 'Actions' }).click();
+    await page.getByRole('menuitem', { name: 'Edit' }).click();
+    const edit = page.getByRole('dialog', { name: 'Edit recurring' });
+    await expect(edit.getByRole('textbox', { name: 'Date flexibility' })).toHaveValue('5');
+  });
+
+  test('custom upcoming length refuses 0 or non-numeric input and saves 3 weeks', async ({
+    page,
+    api,
+  }) => {
+    await api.createAccount('Checking', 500_000);
+    await openAll(page);
+    await page.getByRole('button', { name: /^Upcoming:/ }).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Change upcoming length' });
+    await chooseOption(dialog.getByRole('button', { name: 'Upcoming length' }), 'Custom length');
+
+    const count = dialog.getByRole('textbox', { name: 'Custom length number' });
+    const unit = dialog.getByRole('button', { name: 'Custom length unit' });
+    const save = dialog.getByRole('button', { name: 'Save' });
+
+    await count.fill('0');
+    await expect(dialog.getByText('Enter a whole number of 1 or more.')).toBeVisible();
+    await expect(save).toBeDisabled();
+
+    await count.fill('abc');
+    await expect(dialog.getByText('Enter a whole number of 1 or more.')).toBeVisible();
+    await expect(save).toBeDisabled();
+
+    await count.fill('');
+    await count.fill('3');
+    await expect(dialog.getByText('Enter a whole number of 1 or more.')).toHaveCount(0);
+    await chooseOption(unit, 'Weeks');
+    await expect(dialog).toContainText('21 days');
+    await expect(save).toBeEnabled();
+    await save.click();
+    await expect(dialog).toBeHidden();
+
+    await expect(page.getByRole('button', { name: 'Upcoming: 3 weeks' })).toBeVisible();
+    const savedPref = await page.evaluate(() => {
+      const raw = localStorage.getItem('budget-preferences');
+      return raw ? JSON.parse(raw).state?.upcomingLength : null;
+    });
+    expect(savedPref).toBe('3-week');
   });
 });

@@ -5,12 +5,15 @@ fork of `dtymoszenko/FlyBudget`, detached from its fork network. Brand: [docs/BR
 Read only the files relevant to the request. Do not read the entire repository or long conversation history.
 Detailed upstream architecture: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), on demand.
 Release process and known limitations: [MAINTENANCE.md](MAINTENANCE.md).
-Current state, live setup and where to pick up: [HANDOVER.md](HANDOVER.md). Update it as work lands.
+Current state, live setup and where to pick up: [HANDOVER.md](HANDOVER.md), kept short; update it as
+work lands. History is archived in docs/handover/ARCHIVE.md (grep it, never read it whole).
+Specs and plans (Superpowers workflow; GSD is retired): [docs/superpowers/README.md](docs/superpowers/README.md).
 Keep AGENTS.md and CLAUDE.md byte-identical (Codex reads one, Claude Code the other).
 
 ## Where to work
 
 - React UI: `client/src/`; Express + SQLite: `server/src/`.
+- UI work: read docs/ui/README.md, then docs/ui/HANDOVER-UI.md and the screen's row in docs/ui/MAP.md; do not read HANDOVER.md history.
 - Up API: `server/src/services/upService.ts`, `upSyncService.ts`, `upTransactions.ts`, `routes/up.ts`.
 - Up UI: `client/src/components/up/`, `hooks/useUp.ts`, `api/up.ts`.
 - Files (documents, links, receipts as documents): `server/src/services/documentService.ts`,
@@ -205,7 +208,9 @@ change is sound, say so briefly.
 - Mutations invalidate the queries they affect. Save buttons respect the connection state
   (`useCanSave`, `<SavingPausedHint />`; `useAddTransaction()` for new transactions). Money inputs are
   `type="text" inputMode="decimal"` through `CurrencyInput`, never `type="number"`; displayed dates go
-  through `utils/dates.ts`.
+  through `utils/dates.ts`. Fields come only from `client/src/components/ui/` (lint
+  `allotment/no-raw-form-control`; categories use `CategoryPicker`, payees `PayeeCombobox`, other
+  lists the shared `Select` or `Combobox`).
 - Interactive controls have accessible names; layouts hold at 390 px with no sideways scroll; the
   demo and offline modes keep working.
 
@@ -214,3 +219,17 @@ change is sound, say so briefly.
 `CHANGELOG.md` entry; check that all three agree and that the version is not already tagged. A
 documentation-only change leaves the version alone. Tags are never moved. A PR keeps to one
 purpose: unrelated reformatting or drive-by refactors are P2, because they hide the real change.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `tvrooi/Allotment` (use `gh --repo tvrooi/Allotment`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `GLOSSARY.md` and `docs/adr/`, created lazily. See `docs/agents/domain.md`.

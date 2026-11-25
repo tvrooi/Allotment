@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, categoryOption, setToggle } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -47,7 +47,7 @@ test.describe('not categorised yet', () => {
     await expect(categories.getByRole('checkbox').first()).toHaveAccessibleName(
       'Not categorised yet',
     );
-    await categories.getByRole('checkbox', { name: 'Not categorised yet' }).check();
+    await setToggle(categories.getByRole('checkbox', { name: 'Not categorised yet' }));
 
     const summary = await api.call<{
       uncategorisedSpendingCount: number;
@@ -62,7 +62,7 @@ test.describe('not categorised yet', () => {
     await page.reload();
     await expect(page.getByText('4 transactions', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Filters' }).click();
-    await page.getByRole('checkbox', { name: 'Groceries' }).check();
+    await setToggle(page.getByRole('checkbox', { name: 'Groceries' }));
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
   });
 
@@ -104,8 +104,10 @@ test.describe('last month', () => {
     await expect(page.getByText('2 transactions', { exact: true })).toBeVisible();
     await page.getByPlaceholder('Search payee or notes…').fill('Market');
     await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Market', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Market this month' })).toHaveCount(0);
+    // Payees are row text now, not buttons (#243)
+    const main = page.getByRole('main');
+    await expect(main.getByText('Market', { exact: true })).toBeVisible();
+    await expect(main.getByText('Market this month')).toHaveCount(0);
   });
 
   test('Reports has a Last month preset', async ({ page, api }) => {
@@ -145,8 +147,8 @@ test.describe('last month', () => {
     const row = page.getByRole('row', { name: /Groceries/ });
     await expect(row).toContainText('$42.50');
     // Nothing to assign to: the planned amount can't be opened for editing
-    await row.getByRole('button', { name: /^Planned for Groceries/ }).click();
-    await expect(page.getByRole('textbox', { name: 'Planned for Groceries' })).toHaveCount(0);
+    await row.getByRole('button', { name: /^Assigned to Groceries/ }).click();
+    await expect(page.getByRole('textbox', { name: 'Assigned to Groceries' })).toHaveCount(0);
   });
 });
 
@@ -156,8 +158,8 @@ test.describe('the budget page', () => {
     await open(page, '/budget');
     const find = page.getByRole('searchbox', { name: 'Find a category' });
     await find.fill('groc');
-    await expect(page.getByRole('button', { name: /^Planned for Groceries:/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Planned for Rent/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Assigned to Groceries:/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to Rent/ })).toHaveCount(0);
     await page.getByRole('button', { name: 'Clear category search' }).click();
     await expect(find).toHaveValue('');
   });
@@ -168,27 +170,27 @@ test.describe('the budget page', () => {
   }) => {
     await api.createAccount('Everyday', 100_000);
     await open(page, '/budget');
-    await expect(page.getByRole('button', { name: /^Planned for Rent/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to Rent/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Show \d+ inactive/ })).toHaveCount(0);
 
     const groceries = await api.category('Groceries');
     await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 10_000 });
     await page.reload();
-    await expect(page.getByRole('button', { name: /^Planned for Groceries:/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Assigned to Groceries:/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Show \d+ inactive/ }).first()).toBeVisible();
   });
 
-  test('"Put the rest in…" assigns everything that is ready', async ({ page, api }) => {
+  test('"Put $X in an envelope…" assigns everything that is ready', async ({ page, api }) => {
     await api.createAccount('Everyday', 100_000);
     const groceries = await api.category('Groceries');
     await open(page, '/budget');
     await expect(readyToAssign(page)).toContainText('$1,000');
 
-    await page.getByRole('button', { name: 'Put the rest in…' }).click();
+    await page.getByRole('button', { name: /^Put .* in an envelope/ }).click();
     const search = page.getByRole('textbox', { name: 'Search categories' });
     await expect(search).toBeFocused();
     // No "Uncategorised" here: the money has to go somewhere
-    await expect(page.getByRole('button', { name: 'Uncategorised' })).toHaveCount(0);
+    await expect(categoryOption(page, 'Uncategorised')).toHaveCount(0);
     await search.fill('Groceries');
     await page.keyboard.press('Enter');
 
@@ -198,7 +200,7 @@ test.describe('the budget page', () => {
     const cat = groups.flatMap((g) => g.categories).find((c) => c.id === groceries.id);
     expect(cat.budgeted).toBe(100_000);
     // Nothing left to put anywhere
-    await expect(page.getByRole('button', { name: 'Put the rest in…' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Put .* in an envelope/ })).toHaveCount(0);
   });
 
   test('explains Ready to assign, the anchor payday and funding rules in plain words', async ({
@@ -211,7 +213,7 @@ test.describe('the budget page', () => {
     await page.getByRole('button', { name: 'What is Ready to assign?' }).click();
     await expect(page.getByRole('note')).toContainText('haven’t given a job yet'.replace('’', "'"));
     // The words sit in the page and never cover the controls below them
-    const put = page.getByRole('button', { name: 'Put the rest in…' });
+    const put = page.getByRole('button', { name: /^Put .* in an envelope/ });
     const note = await page.getByRole('note').boundingBox();
     const putBox = await put.boundingBox();
     expect(note!.y + note!.height).toBeLessThanOrEqual(putBox!.y + 1);
@@ -220,7 +222,7 @@ test.describe('the budget page', () => {
 
     await page.getByRole('button', { name: 'Until next payday' }).click();
     await page.getByRole('button', { name: 'New payday plan' }).click();
-    await expect(page.getByLabel('Anchor payday')).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Anchor payday', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'How to choose the payday date' }).click();
     await expect(page.getByRole('note')).toContainText('Pick any one day you were paid');
     await page.getByRole('button', { name: 'What is a funding rule?' }).click();
@@ -249,7 +251,7 @@ test.describe('category picker from the keyboard', () => {
       await page
         .getByTestId('transaction-row')
         .filter({ hasText: payee })
-        .getByRole('button', { name: '—' })
+        .getByRole('button', { name: 'Uncategorised' })
         .click();
       const search = page.getByRole('textbox', { name: 'Search categories' });
       await expect(search).toBeFocused();
@@ -301,7 +303,7 @@ test.describe('category picker from the keyboard', () => {
     await page
       .getByTestId('transaction-row')
       .filter({ hasText: 'Mystery C' })
-      .getByRole('button', { name: '—' })
+      .getByRole('button', { name: 'Uncategorised' })
       .click();
     await expect(page.getByRole('textbox', { name: 'Search categories' })).toBeFocused();
     // No arrow key and no waiting for the highlight
@@ -323,7 +325,10 @@ test.describe('category picker from the keyboard', () => {
       payeeName: 'Mystery A',
     });
     await open(page, `/accounts/${acct.id}`);
-    await page.getByTestId('transaction-row').getByRole('button', { name: '—' }).click();
+    await page
+      .getByTestId('transaction-row')
+      .getByRole('button', { name: 'Uncategorised' })
+      .click();
     await page.getByRole('textbox', { name: 'Search categories' }).fill('Gro');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('textbox', { name: 'Search categories' })).toHaveCount(0);

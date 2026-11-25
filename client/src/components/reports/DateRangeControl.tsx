@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Snowflake } from 'lucide-react';
 import { MonthRangePicker } from '../ui/MonthRangePicker';
+import { SegmentedControl } from '../ui/SegmentedControl';
 import { DATE_PRESETS, computeDateRange, resolveDateRange } from '../../utils/dateRange';
 import type { ReportDateRange } from '../../types';
 
@@ -21,44 +22,36 @@ export function DateRangeControl({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex flex-wrap gap-0">
-        {DATE_PRESETS.filter((p) => p.id !== 'custom').map((p) => (
-          <button
-            type="button"
-            key={p.id}
-            title={p.long}
-            aria-pressed={value.preset === p.id}
-            onClick={() => {
-              setJustFroze(false);
-              onChange({ preset: p.id, ...computeDateRange(p.id) });
-            }}
-            className={`px-2.5 py-1 max-md:min-h-11 max-md:min-w-11 text-xs font-medium transition-colors border-b-2 cursor-pointer ${
-              value.preset === p.id
-                ? 'border-brand-600 text-brand-600'
-                : 'border-transparent text-text-tertiary hover:text-text-secondary'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-pressed={frozen}
-          title="Keep these dates fixed instead of moving with the current month"
-          onClick={() => {
+      <SegmentedControl
+        label="Date range"
+        value={value.preset}
+        options={[
+          ...DATE_PRESETS.filter((p) => p.id !== 'custom').map((p) => ({
+            value: p.id,
+            label: p.label,
+            title: p.long,
+          })),
+          {
+            value: 'custom' as const,
+            label: (
+              <>
+                <Snowflake size={11} /> Frozen
+              </>
+            ),
+            title: 'Keep these dates fixed instead of moving with the current month',
+          },
+        ]}
+        onChange={(preset) => {
+          if (preset === 'custom') {
             if (frozen) return;
             setJustFroze(true);
             onChange({ ...resolveDateRange(value), preset: 'custom' });
-          }}
-          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium transition-colors border-b-2 cursor-pointer ${
-            frozen
-              ? 'border-brand-600 text-brand-600'
-              : 'border-transparent text-text-tertiary hover:text-text-secondary'
-          }`}
-        >
-          <Snowflake size={11} /> Frozen
-        </button>
-      </div>
+            return;
+          }
+          setJustFroze(false);
+          onChange({ preset, ...computeDateRange(preset) });
+        }}
+      />
       {frozen && (
         <MonthRangePicker
           from={value.from}

@@ -32,10 +32,10 @@ test('the assign block names the account, the gap and links to the fixes', async
 
   await open(page, '/budget');
   await page
-    .getByRole('button', { name: /^Planned for / })
+    .getByRole('button', { name: /^Assigned to / })
     .first()
     .click();
-  const input = page.getByRole('textbox', { name: /^Planned for / });
+  const input = page.getByRole('textbox', { name: /^Assigned to / });
   await input.fill('100');
   await input.press('Enter');
   const alert = page.getByRole('alert').filter({ hasText: "Money can't be assigned" });
@@ -55,10 +55,10 @@ test('the assign block names the account, the gap and links to the fixes', async
   // With the row gone the same assignment goes through
   await open(page, '/budget');
   await page
-    .getByRole('button', { name: /^Planned for / })
+    .getByRole('button', { name: /^Assigned to / })
     .first()
     .click();
-  const again = page.getByRole('textbox', { name: /^Planned for / });
+  const again = page.getByRole('textbox', { name: /^Assigned to / });
   await again.fill('100');
   await again.press('Enter');
   await expect(page.getByRole('alert').filter({ hasText: "Money can't be assigned" })).toHaveCount(
@@ -95,10 +95,10 @@ test('an Up transaction deleted here pauses assigning, and the block restores it
   await open(page, '/budget');
   const assign = async () => {
     await page
-      .getByRole('button', { name: /^Planned for / })
+      .getByRole('button', { name: /^Assigned to / })
       .first()
       .click();
-    const input = page.getByRole('textbox', { name: /^Planned for / });
+    const input = page.getByRole('textbox', { name: /^Assigned to / });
     await input.fill('100');
     await input.press('Enter');
   };

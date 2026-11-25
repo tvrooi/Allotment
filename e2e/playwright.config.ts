@@ -1,10 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
-import { DEMO_PORT, DESKTOP_PORT, MULTI_USER_PORT, SERVER_PORT } from './ports';
+import { DEMO_PORT, DESKTOP_PORT, GALLERY_PORT, MULTI_USER_PORT, SERVER_PORT } from './ports';
 
 // End-to-end tests: real browser, real server, throwaway databases (see global-setup.ts).
 //   npm test                      run everything
 //   npm test -- --project=desktop only the desktop-app suite
 //   npm test -- --project=demo    only the in-browser demo
+//   E2E_GALLERY_ONLY=1 npm test -- --project=gallery
+//                                 only the controls gallery, without starting any server
+//   bash gallery-baselines.sh [--update]
+//                                 check (or remake) the gallery's Linux screenshot baselines in
+//                                 Playwright's own container
 //   E2E_SKIP_BUILD=1 npm test     reuse the client builds from the last run
 //   E2E_SERVER_LOGS=1 npm test    show the servers' logs
 //   E2E_CHROMIUM_PATH=/path/to/chrome npm test
@@ -23,7 +28,20 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
-  expect: { timeout: 7_000 },
+  expect: {
+    timeout: 7_000,
+    // Screenshots compare with Playwright's default strictness: no ratio or pixel tolerance, so a
+    // changed control fails. Animations and transitions are stopped so every run draws the same
+    // frame. Baselines are made in Playwright's Linux image (gallery-baselines.sh).
+    toHaveScreenshot: { animations: 'disabled' },
+  },
+  // Baselines sit beside their spec with no platform or project in the name: they are Linux
+  // images, made in the same image family CI runs (gallery-baselines.sh), and only Linux runs
+  // compare them (PIXELS in tests/gallery/gallery.ts)
+  snapshotPathTemplate: '{testDir}/{testFileDir}/__screenshots__/{testFileName}/{arg}{ext}',
+  // In CI a missing baseline fails the run instead of being written, so a test can't pass by
+  // creating its own baseline; locally a missing one is written for review
+  updateSnapshots: process.env.CI ? 'none' : 'missing',
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     ...devices['Desktop Chrome'],
@@ -38,7 +56,7 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      testIgnore: /\/tests\/(server-mode|phone|demo|multi-user)\//,
+      testIgnore: /\/tests\/(server-mode|phone|demo|multi-user|gallery)\//,
       use: { baseURL: `http://localhost:${DESKTOP_PORT}` },
     },
     // The desktop app's pages on a phone-sized screen (iPhone 13/14: 390×844)
@@ -53,6 +71,18 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    // Safari's engine at iPhone 14 Pro Max dimensions. System status-bar blur still needs
+    // a physical Home Screen install; desktop WebKit does not emulate the iOS compositor.
+    {
+      name: 'iphone-webkit',
+      testMatch: /\/tests\/phone\/iphone-webapp\.spec\.ts$/,
+      use: {
+        ...devices['iPhone 14 Pro Max'],
+        browserName: 'webkit',
+        baseURL: `http://localhost:${DESKTOP_PORT}`,
+        launchOptions: {},
+      },
+    },
     // The in-browser demo: the app with its API in a Web Worker, on a sample budget
     {
       name: 'demo',
@@ -63,6 +93,18 @@ export default defineConfig({
       name: 'server-mode',
       testMatch: /\/tests\/server-mode\/.*\.spec\.ts$/,
       use: { baseURL: `http://localhost:${SERVER_PORT}` },
+    },
+    // The development-only controls gallery, in its own build (`vite build --mode gallery`).
+    // Each test sets its own viewport and theme (tests/gallery/gallery.ts), so they pass alone
+    // and in any order. No service worker, so every run draws the page from the build itself.
+    {
+      name: 'gallery',
+      testMatch: /\/tests\/gallery\/.*\.spec\.ts$/,
+      use: {
+        baseURL: `http://localhost:${GALLERY_PORT}`,
+        viewport: { width: 1280, height: 800 },
+        serviceWorkers: 'block',
+      },
     },
     // Separate budgets per person behind the gateway, each its own server process
     {

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronDown,
   Eye,
+  Layers,
   Lightbulb,
   MoreHorizontal,
   Search,
@@ -29,7 +30,9 @@ import { assignmentToInput, readAmountExpression } from '../utils/amountExpressi
 import { BudgetInspector } from '../components/budget/BudgetInspector';
 import { BudgetSummaryWidget } from '../components/budget/BudgetSummaryWidget';
 import { BudgetEditPopover } from '../components/budget/BudgetEditPopover';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
+import { Checkbox } from '../components/ui/Checkbox';
+import { Input } from '../components/ui/Input';
 import { targetLabel } from '../utils/targets';
 import { FundTargets } from '../components/budget/FundTargets';
 import { AutoAssign } from '../components/budget/AutoAssign';
@@ -40,7 +43,15 @@ import { PaydayPlan } from '../components/budget/PaydayPlan';
 import { MissingRatesBanner } from '../components/currency/MissingRatesBanner';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
-import { availability, categoryFigures, splitCategories } from '../utils/budgetFigures';
+import { SAVING_PAUSED } from '../components/connection/savingPaused';
+import {
+  availability,
+  availableTone,
+  expectedFundingNote,
+  captionTone,
+  categoryFigures,
+  splitCategories,
+} from '../utils/budgetFigures';
 import { TransferredNote, useLinkedAccount } from '../components/budget/TransferredNote';
 import { ExpectedNote } from '../components/budget/ExpectedNote';
 import type { BudgetCategory, BudgetGroup, BudgetType } from '../types';
@@ -50,6 +61,9 @@ import { GuideLink } from '../components/guide/GuideLink';
 import { Tip } from '../components/guide/Tip';
 import { TIPS } from '../guides';
 import { useMenuKeyboard } from '../hooks/useMenuKeyboard';
+import { useScrollMemory } from '../hooks/useScrollMemory';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
+import { CATEGORIES_PATH } from '../utils/movedSections';
 
 function AmountInput({
   cents,
@@ -71,7 +85,7 @@ function AmountInput({
   saving: boolean;
   /** Why the last save was refused; the typed amount stays to correct */
   error: string | null;
-  /** Set once the editor has already saved or cancelled, so leaving the field does nothing */
+  /** Set once the editor has already saved or cancelled, so the blur that follows does nothing */
   closed: { current: boolean };
   /** The amount typed so far, or null while it isn't readable */
   onDraft: (c: number | null) => void;
@@ -84,6 +98,10 @@ function AmountInput({
   const [raw, setRaw] = useState(assignmentToInput(cents));
   const [invalid, setInvalid] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  // Move focus into the inline editor when it opens (BUD-05); onFocus selects the text
+  useEffect(() => {
+    input.current?.focus();
+  }, []);
   useEffect(() => {
     if (picked) {
       setRaw(assignmentToInput(picked.cents));
@@ -98,11 +116,19 @@ function AmountInput({
     }
   }, [error]);
 
+  // Saving is explicit; marking the editor closed first means the blur that follows Tab, or the
+  // field locking, isn't taken for a click away. A refused save reopens it (commit)
+  function save(amount: number) {
+    closed.current = true;
+    onSave(amount);
+  }
+
   return (
     <>
-      <input
+      <Input
         ref={input}
-        autoFocus
+        fieldSize="sm"
+        isInvalid={invalid || !!error}
         readOnly={saving}
         aria-busy={saving || undefined}
         aria-label={label}
@@ -114,7 +140,6 @@ function AmountInput({
           setInvalid(false);
           onDraft(readAmountExpression(e.target.value));
         }}
-        aria-invalid={invalid || !!error || undefined}
         aria-describedby={error ? 'planned-save-error' : undefined}
         title={invalid ? UNREADABLE_AMOUNT : undefined}
         // Select the amount so typing replaces it
@@ -122,13 +147,13 @@ function AmountInput({
         // Keys (BUD-05, docs/ENVELOPE-FUNDING.md "Typing assignments"): Enter saves, Escape
         // cancels, Down or Tab saves and opens the next envelope shown, Up or Shift+Tab the one
         // before. A sum (100+50) is worked out first; text that isn't one stays open to fix,
-        // rather than saving 0
+        // rather than saving 0. Only these keys save: clicking away cancels (see onBlur)
         onKeyDown={(e) => {
           if (saving) return;
           const amount = readAmountExpression(raw);
           if (e.key === 'Enter') {
             if (amount === null) setInvalid(true);
-            else (e.target as HTMLInputElement).blur();
+            else save(amount);
           }
           if (e.key === 'Escape') {
             closed.current = true;
@@ -148,19 +173,22 @@ function AmountInput({
           }
           // With nowhere to go, an arrow saves and closes; Tab saves and leaves the table as usual
           if (onMove(direction, amount)) e.preventDefault();
-          else if (e.key !== 'Tab') (e.target as HTMLInputElement).blur();
+          else save(amount);
         }}
+        // Leaving the field any other way (a click elsewhere) cancels: money is never moved by
+        // a stray click, and there is no undo. The window losing focus (switching tabs) isn't
+        // leaving the field: the amount typed is still there on return
         onBlur={() => {
-          if (closed.current) return;
-          const amount = readAmountExpression(raw);
-          // Left with text that isn't an amount: keep the planned amount it had
-          if (amount === null) onCancel();
-          else onSave(amount);
+          if (closed.current || !document.hasFocus()) return;
+          onCancel();
         }}
-        className={`w-28 text-right tabular-nums text-sm bg-surface border rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 read-only:opacity-60 ${invalid || error ? 'border-negative focus:ring-negative' : 'border-brand-500 focus:ring-brand-600'}`}
+        className="w-28 text-right tabular-nums"
       />
       {saving && (
-        <span role="status" className="block text-xs text-text-tertiary mt-0.5">
+        <span
+          role="status"
+          className="absolute right-0 top-full mt-0.5 whitespace-nowrap text-xs text-text-tertiary"
+        >
           Saving…
         </span>
       )}
@@ -182,7 +210,7 @@ interface CategoryRowProps {
   /** Ticked for the inspector (BUD-10); income rows have no tick */
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
-  onStartEdit: (id: string) => void;
+  onStartEdit: ((id: string) => void) | undefined;
   /** Resolves to why the save was refused, or null once it has been saved */
   onSave: (cents: number) => Promise<string | null>;
   onCancel: () => void;
@@ -263,11 +291,11 @@ function CategoryRow({
     closed.current = true;
     // An amount left as it was isn't saved again (no undo step for nothing)
     if (cents === cat.budgeted) {
-      onStartEdit(next);
+      onStartEdit?.(next);
       return true;
     }
     void commit(cents).then((saved) => {
-      if (saved) onStartEdit(next);
+      if (saved) onStartEdit?.(next);
     });
     return true;
   }
@@ -299,19 +327,9 @@ function CategoryRow({
           : []),
       ];
 
-  // Available is the column to read: a pill only when there's something in it (or it's
-  // overspent), plain grey for $0
-  let remainingClass: string;
-  const pillBase = 'font-semibold rounded-full px-2.5 py-0.5 text-text';
-  if (kind === 'overspent') {
-    remainingClass = `${pillBase} bg-negative/20`;
-  } else if (kind === 'short' || kind === 'carried') {
-    remainingClass = `${pillBase} bg-caution/20`;
-  } else if (remaining > 0) {
-    remainingClass = `${pillBase} bg-positive/20`;
-  } else {
-    remainingClass = 'px-2.5 py-0.5 text-text-tertiary';
-  }
+  // Available is the column to read. A pill marks only what needs a decision (overspent, short
+  // of a target); an envelope that is fine is a plain figure, and $0 is grey
+  const remainingClass = `rounded-full px-2.5 py-0.5 ${availableTone(kind, remaining, !isIncome && expectedFundingNote(cat, format(new Date(), 'yyyy-MM-dd')).overdue)}`;
 
   return (
     <tr
@@ -319,29 +337,38 @@ function CategoryRow({
       data-budget-row={cat.id}
       className={`border-b border-border-light ${selected ? 'bg-brand-50' : ''}`}
     >
-      <td className="relative py-1.5 pb-2 pl-10 pr-3">
+      {/* Every row is two lines tall (h-14 is a floor): the figures, then a quiet line under
+          them for the bar, the expected debit and the notes, so rows keep one rhythm */}
+      <td className="relative h-14 py-1.5 pl-10 pr-3 align-top">
         {onToggleSelect && (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelect(cat.id)}
-            aria-label={`Select ${cat.name}`}
-            className="absolute left-4 top-2.5 h-3.5 w-3.5 accent-brand-600"
-          />
+          <span className="absolute left-2.5 top-2">
+            <Checkbox
+              checked={selected}
+              onCheckedChange={() => onToggleSelect(cat.id)}
+              aria-label={`Select ${cat.name}`}
+            />
+          </span>
         )}
-        <div className="text-sm text-text">
-          {showCategoryIcons && (
-            <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
-          )}
-          {cat.name}
+        <div className="flex w-[90%] flex-wrap items-baseline justify-between gap-x-3 py-0.5 text-sm text-text">
+          <span className="min-w-0">
+            {showCategoryIcons && (
+              <CategoryIcon icon={cat.icon} size={14} className="mr-1.5 inline" />
+            )}
+            {/* The name opens the envelope, as its Activity figure does */}
+            <Link
+              to={`/budget/category/${cat.id}`}
+              aria-label={`Open ${cat.name}`}
+              className="rounded-sm hover:text-brand-600 hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+            >
+              {cat.name}
+            </Link>
+          </span>
+          <ExpectedNote
+            cat={cat}
+            onAssign={canSave && !linked && onStartEdit ? () => onStartEdit(cat.id) : undefined}
+          />
         </div>
-        <SpentBar
-          spent={isIncome ? actual : cat.spent}
-          budgeted={cat.budgeted + (cat.transferred ?? 0)}
-          isIncome={isIncome}
-          expected={cat.expected}
-          covered={kind !== 'overspent'}
-        />
+        <SpentBar cat={cat} isIncome={isIncome} />
         <TransferredNote cat={cat} className="mt-0.5" />
         {card && <CardRowNotes card={card} className="mt-0.5" />}
         {cat.target && (
@@ -352,7 +379,7 @@ function CategoryRow({
           </p>
         )}
       </td>
-      <td className="py-1.5 px-3 text-right align-top">
+      <td className="h-14 py-1.5 px-3 text-right align-top">
         <div className="relative inline-block">
           {linked && !isIncome ? (
             <span
@@ -366,7 +393,7 @@ function CategoryRow({
             <>
               <AmountInput
                 cents={cat.budgeted}
-                label={isIncome ? `Expected from ${cat.name}` : `Planned for ${cat.name}`}
+                label={isIncome ? `Expected from ${cat.name}` : `Assigned to ${cat.name}`}
                 closed={closed}
                 saving={saving}
                 error={failure}
@@ -391,10 +418,10 @@ function CategoryRow({
             </>
           ) : (
             <button
-              onClick={() => onStartEdit(cat.id)}
+              onClick={() => onStartEdit?.(cat.id)}
               disabled={!canSave}
-              title={canSave ? undefined : 'Saving is paused until Allotment reconnects'}
-              aria-label={`${isIncome ? 'Expected from' : 'Planned for'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
+              title={canSave ? undefined : SAVING_PAUSED}
+              aria-label={`${isIncome ? 'Expected from' : 'Assigned to'} ${cat.name}: ${formatCurrency(cat.budgeted)}`}
               // Plain text until pointed at or focused: a column of empty boxes says nothing
               className="tabular-nums text-sm rounded px-2 py-0.5 min-w-[5.5rem] text-right border border-transparent bg-transparent transition-colors hover:border-border hover:bg-surface focus-visible:border-brand-500 focus-visible:bg-surface cursor-text disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -405,20 +432,19 @@ function CategoryRow({
           )}
         </div>
       </td>
-      <td className="py-1.5 px-3 align-top">
+      <td className="h-14 py-1.5 px-3 align-top">
         <div className="text-right">
           <Link
             to={`/budget/category/${cat.id}`}
             // The figure alone ("$0") says nothing to a screen reader
             aria-label={`${isIncome ? 'Received for' : 'Activity in'} ${cat.name}: ${formatCurrency(actual)}`}
-            className="tabular-nums text-sm text-text-secondary hover:text-brand-600 cursor-pointer transition-colors"
+            className="inline-block py-0.5 tabular-nums text-sm text-text-secondary hover:text-brand-600 cursor-pointer transition-colors"
           >
             {formatCurrency(actual)}
           </Link>
-          <ExpectedNote cat={cat} />
         </div>
       </td>
-      <td className="py-1.5 pl-3 pr-6 text-right align-top">
+      <td className="h-14 py-1.5 pl-3 pr-6 text-right align-top">
         {movable ? (
           // Clicking the figure opens Move money with this envelope filled in (BUD-06)
           <button
@@ -439,7 +465,13 @@ function CategoryRow({
             {formatCurrency(remaining)}
           </span>
         )}
-        {caption && <span className="block text-xs text-text-tertiary mt-0.5">{caption}</span>}
+        {caption && !(kind === 'uncovered' && cat.expectedItems?.length) && (
+          // Bill shortfalls already have a dated funding note above the bar.
+          // One line so rows keep their rhythm; the full wording is on hover
+          <span title={caption} className={`block truncate text-xs mt-0.5 ${captionTone(kind)}`}>
+            {caption}
+          </span>
+        )}
       </td>
     </tr>
   );
@@ -449,7 +481,7 @@ interface IncomeGroupProps {
   group: BudgetGroup;
   editingId: string | null;
   month: string;
-  onStartEdit: (id: string) => void;
+  onStartEdit: ((id: string) => void) | undefined;
   onSave: (categoryId: string, cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
@@ -555,7 +587,7 @@ interface BudgetTypeSectionProps {
   categories: BudgetCategory[];
   editingId: string | null;
   month: string;
-  onStartEdit: (id: string) => void;
+  onStartEdit: ((id: string) => void) | undefined;
   onSave: (categoryId: string, cents: number) => Promise<string | null>;
   onCancel: () => void;
   onApplyBulk: (categoryId: string, cents: number, expected: Record<string, number>) => void;
@@ -682,16 +714,30 @@ function BudgetTypeSection({
 const BUDGET_TYPES: { key: BudgetType; label: string }[] = [
   { key: 'fixed', label: 'Fixed' },
   { key: 'flexible', label: 'Flexible' },
-  { key: 'non_monthly', label: 'Non-Monthly' },
+  { key: 'non_monthly', label: 'Non-monthly' },
   { key: 'savings', label: 'Savings/Investments' },
 ];
 
+/** A section's column labels stay pinned to the top of the scrolling table while the section is in
+ * view. Sticky goes on the cells (a collapsed-border <tr> can't carry it), so the band paints its own
+ * background and bottom rule; the Expenses band is later in the table, so it covers Income's. */
+const BAND =
+  'sticky top-0 z-10 bg-surface-alt group-hover:bg-hover transition-colors shadow-[0_1px_0_var(--color-border),0_-1px_0_var(--color-border)]';
+
 export default function BudgetPage() {
+  // Back and Forward return to where this list was (#245)
+  const scrollMemory = useScrollMemory('budget');
   const [paydayView, setPaydayView] = useState(false);
   const { selectedMonth, setSelectedMonth } = useAppStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   // Envelopes ticked for the inspector (BUD-10). Ticking changes no money
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  // The ticks are hidden until asked for; leaving select mode clears them
+  const [selectMode, setSelectMode] = useState(false);
+  const toggleSelectMode = () => {
+    if (selectMode) setSelectedIds(new Set());
+    setSelectMode(!selectMode);
+  };
   const toggleSelected = (id: string) =>
     setSelectedIds((now) => {
       const next = new Set(now);
@@ -868,7 +914,6 @@ export default function BudgetPage() {
     .flatMap((g) => g.categories)
     .filter((c) => c.target?.underfunded && !c.linkedAccountId).length;
   const tbb = summary?.toBeBudgeted ?? 0;
-  const carryOver = summary?.carryOver ?? 0;
   const expRemaining = expenseTotals.balance;
   const expBalColor =
     expRemaining > 0 ? 'text-positive' : expRemaining < 0 ? 'text-negative' : 'text-text-tertiary';
@@ -876,7 +921,9 @@ export default function BudgetPage() {
   if (paydayView)
     return (
       <div className="flex flex-col h-full bg-surface text-text">
-        <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
+        <div
+          className={`py-4 border-b border-border flex flex-wrap items-center gap-3 ${PAGE_GUTTER}`}
+        >
           <h1 className="font-display text-title max-md:text-2xl tracking-tight">
             Until next payday
           </h1>
@@ -887,29 +934,30 @@ export default function BudgetPage() {
             onPayday={() => setPaydayView(true)}
           />
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
           <PaydayPlan />
         </div>
       </div>
     );
 
-  // Ready to assign, Put the rest in…, Hold and how it's worked out
+  // Ready to assign, Put it in an envelope…, Hold and how it's worked out
   const summaryPanel = (
     <>
       <BudgetSummaryWidget
         funding={summary}
-        expenseAvailable={expenseTotals.balance}
         toBeBudgeted={tbb}
-        carryOver={carryOver}
         incomePlanned={incomeTotals.budgeted}
         incomeEarned={incomeTotals.received}
-        expensesPlanned={expenseTotals.budgeted}
-        expensesSpent={Math.max(0, -expenseTotals.spent)}
         savingsPlanned={savingsTotals.budgeted}
         savingsContributed={savingsTotals.spent}
         fixedExpenses={expensesByBudgetType.fixed}
         flexibleExpenses={expensesByBudgetType.flexible}
         nonMonthlyExpenses={expensesByBudgetType.nonMonthly}
+        fundTargets={{
+          count: underfundedCount,
+          disabled: !canSaveBudget || switchingMonth,
+          onOpen: () => fundTargetsRef.current?.open(),
+        }}
         canHold={!beforeStart && selectedMonth === format(new Date(), 'yyyy-MM')}
         putRest={
           beforeStart
@@ -962,435 +1010,486 @@ export default function BudgetPage() {
   );
 
   return (
-    <div className="flex flex-col h-full bg-surface">
-      <div
-        data-testid="budget-header"
-        className="px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border shrink-0"
-      >
-        <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
-          <div className="flex items-center gap-1">
-            <h1 className="text-lg font-semibold text-text">
-              <span className="sr-only">Budget, </span>
-              <span>{format(monthDate, 'MMMM yyyy')}</span>
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {!isPhone && (
-              <>
-                <BudgetViewSwitch
-                  current="month"
-                  year={selectedMonth.slice(0, 4)}
-                  onMonth={() => setPaydayView(false)}
-                  onPayday={() => setPaydayView(true)}
-                />
-                <AssignMenu
-                  disabled={!canSaveBudget}
-                  underfundedCount={underfundedCount}
-                  onAutoAssign={() => autoAssignRef.current?.open()}
-                  onFundTargets={() => fundTargetsRef.current?.open()}
-                  onPayday={() => setPaydayView(true)}
-                />
-              </>
-            )}
-            <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
-            <FundTargets ref={fundTargetsRef} month={selectedMonth} groups={groups} hideButton />
-            <button
-              onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
-              aria-label="Previous month"
-              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => setSelectedMonth(format(addMonths(monthDate, 1), 'yyyy-MM'))}
-              aria-label="Next month"
-              className="p-1.5 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt hover:bg-hover text-text-secondary hover:text-text transition-colors"
-            >
-              <ChevronRight size={18} />
-            </button>
-            <Button variant="secondary" size="sm" onClick={goToToday}>
-              Today
-            </Button>
-            {isPhone && (
-              <div className="relative">
-                <button
-                  ref={menuButtonRef}
-                  type="button"
-                  onClick={() => setMenuOpen((o) => !o)}
-                  aria-label="More budget actions"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  className="min-w-11 min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt text-text-secondary"
-                >
-                  <MoreHorizontal size={18} />
-                </button>
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                    <div
-                      ref={menuRef}
-                      role="menu"
-                      aria-label="More budget actions"
-                      className="absolute right-0 top-full mt-1 z-40 w-56 rounded-lg border border-border bg-surface shadow-lg py-1"
-                    >
-                      <Link
-                        role="menuitem"
-                        to={`/budget/year/${selectedMonth.slice(0, 4)}`}
-                        className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+    <>
+      <div className="flex flex-col h-full bg-surface">
+        <div
+          data-testid="budget-header"
+          className={`py-4 max-md:py-3 border-b border-border shrink-0 ${PAGE_GUTTER}`}
+        >
+          <div className="flex flex-wrap gap-3 max-md:gap-2 items-center justify-between">
+            <div className="flex items-center gap-1">
+              <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
+                <span className="sr-only">Budget, </span>
+                <span>{format(monthDate, 'MMMM yyyy')}</span>
+              </h1>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {!isPhone && (
+                <>
+                  <BudgetViewSwitch
+                    current="month"
+                    year={selectedMonth.slice(0, 4)}
+                    onMonth={() => setPaydayView(false)}
+                    onPayday={() => setPaydayView(true)}
+                  />
+                  <AssignMenu
+                    disabled={!canSaveBudget}
+                    underfundedCount={underfundedCount}
+                    onAutoAssign={() => autoAssignRef.current?.open()}
+                    onFundTargets={() => fundTargetsRef.current?.open()}
+                  />
+                  {/* Not budget.categories: that marks the envelope list, which guides target */}
+                  <ButtonLink
+                    variant="secondary"
+                    size="sm"
+                    to={CATEGORIES_PATH}
+                    data-guide="budget.manage-categories"
+                  >
+                    <Layers size={14} aria-hidden /> Categories
+                  </ButtonLink>
+                </>
+              )}
+              <AutoAssign ref={autoAssignRef} month={selectedMonth} hideButton />
+              <FundTargets ref={fundTargetsRef} month={selectedMonth} groups={groups} hideButton />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
+                aria-label="Previous month"
+                className="w-8 px-0 max-md:w-11"
+              >
+                <ChevronLeft size={16} className="shrink-0" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedMonth(format(addMonths(monthDate, 1), 'yyyy-MM'))}
+                aria-label="Next month"
+                className="w-8 px-0 max-md:w-11"
+              >
+                <ChevronRight size={16} className="shrink-0" />
+              </Button>
+              <Button variant="secondary" size="sm" onClick={goToToday}>
+                Today
+              </Button>
+              {isPhone && (
+                <div className="relative">
+                  <button
+                    ref={menuButtonRef}
+                    type="button"
+                    onClick={() => setMenuOpen((o) => !o)}
+                    aria-label="More budget actions"
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    className="min-w-11 min-h-11 flex items-center justify-center rounded-md border border-border bg-surface-alt text-text-secondary"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                      <div
+                        ref={menuRef}
+                        role="menu"
+                        aria-label="More budget actions"
+                        className="absolute right-0 top-full mt-1 z-40 w-56 rounded-lg border border-border bg-surface shadow-lg py-1"
                       >
-                        Year
-                      </Link>
-                      <button
-                        role="menuitem"
-                        disabled={!canSaveBudget}
-                        onClick={() => {
-                          setMenuOpen(false);
-                          autoAssignRef.current?.open();
-                        }}
-                        className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
-                      >
-                        Auto-assign
-                      </button>
-                      {underfundedCount > 0 && (
+                        <Link
+                          role="menuitem"
+                          to={`/budget/year/${selectedMonth.slice(0, 4)}`}
+                          className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                        >
+                          Year
+                        </Link>
+                        <Link
+                          role="menuitem"
+                          to={CATEGORIES_PATH}
+                          className="flex items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                        >
+                          Categories
+                        </Link>
                         <button
                           role="menuitem"
                           disabled={!canSaveBudget}
                           onClick={() => {
                             setMenuOpen(false);
-                            fundTargetsRef.current?.open();
+                            autoAssignRef.current?.open();
                           }}
                           className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
                         >
-                          Fund targets ({underfundedCount})
+                          Auto-assign
                         </button>
-                      )}
-                      <button
-                        role="menuitem"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setPaydayView(true);
-                        }}
-                        className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
-                      >
-                        Until next payday
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+                        {underfundedCount > 0 && (
+                          <button
+                            role="menuitem"
+                            disabled={!canSaveBudget}
+                            onClick={() => {
+                              setMenuOpen(false);
+                              fundTargetsRef.current?.open();
+                            }}
+                            className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover disabled:opacity-50"
+                          >
+                            Fund targets ({underfundedCount})
+                          </button>
+                        )}
+                        <button
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setPaydayView(true);
+                          }}
+                          className="flex w-full items-center min-h-11 px-4 text-sm text-text hover:bg-hover"
+                        >
+                          Until next payday
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="relative mt-3 max-md:mt-2">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a category"
-            aria-label="Find a category"
-            className="w-full max-w-sm max-md:max-w-none text-sm border border-border rounded-lg pl-8 pr-8 py-1.5 max-md:min-h-11 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 [&::-webkit-search-cancel-button]:hidden"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              aria-label="Clear category search"
-              className="absolute right-1 top-1/2 -translate-y-1/2 min-w-8 min-h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {!nothingPlanned && !beforeStart && (
-        <Tip
-          tip={TIPS.budgetCarry}
-          className="px-6 max-md:px-4 py-3 border-b border-border-light shrink-0"
-        />
-      )}
-      {nothingPlanned && !beforeStart && !(isPhone && needle) && (
-        <div className="flex items-start gap-3 px-6 max-md:px-4 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0">
-          <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
-          <div>
-            <p>
-              No money assigned for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'} an
-              amount to give money you already have a job.
-            </p>
-            {!isPhone && (
-              <details className="mt-1">
-                <summary className="cursor-pointer w-fit font-medium text-brand-600 hover:text-brand-700">
-                  How this works
-                </summary>
-                <p className="mt-1">
-                  Pay you’ve received is ready to assign straight away; the amounts beside income
-                  are only what you expect. What’s left in an envelope carries into next month.
-                  Envelopes you leave empty are tucked away once you’ve planned something.{' '}
-                  <GuideLink
-                    page="budgeting"
-                    className="font-medium text-brand-600 hover:text-brand-700"
-                  >
-                    Read the guide
-                  </GuideLink>
-                </p>
-              </details>
-            )}
-            <RentOrOwn />
-          </div>
-        </div>
-      )}
-
-      {(setBudgetMutation.error || setBulkMutation.error) && (
-        <AssignBlockError
-          error={(setBudgetMutation.error || setBulkMutation.error)!}
-          onResolved={() => {
-            setBudgetMutation.reset();
-            setBulkMutation.reset();
-          }}
-        />
-      )}
-      <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
-      <AssistantSuggestions />
-      {beforeStart && (
-        <p role="status" className="mx-6 max-md:mx-4 mt-3 shrink-0 text-sm text-text-secondary">
-          This month is before your budget start. Activity is what you really spent, shown for
-          reference: nothing is assigned or carried, and it can't be edited. Its transactions are
-          also in your accounts and reports.{' '}
-          <Link to="/settings?tab=budget" className="text-brand-700 underline">
-            Budget start
-          </Link>
-        </p>
-      )}
-
-      {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
-      <div
-        aria-busy={switchingMonth}
-        inert={switchingMonth}
-        className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
-      >
-        {/* Phones (UX audit AU-002): a compact Ready to assign, then the envelopes, then the
-            month's inspector, card payments and moves; searching shows only the envelopes */}
-        {isPhone && !needle && <div className="px-4 pt-3">{summaryPanel}</div>}
-        <div
-          data-guide="budget.categories"
-          className="flex-1 max-md:flex-none max-md:overflow-x-auto"
-        >
-          {isPhone ? (
-            <PhoneBudget
-              // The envelopes you assign to first (UX audit AU-002); expected income after them
-              sections={[
-                ...shownExpensesByType.map((bt) => ({
-                  key: bt.key,
-                  label: bt.label,
-                  isIncome: false,
-                  categories: bt.categories,
-                })),
-                ...(shownCardCategories.length
-                  ? [
-                      {
-                        key: 'card-payments',
-                        label: 'Card payments',
-                        isIncome: false,
-                        categories: shownCardCategories,
-                        always: true,
-                      },
-                    ]
-                  : []),
-                ...shownIncomeGroups.map((g) => ({
-                  key: g.id,
-                  label: g.name,
-                  isIncome: true,
-                  categories: g.categories,
-                })),
-              ]}
-              cards={cardPositions}
-              month={selectedMonth}
-              onSave={handleSave}
-              onApplyBulk={handleApplyBulk}
-              showAll={showEvery}
-              readOnly={beforeStart}
+          <div className="relative mt-3 max-md:mt-2 w-full max-w-sm max-md:max-w-none">
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+              aria-hidden
             />
-          ) : (
-            <table className="w-full border-collapse">
-              <colgroup>
-                <col style={{ width: '55%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '15%' }} />
-              </colgroup>
-              <tbody>
-                {/* Income section header */}
-                <tr
-                  className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
-                  onClick={() => setIncomeCollapsed((c) => !c)}
-                >
-                  <td className="py-2 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-text-tertiary shrink-0">
-                        {incomeCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                      </span>
-                      <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
-                        Income
-                      </span>
-                    </div>
-                  </td>
-                  <td
-                    className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary"
-                    title="What you expect to earn. It's a plan, not money: only income you've received is ready to assign."
-                  >
-                    Expected
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Received
-                  </td>
-                  <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
-                    Still to come
-                  </td>
-                </tr>
-
-                {!incomeCollapsed && (
-                  <>
-                    {shownIncomeGroups.map((group) => (
-                      <IncomeGroupSection
-                        key={group.id}
-                        group={group}
-                        editingId={editingId}
-                        month={selectedMonth}
-                        onStartEdit={beforeStart ? () => undefined : setEditingId}
-                        onSave={handleSave}
-                        onCancel={() => setEditingId(null)}
-                        onApplyBulk={handleApplyBulk}
-                        showAll={showEvery}
-                      />
-                    ))}
-
-                    {/* Total Income row */}
-                    <tr className="bg-surface border-y border-border">
-                      <td className="py-2 px-4 text-sm font-bold text-text">Total income</td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
-                        {formatCurrency(incomeTotals.budgeted)}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text">
-                        {formatCurrency(incomeTotals.received)}
-                      </td>
-                      <td className="py-2 pl-3 pr-6" />
-                    </tr>
-                  </>
-                )}
-
-                {/* Expenses section header */}
-                <tr
-                  data-guide="budget.columns"
-                  className="bg-surface-alt border-y border-border cursor-pointer select-none hover:bg-hover transition-colors"
-                  onClick={() => setExpensesCollapsed((c) => !c)}
-                >
-                  <td className="py-2 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-text-tertiary shrink-0">
-                        {expensesCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                      </span>
-                      <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
-                        Expenses
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Assigned
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-semibold text-text-tertiary">
-                    Activity
-                  </td>
-                  <td className="py-2 pl-3 pr-6 text-right text-xs font-bold text-text">
-                    Available
-                  </td>
-                </tr>
-
-                {!expensesCollapsed && (
-                  <>
-                    {shownExpensesByType.map((bt) => (
-                      <BudgetTypeSection
-                        key={bt.key}
-                        label={bt.label}
-                        categories={bt.categories}
-                        editingId={editingId}
-                        month={selectedMonth}
-                        onStartEdit={beforeStart ? () => undefined : setEditingId}
-                        onSave={handleSave}
-                        onCancel={() => setEditingId(null)}
-                        onApplyBulk={handleApplyBulk}
-                        showAll={showEvery}
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelected}
-                      />
-                    ))}
-
-                    {/* Total Expenses row */}
-                    <tr className="bg-surface border-y border-border">
-                      <td className="py-2 px-4 text-sm font-bold text-text">Total expenses</td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
-                        {formatCurrency(expenseTotals.budgeted)}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
-                        {formatCurrency(expenseTotals.spent)}
-                      </td>
-                      <td
-                        className={`py-2 pl-3 pr-6 text-right tabular-nums text-sm font-semibold ${expBalColor}`}
-                      >
-                        {formatCurrency(expRemaining)}
-                      </td>
-                    </tr>
-                  </>
-                )}
-
-                {shownCardCategories.length > 0 && (
-                  <BudgetTypeSection
-                    label="Card payments"
-                    categories={shownCardCategories}
-                    editingId={editingId}
-                    month={selectedMonth}
-                    onStartEdit={beforeStart ? () => undefined : setEditingId}
-                    onSave={handleSave}
-                    onCancel={() => setEditingId(null)}
-                    onApplyBulk={handleApplyBulk}
-                    showAll
-                    cards={cardPositions}
-                  />
-                )}
-
-                {groups.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-16 text-center text-sm text-text-tertiary">
-                      No categories yet.{' '}
-                      <Link
-                        to="/settings?tab=categories"
-                        className="font-medium text-brand-600 hover:text-brand-700"
-                      >
-                        Add some in Settings
-                      </Link>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+            <Input
+              type="search"
+              fieldSize="sm"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find a category"
+              aria-label="Find a category"
+              className="w-full pl-8 pr-8 max-md:pr-11 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear category search"
+                className="absolute right-0 top-1/2 -translate-y-1/2 min-w-8 min-h-8 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center text-text-tertiary hover:text-text-secondary"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
-        {isPhone ? (
-          !needle && <div className="p-4 space-y-4">{sideExtras}</div>
-        ) : (
-          <div className="w-80 shrink-0 border-l border-border p-4 self-start sticky top-0">
-            <div className="flex flex-col">
-              {sideExtras}
-              {summaryPanel}
+        {!nothingPlanned && !beforeStart && (
+          <Tip
+            tip={TIPS.budgetCarry}
+            className={`py-3 border-b border-border-light shrink-0 ${PAGE_GUTTER}`}
+          />
+        )}
+        {nothingPlanned && !beforeStart && !(isPhone && needle) && (
+          <div
+            className={`flex items-start gap-3 py-3 bg-brand-50 border-b border-border-light text-sm text-text-secondary shrink-0 ${PAGE_GUTTER}`}
+          >
+            <Lightbulb size={16} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
+            <div>
+              <p>
+                No money assigned for {format(monthDate, 'MMMM')} yet. {isPhone ? 'Tap' : 'Click'}{' '}
+                an amount to give money you already have a job.
+              </p>
+              {!isPhone && (
+                <details className="mt-1">
+                  <summary className="cursor-pointer w-fit font-medium text-brand-600 hover:text-brand-700">
+                    How this works
+                  </summary>
+                  <p className="mt-1">
+                    Pay you’ve received is ready to assign straight away; the amounts beside income
+                    are only what you expect. What’s left in an envelope carries into next month.
+                    Envelopes you leave empty are tucked away once you’ve planned something.{' '}
+                    <GuideLink
+                      page="budgeting"
+                      className="font-medium text-brand-600 hover:text-brand-700"
+                    >
+                      Read the guide
+                    </GuideLink>
+                  </p>
+                </details>
+              )}
+              <RentOrOwn />
             </div>
           </div>
         )}
+
+        {(setBudgetMutation.error || setBulkMutation.error) && (
+          <AssignBlockError
+            error={(setBudgetMutation.error || setBulkMutation.error)!}
+            onResolved={() => {
+              setBudgetMutation.reset();
+              setBulkMutation.reset();
+            }}
+          />
+        )}
+        <MissingRatesBanner className="mx-6 mt-3 shrink-0" />
+        <AssistantSuggestions />
+        {beforeStart && (
+          <p role="status" className="mx-6 max-md:mx-4 mt-3 shrink-0 text-sm text-text-secondary">
+            This month is before your budget start. Activity is what you really spent, shown for
+            reference: nothing is assigned or carried, and it can't be edited. Its transactions are
+            also in your accounts and reports.{' '}
+            <Link to="/settings?tab=budget" className="text-brand-700 underline">
+              Budget start
+            </Link>
+          </p>
+        )}
+
+        {/* While the next month loads, the previous one stays (faded) so nothing jumps */}
+        <div
+          ref={scrollMemory}
+          aria-busy={switchingMonth}
+          inert={switchingMonth}
+          className={`flex max-md:flex-col flex-1 overflow-y-auto transition-opacity ${switchingMonth ? 'opacity-60 pointer-events-none' : ''}`}
+        >
+          {/* Phones (UX audit AU-002): a compact Ready to assign, then the envelopes, then the
+            month's inspector, card payments and moves; searching shows only the envelopes */}
+          {isPhone && !needle && <div className="px-4 pt-3">{summaryPanel}</div>}
+          <div
+            data-guide="budget.categories"
+            className="flex-1 max-md:flex-none max-md:overflow-x-auto"
+          >
+            {isPhone ? (
+              <PhoneBudget
+                // The envelopes you assign to first (UX audit AU-002); expected income after them
+                sections={[
+                  ...shownExpensesByType.map((bt) => ({
+                    key: bt.key,
+                    label: bt.label,
+                    isIncome: false,
+                    categories: bt.categories,
+                  })),
+                  ...(shownCardCategories.length
+                    ? [
+                        {
+                          key: 'card-payments',
+                          label: 'Card payments',
+                          isIncome: false,
+                          categories: shownCardCategories,
+                          always: true,
+                        },
+                      ]
+                    : []),
+                  ...shownIncomeGroups.map((g) => ({
+                    key: g.id,
+                    label: g.name,
+                    isIncome: true,
+                    categories: g.categories,
+                  })),
+                ]}
+                cards={cardPositions}
+                month={selectedMonth}
+                onSave={handleSave}
+                onApplyBulk={handleApplyBulk}
+                showAll={showEvery}
+                readOnly={beforeStart}
+              />
+            ) : (
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col />
+                  <col style={{ width: '6.75rem' }} />
+                  {/* Activity holds "-$1,150 expected" on one line, so rows stay one height */}
+                  <col style={{ width: '8rem' }} />
+                  <col style={{ width: '6.75rem' }} />
+                </colgroup>
+                <tbody>
+                  {/* Income section header */}
+                  <tr
+                    className="group cursor-pointer select-none"
+                    onClick={() => setIncomeCollapsed((c) => !c)}
+                  >
+                    <td className={`${BAND} py-2 px-4`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary shrink-0">
+                          {incomeCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                        </span>
+                        <span className="text-xs font-semibold text-text-secondary">Income</span>
+                      </div>
+                    </td>
+                    <td
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
+                      title="What you expect to earn. It's a plan, not money: only income you've received is ready to assign."
+                    >
+                      Expected
+                    </td>
+                    <td
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
+                    >
+                      Received
+                    </td>
+                    <td className={`${BAND} py-2 pl-3 pr-6 text-right text-xs font-bold text-text`}>
+                      Still to come
+                    </td>
+                  </tr>
+
+                  {!incomeCollapsed && (
+                    <>
+                      {shownIncomeGroups.map((group) => (
+                        <IncomeGroupSection
+                          key={group.id}
+                          group={group}
+                          editingId={editingId}
+                          month={selectedMonth}
+                          onStartEdit={beforeStart ? undefined : setEditingId}
+                          onSave={handleSave}
+                          onCancel={() => setEditingId(null)}
+                          onApplyBulk={handleApplyBulk}
+                          showAll={showEvery}
+                        />
+                      ))}
+
+                      {/* Total Income row */}
+                      <tr className="bg-surface border-y border-border">
+                        <td className="py-2 px-4 text-sm font-bold text-text">Total income</td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
+                          {formatCurrency(incomeTotals.budgeted)}
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text">
+                          {formatCurrency(incomeTotals.received)}
+                        </td>
+                        <td
+                          className={`py-2 pl-3 pr-6 text-right tabular-nums text-sm font-semibold ${incomeTotals.budgeted > incomeTotals.received ? 'text-positive' : 'text-text-tertiary'}`}
+                        >
+                          {formatCurrency(
+                            Math.max(incomeTotals.budgeted - incomeTotals.received, 0),
+                          )}
+                        </td>
+                      </tr>
+                    </>
+                  )}
+
+                  {/* Expenses section header */}
+                  <tr
+                    data-guide="budget.columns"
+                    className="group cursor-pointer select-none"
+                    onClick={() => setExpensesCollapsed((c) => !c)}
+                  >
+                    <td className={`${BAND} py-2 px-4`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary shrink-0">
+                          {expensesCollapsed ? (
+                            <ChevronRight size={14} />
+                          ) : (
+                            <ChevronDown size={14} />
+                          )}
+                        </span>
+                        <span className="text-xs font-semibold text-text-secondary">Expenses</span>
+                        <button
+                          type="button"
+                          aria-pressed={selectMode}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelectMode();
+                          }}
+                          title="Tick envelopes to see only those in the side panel"
+                          className={`ml-2 rounded-md px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${selectMode ? 'bg-brand-50 text-brand-700' : 'border border-border text-text-secondary hover:bg-hover hover:text-text'}`}
+                        >
+                          {selectMode ? 'Done selecting' : 'Select'}
+                        </button>
+                      </div>
+                    </td>
+                    <td
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
+                    >
+                      Assigned
+                    </td>
+                    <td
+                      className={`${BAND} py-2 px-3 text-right text-xs font-semibold text-text-tertiary`}
+                    >
+                      Activity
+                    </td>
+                    <td className={`${BAND} py-2 pl-3 pr-6 text-right text-xs font-bold text-text`}>
+                      Available
+                    </td>
+                  </tr>
+
+                  {!expensesCollapsed && (
+                    <>
+                      {shownExpensesByType.map((bt) => (
+                        <BudgetTypeSection
+                          key={bt.key}
+                          label={bt.label}
+                          categories={bt.categories}
+                          editingId={editingId}
+                          month={selectedMonth}
+                          onStartEdit={beforeStart ? undefined : setEditingId}
+                          onSave={handleSave}
+                          onCancel={() => setEditingId(null)}
+                          onApplyBulk={handleApplyBulk}
+                          showAll={showEvery}
+                          selectedIds={selectedIds}
+                          onToggleSelect={selectMode ? toggleSelected : undefined}
+                        />
+                      ))}
+
+                      {/* Total Expenses row */}
+                      <tr className="bg-surface border-y border-border">
+                        <td className="py-2 px-4 text-sm font-bold text-text">Total expenses</td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
+                          {formatCurrency(expenseTotals.budgeted)}
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums text-sm font-semibold text-text-secondary">
+                          {formatCurrency(expenseTotals.spent)}
+                        </td>
+                        <td
+                          className={`py-2 pl-3 pr-6 text-right tabular-nums text-sm font-semibold ${expBalColor}`}
+                        >
+                          {formatCurrency(expRemaining)}
+                        </td>
+                      </tr>
+                    </>
+                  )}
+
+                  {shownCardCategories.length > 0 && (
+                    <BudgetTypeSection
+                      label="Card payments"
+                      categories={shownCardCategories}
+                      editingId={editingId}
+                      month={selectedMonth}
+                      onStartEdit={beforeStart ? undefined : setEditingId}
+                      onSave={handleSave}
+                      onCancel={() => setEditingId(null)}
+                      onApplyBulk={handleApplyBulk}
+                      showAll
+                      cards={cardPositions}
+                    />
+                  )}
+
+                  {groups.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-16 text-center text-sm text-text-tertiary">
+                        No categories yet.{' '}
+                        <Link
+                          to={CATEGORIES_PATH}
+                          className="font-medium text-brand-600 hover:text-brand-700"
+                        >
+                          Set up your categories
+                        </Link>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {isPhone ? (
+            !needle && <div className="p-4 space-y-4">{sideExtras}</div>
+          ) : (
+            <div className="w-80 shrink-0 border-l border-border p-4 self-start sticky top-0">
+              {/* Ready to assign leads: it is the next step for the whole month */}
+              <div className="flex flex-col gap-4">
+                <div>{summaryPanel}</div>
+                {sideExtras}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

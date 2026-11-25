@@ -1,3 +1,4 @@
+import { chooseOption, setToggle } from '../fixtures';
 import fs from 'fs';
 import { test, expect, type Page } from '@playwright/test';
 import { SERVER_PORT } from '../../ports';
@@ -174,7 +175,7 @@ test('bill reminders say they need Home Assistant, and a schedule cannot ask for
 
   await owner.goto(`${baseURL}/recurring`);
   await owner.getByRole('main').getByRole('button', { name: 'Add recurring' }).first().click();
-  const lead = owner.getByLabel('Remind me');
+  const lead = owner.getByRole('button', { name: 'Remind me' });
   await expect(lead).toBeDisabled();
   await expect(owner.getByRole('dialog')).toContainText(
     'Reminders need Allotment to run as a Home Assistant app',
@@ -230,7 +231,10 @@ test('an organise token proposes a rule that waits for the owner to turn it on',
   await owner.goto(`${baseURL}/settings?tab=server`);
   const section = owner.getByRole('heading', { name: 'Access tokens' }).locator('..');
   await section.getByPlaceholder('e.g. Claude').fill('Organiser');
-  await section.getByLabel('Access').selectOption('organise');
+  await chooseOption(
+    section.getByRole('button', { name: /Access/ }),
+    'Read, categorise and organise',
+  );
   await section.getByRole('button', { name: 'Create token' }).click();
   const token = (await section.getByRole('status').locator('code').first().textContent())!;
   const api = await playwright.request.newContext({
@@ -434,7 +438,9 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   // A new transaction waits on the device, even across a reload
   await owner.getByRole('button', { name: 'Add Transaction' }).click();
   const form = owner.getByRole('form', { name: 'New transaction' });
-  await form.getByRole('textbox', { name: 'Payee' }).fill('Coffee Cart');
+  await form.getByRole('combobox', { name: 'Payee' }).fill('Coffee Cart');
+  // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+  await form.getByRole('combobox', { name: 'Payee' }).press('Tab');
   await form.getByRole('textbox', { name: 'Outflow' }).fill('4.75');
   await form.getByRole('button', { name: 'Save' }).click();
   const waiting = owner.getByRole('region', { name: 'Saved on this device' });
@@ -454,12 +460,44 @@ test('with the server unreachable, the app opens with the offline copy and keeps
   expect(all.filter((t: { payeeName: string }) => t.payeeName === 'Coffee Cart')).toHaveLength(1);
 });
 
+test('offline, search still opens: its code was kept while connected', async ({ baseURL }) => {
+  await owner.goto(`${baseURL}/budget`);
+  await owner.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+  await expect.poll(() => owner.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  // Fetched in the background once the app settles, without opening Search, and kept by the
+  // service worker
+  await expect
+    .poll(
+      () =>
+        owner.evaluate(async () => {
+          for (const name of await caches.keys())
+            for (const req of await (await caches.open(name)).keys())
+              if (/\/assets\/CommandPalette-[^/]+\.js$/.test(req.url)) return true;
+          return false;
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+
+  // Opened fresh with no network at all
+  await owner.context().setOffline(true);
+  await owner.goto(`${baseURL}/budget`);
+  await expect(owner.getByRole('status', { name: 'Ready to assign' })).toBeVisible();
+  await owner.keyboard.press('ControlOrMeta+k');
+  const palette = owner.getByRole('dialog', { name: 'Search' });
+  await expect(palette.getByRole('combobox')).toBeFocused();
+  await palette.getByRole('combobox').fill('credit');
+  await expect(palette.getByRole('option', { name: 'Credit Union' })).toBeVisible();
+  await owner.keyboard.press('Escape');
+  await owner.context().setOffline(false);
+});
+
 test('the offline copy can be turned off, and signing out deletes it', async ({ baseURL }) => {
   await owner.goto(`${baseURL}/settings?tab=server`);
   const keep = owner.getByRole('checkbox', { name: /Keep a copy of my budget on this device/ });
   await expect(keep).toBeChecked();
   await expect.poll(() => offlineCopy(owner)).not.toBeNull();
-  await keep.uncheck();
+  await setToggle(keep, false);
   await expect.poll(() => offlineCopy(owner)).toBeNull();
   // Nothing is saved while it's off, even as data loads
   await owner.goto(`${baseURL}/budget`);
@@ -468,7 +506,7 @@ test('the offline copy can be turned off, and signing out deletes it', async ({ 
   expect(await offlineCopy(owner)).toBeNull();
 
   await owner.goto(`${baseURL}/settings?tab=server`);
-  await keep.check();
+  await setToggle(keep);
   await owner.goto(`${baseURL}/budget`);
   await expect.poll(() => offlineCopy(owner)).not.toBeNull();
 

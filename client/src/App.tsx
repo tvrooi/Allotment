@@ -7,6 +7,7 @@ import DashboardPage from './pages/Dashboard';
 import BudgetPage from './pages/Budget';
 import TransactionsPage from './pages/Transactions';
 import { useSafeMode } from './utils/safeMode';
+import { CATEGORIES_PATH, CONNECTED_BANKS_PATH } from './utils/movedSections';
 
 // Audit F-11: only the three pages people open first are in the main bundle; every other page
 // is its own chunk, loaded when it is first opened. The app shell stays drawn while it loads.
@@ -14,12 +15,15 @@ const WelcomePage = lazy(() => import('./pages/Welcome'));
 const HouseholdPage = lazy(() => import('./pages/Household'));
 const PaymentPlansPage = lazy(() => import('./pages/PaymentPlans'));
 const AccountsPage = lazy(() => import('./pages/Accounts'));
+const AccountConnectionsPage = lazy(() => import('./pages/AccountConnections'));
 const AccountTransactionsPage = lazy(() => import('./pages/AccountTransactions'));
 const AnnualBudgetPage = lazy(() => import('./pages/AnnualBudget'));
+const BudgetCategoriesPage = lazy(() => import('./pages/BudgetCategories'));
 const ReportsPage = lazy(() => import('./pages/Reports'));
 const CustomReportBuilder = lazy(() => import('./pages/CustomReportBuilder'));
 const ReportWidgetView = lazy(() => import('./pages/ReportWidgetView'));
 const PayeesPage = lazy(() => import('./pages/Payees'));
+const PayeeDetailPage = lazy(() => import('./pages/PayeeDetail'));
 const RulesPage = lazy(() => import('./pages/Rules'));
 const ReconcilePage = lazy(() => import('./pages/ReconcilePage'));
 const RecurringTransactionsPage = lazy(() => import('./pages/RecurringTransactions'));
@@ -33,6 +37,10 @@ const ReviewPage = lazy(() => import('./pages/Review'));
 const GuidePage = lazy(() => import('./pages/Guide'));
 const CashFlowPage = lazy(() => import('./pages/CashFlow'));
 const CategoryDetailPage = lazy(() => import('./pages/CategoryDetail'));
+// Development only: the dev server and the gallery build (vite.config.ts swaps it for an empty
+// stub in every other build, and this flag is false there too)
+const DevControlsGallery = lazy(() => import('./pages/DevControlsGallery'));
+const GALLERY_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'gallery';
 
 function PageLoading() {
   return (
@@ -59,6 +67,14 @@ export default function App() {
   // Safe mode hiding every amount does it in the money formatters: drawing the routes again
   // re-renders every page with them, without remounting (unsaved edits stay)
   useSafeMode();
+  // The controls gallery needs no sign-in, server or budget, so it sits outside them all
+  if (GALLERY_ENABLED && window.location.pathname === '/dev/controls') {
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <DevControlsGallery />
+      </Suspense>
+    );
+  }
   return (
     <AuthGate>
       <Router>
@@ -70,8 +86,10 @@ export default function App() {
             <Route path="/budget" element={<BudgetPage />} />
             <Route path="/budget/year" element={page(AnnualBudgetPage)} />
             <Route path="/budget/year/:year" element={page(AnnualBudgetPage)} />
+            <Route path={CATEGORIES_PATH} element={page(BudgetCategoriesPage)} />
             <Route path="/budget/category/:id" element={page(CategoryDetailPage)} />
             <Route path="/accounts" element={page(AccountsPage)} />
+            <Route path={CONNECTED_BANKS_PATH} element={page(AccountConnectionsPage)} />
             <Route path="/accounts/:id/reconcile" element={page(ReconcilePage)} />
             <Route path="/accounts/:id" element={page(AccountTransactionsPage)} />
             <Route path="/transactions" element={<TransactionsPage />} />
@@ -84,6 +102,7 @@ export default function App() {
             <Route path="/reports/custom/:id" element={page(CustomReportBuilder)} />
             <Route path="/reports/widget/:id" element={page(ReportWidgetView)} />
             <Route path="/payees" element={page(PayeesPage)} />
+            <Route path="/payees/:id" element={page(PayeeDetailPage)} />
             <Route path="/rules" element={page(RulesPage)} />
             <Route path="/settings" element={page(SettingsPage)} />
             <Route path="/goals" element={page(GoalsPage)} />

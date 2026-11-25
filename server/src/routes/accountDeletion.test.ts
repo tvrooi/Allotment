@@ -110,7 +110,7 @@ it('refuses while a bank feed supplies the account, and says how to unlink', asy
     confirmName: 'Everyday (CSV)',
   });
   expect(res.status).toBe(409);
-  expect(res.body.error).toMatch(/linked to Up\. Unlink it first: Settings → Connections → Up/);
+  expect(res.body.error).toMatch(/linked to Up\. Unlink it first: Accounts → Connected banks → Up/);
   expect(count('dup')).toBe(1);
   expect(db.select().from(accounts).all()).toHaveLength(2);
 });

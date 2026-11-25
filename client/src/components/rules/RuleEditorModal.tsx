@@ -4,14 +4,24 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
+import { Combobox } from '../ui/Combobox';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
+import { NumberField } from '../ui/NumberField';
+import { Select } from '../ui/Select';
+import { fieldBase, fieldStates } from '../ui/fieldClasses';
+import { percentRangeMessage } from '../ui/fieldMessages';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { MerchantSelect } from '../transactions/MerchantSelect';
-import { OptionPicker, type PickerOption } from './OptionPicker';
+import { OptionPicker, type OptionPickerKind, type PickerOption } from './OptionPicker';
 import { useRuleLookups } from './useRuleLookups';
 import { testConditions } from '../../api/rules';
 import { useDebounce } from '../../hooks/useDebounce';
+import { newClientId } from '../../utils/offline';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { formatCurrency } from '../../utils/currency';
@@ -38,8 +48,32 @@ import type {
 } from '../../types';
 import { formatDay } from '../../utils/dates';
 
-const fieldClass =
-  'text-sm border border-border rounded-lg px-2 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-400';
+const NONE_OPTION = '__none__';
+
+const CONDITIONS_OP_OPTIONS = [
+  { value: 'and', label: 'all' },
+  { value: 'or', label: 'any' },
+] as const;
+
+const FIELD_OPTIONS = CONDITION_FIELDS.map((f) => ({ value: f.value, label: f.label }));
+
+const DIRECTION_OPTIONS = [
+  { value: 'outflow', label: 'Is an outflow' },
+  { value: 'inflow', label: 'Is an inflow' },
+] as const;
+
+const ACTION_OPTIONS = ACTION_TYPES.map((t) => ({ value: t.value, label: t.label }));
+
+const TAX_LABEL_OPTIONS = Object.entries(TAX_LABEL_NAMES).map(([label, name]) => ({
+  value: label,
+  label: `${label} ${name}`,
+}));
+
+const SPLIT_KIND_OPTIONS = [
+  { value: 'fixed', label: 'Amount' },
+  { value: 'percent', label: 'Percent' },
+  { value: 'remainder', label: 'Remainder' },
+] as const;
 
 interface Props {
   isOpen: boolean;
@@ -87,15 +121,14 @@ export function RuleEditorModal({
           <section>
             <div className="flex items-center gap-2 mb-2 text-sm text-text-secondary">
               <span className="font-medium">If</span>
-              <select
-                value={conditionsOp}
-                onChange={(e) => setConditionsOp(e.target.value as 'and' | 'or')}
-                className={`${fieldClass} py-1`}
+              <Select
                 aria-label="How conditions combine"
-              >
-                <option value="and">all</option>
-                <option value="or">any</option>
-              </select>
+                fieldSize="sm"
+                options={CONDITIONS_OP_OPTIONS}
+                value={conditionsOp}
+                onChange={(v) => setConditionsOp(v as 'and' | 'or')}
+                className="w-20"
+              />
               <span>of these conditions match</span>
             </div>
             <div className="space-y-2">
@@ -148,15 +181,13 @@ export function RuleEditorModal({
           <MatchPreview conditionsOp={conditionsOp} conditions={conditions} options={options} />
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-border-light">
-            <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-              <input
-                type="checkbox"
-                checked={applyExisting}
-                onChange={(e) => setApplyExisting(e.target.checked)}
-                className="h-4 w-4 rounded border-border accent-brand-600"
-              />
+            <Checkbox
+              checked={applyExisting}
+              onCheckedChange={setApplyExisting}
+              className="text-text-secondary"
+            >
               Apply to existing transactions after saving
-            </label>
+            </Checkbox>
             <div className="flex items-center gap-3 ml-auto">
               <SavingPausedHint />
               <Button variant="secondary" onClick={onClose}>
@@ -191,39 +222,32 @@ function ConditionRow({
 }) {
   const fieldDef = CONDITION_FIELDS.find((f) => f.value === c.field)!;
   const hint = FIELD_HINTS[c.field];
+  const opOptions = fieldDef.ops.map((op) => ({ value: op, label: opLabel(c.field, op) }));
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <select
-        value={c.field}
-        title={hint}
-        onChange={(e) => {
-          const field = e.target.value as RuleConditionField;
-          const ops = CONDITION_FIELDS.find((f) => f.value === field)!.ops;
-          onChange(makeCondition(field, ops.includes(c.op) ? c.op : ops[0], c));
-        }}
-        className={`${fieldClass} w-44`}
-        aria-label="Field"
-      >
-        {CONDITION_FIELDS.map((f) => (
-          <option key={f.value} value={f.value}>
-            {f.label}
-          </option>
-        ))}
-      </select>
+      <div title={hint} className="w-44">
+        <Select
+          aria-label="Field"
+          fieldSize="sm"
+          options={FIELD_OPTIONS}
+          value={c.field}
+          onChange={(v) => {
+            const field = v as RuleConditionField;
+            const ops = CONDITION_FIELDS.find((f) => f.value === field)!.ops;
+            onChange(makeCondition(field, ops.includes(c.op) ? c.op : ops[0], c));
+          }}
+        />
+      </div>
       {c.field !== 'direction' && (
-        <select
-          value={c.op}
-          onChange={(e) => onChange(makeCondition(c.field, e.target.value as RuleConditionOp, c))}
-          className={`${fieldClass} w-40`}
+        <Select
           aria-label="Operator"
-        >
-          {fieldDef.ops.map((op) => (
-            <option key={op} value={op}>
-              {opLabel(c.field, op)}
-            </option>
-          ))}
-        </select>
+          fieldSize="sm"
+          options={opOptions}
+          value={c.op}
+          onChange={(v) => onChange(makeCondition(c.field, v as RuleConditionOp, c))}
+          className="w-40"
+        />
       )}
       <div className="flex-1 min-w-48 flex gap-2 items-center">
         <ConditionValue condition={c} options={options} onChange={onChange} />
@@ -254,87 +278,109 @@ function ConditionValue({
 
   if (c.field === 'direction') {
     return (
-      <select
+      <Select
+        aria-label="Direction"
+        fieldSize="sm"
+        options={DIRECTION_OPTIONS}
         value={c.value}
-        onChange={(e) => set(e.target.value)}
-        className={`${fieldClass} w-40`}
-      >
-        <option value="outflow">Is an outflow</option>
-        <option value="inflow">Is an inflow</option>
-      </select>
+        onChange={set}
+        className="w-40"
+      />
     );
   }
   if (c.field === 'amount') {
-    const money = (value: number, onValue: (n: number) => void) => (
-      <CurrencyInput value={value} onChange={onValue} className={`${fieldClass} w-full`} />
+    const money = (value: number, onValue: (n: number) => void, ariaLabel: string) => (
+      <CurrencyInput
+        value={value}
+        onChange={onValue}
+        fieldSize="sm"
+        aria-label={ariaLabel}
+        className="w-full"
+      />
     );
     if (Array.isArray(c.value)) {
       const [lo, hi] = c.value;
       return (
         <>
-          {money(lo, (n) => set([n, hi]))}
+          {money(lo, (n) => set([n, hi]), 'Minimum amount')}
           <span className="text-xs text-text-tertiary">and</span>
-          {money(hi, (n) => set([lo, n]))}
+          {money(hi, (n) => set([lo, n]), 'Maximum amount')}
         </>
       );
     }
-    return money(c.value, set);
+    return money(c.value, set, 'Amount');
   }
   if (c.field === 'date') {
-    const input = (value: string, onValue: (v: string) => void) => (
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onValue(e.target.value)}
-        className={`${fieldClass} w-full`}
-      />
+    const picker = (value: string, onValue: (v: string) => void, label: string) => (
+      <DatePicker label={label} hideLabel fieldSize="sm" value={value} onChange={onValue} />
     );
     if (Array.isArray(c.value)) {
       const [a, b] = c.value;
       return (
         <>
-          {input(a, (v) => set([v, b]))}
+          {picker(a, (v) => set([v, b]), 'Start date')}
           <span className="text-xs text-text-tertiary">and</span>
-          {input(b, (v) => set([a, v]))}
+          {picker(b, (v) => set([a, v]), 'End date')}
         </>
       );
     }
-    return input(c.value, set);
+    return picker(c.value, set, 'Date');
   }
 
-  const idOptions: Record<string, PickerOption[]> = {
-    payee: options.payeeOptions,
-    account: options.accountOptions,
-    category: options.categoryOptions,
+  const idFields: Record<
+    string,
+    { options: PickerOption[]; kind: OptionPickerKind; label: string }
+  > = {
+    payee: { options: options.payeeOptions, kind: 'payee', label: 'Payee' },
+    account: { options: options.accountOptions, kind: 'account', label: 'Account' },
+    category: { options: options.categoryOptions, kind: 'category', label: 'Category' },
   };
-  const pickFrom = idOptions[c.field];
+  const pickFrom = idFields[c.field];
   if (pickFrom) {
     return Array.isArray(c.value) ? (
       <OptionPicker
         multiple
-        options={pickFrom}
+        kind={pickFrom.kind}
+        label={pickFrom.label}
+        options={pickFrom.options}
         value={c.value}
         onChange={set}
         placeholder="Choose one or more…"
       />
     ) : (
-      <OptionPicker options={pickFrom} value={c.value} onChange={set} placeholder="Choose…" />
+      <OptionPicker
+        kind={pickFrom.kind}
+        label={pickFrom.label}
+        options={pickFrom.options}
+        value={c.value}
+        onChange={set}
+        placeholder="Choose…"
+      />
     );
   }
   if (Array.isArray(c.value)) return <TagInput value={c.value} onChange={set} />;
   return (
-    <input
-      value={c.value}
-      onChange={(e) => set(e.target.value)}
-      placeholder={c.op === 'regex' ? 'e.g. ^(amzn|amazon)' : 'Text…'}
-      maxLength={c.op === 'regex' ? 200 : 500}
-      className={`${fieldClass} w-full ${c.op === 'regex' ? 'font-mono' : ''}`}
-    />
+    <Field label="Match value" className="w-full [&>label]:sr-only">
+      <Input
+        fieldSize="sm"
+        value={c.value}
+        onChange={(e) => set(e.target.value)}
+        placeholder={c.op === 'regex' ? 'e.g. ^(amzn|amazon)' : 'Text…'}
+        maxLength={c.op === 'regex' ? 200 : 500}
+        className={`w-full ${c.op === 'regex' ? 'font-mono' : ''}`}
+      />
+    </Field>
   );
 }
 
 /** Free-text list: Enter or comma adds an entry, Backspace on an empty box removes the last */
-function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+export function TagInput({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
   const [draft, setDraft] = useState('');
   const add = () => {
     const t = draft.trim();
@@ -343,7 +389,7 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
   };
   return (
     <div
-      className={`${fieldClass} w-full flex flex-wrap items-center gap-1 py-1 focus-within:ring-1 focus-within:ring-brand-400`}
+      className={`${fieldBase} ${fieldStates} w-full min-h-8 max-md:min-h-11 flex flex-wrap items-center gap-1 py-1 focus-within:border-brand-600 focus-within:ring-1 focus-within:ring-brand-600`}
     >
       {value.map((v) => (
         <span
@@ -361,7 +407,9 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
           </button>
         </span>
       ))}
-      <input
+      <Input
+        fieldSize="sm"
+        aria-label="Match values"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
@@ -374,7 +422,7 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
         }}
         onBlur={add}
         placeholder={value.length ? '' : 'Type and press Enter…'}
-        className="flex-1 min-w-24 bg-transparent outline-none text-sm py-0.5"
+        className="flex-1 min-w-24 h-6! min-h-0! border-0! bg-transparent! px-0! py-0.5! focus:ring-0!"
       />
     </div>
   );
@@ -395,18 +443,14 @@ function ActionRow({
   return (
     <div className="rounded-lg">
       <div className="flex flex-wrap items-start gap-2">
-        <select
-          value={a.type}
-          onChange={(e) => onChange(makeAction(e.target.value as RuleAction['type'], a))}
-          className={`${fieldClass} w-52`}
+        <Select
           aria-label="Action"
-        >
-          {ACTION_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+          fieldSize="sm"
+          options={ACTION_OPTIONS}
+          value={a.type}
+          onChange={(v) => onChange(makeAction(v as RuleAction['type'], a))}
+          className="w-52"
+        />
         <div className="flex-1 min-w-48">
           {a.type === 'set_category' && (
             <CategorySelectButton
@@ -423,31 +467,33 @@ function ActionRow({
             />
           )}
           {(a.type === 'set_notes' || a.type === 'prepend_notes' || a.type === 'append_notes') && (
-            <input
-              value={a.value}
-              onChange={(e) => onChange({ ...a, value: e.target.value })}
-              placeholder={
-                a.type === 'set_notes' ? 'Leave empty to clear notes' : 'e.g. #business '
-              }
-              maxLength={5000}
-              className={`${fieldClass} w-full`}
-            />
+            <Field label="Notes text" className="w-full [&>label]:sr-only">
+              <Input
+                fieldSize="sm"
+                value={a.value}
+                onChange={(e) => onChange({ ...a, value: e.target.value })}
+                placeholder={
+                  a.type === 'set_notes' ? 'Leave empty to clear notes' : 'e.g. #business '
+                }
+                maxLength={5000}
+                className="w-full"
+              />
+            </Field>
           )}
           {a.type === 'add_tag' &&
             (tagOptions.length ? (
-              <select
-                value={a.value}
-                onChange={(e) => onChange({ ...a, value: e.target.value })}
-                className={`${fieldClass} w-full`}
+              <Combobox
                 aria-label="Tag"
-              >
-                <option value="">Choose a tag…</option>
-                {tagOptions.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+                fieldSize="sm"
+                items={[
+                  { value: NONE_OPTION, label: 'Choose a tag…' },
+                  ...tagOptions.map((t) => ({ value: t.id, label: t.label })),
+                ]}
+                value={a.value || NONE_OPTION}
+                onChange={(v) => {
+                  if (v) onChange({ ...a, value: v === NONE_OPTION ? '' : v });
+                }}
+              />
             ) : (
               <p className="text-xs text-text-tertiary pt-2">
                 Create a tag first in Settings → Tags or a transaction's details.
@@ -456,19 +502,18 @@ function ActionRow({
           {a.type === 'share_with_household' &&
             (householdOptions.length ? (
               <>
-                <select
-                  value={a.value}
-                  onChange={(e) => onChange({ ...a, value: e.target.value })}
-                  className={`${fieldClass} w-full`}
+                <Combobox
                   aria-label="Household"
-                >
-                  <option value="">Choose a household…</option>
-                  {householdOptions.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.label}
-                    </option>
-                  ))}
-                </select>
+                  fieldSize="sm"
+                  items={[
+                    { value: NONE_OPTION, label: 'Choose a household…' },
+                    ...householdOptions.map((h) => ({ value: h.id, label: h.label })),
+                  ]}
+                  value={a.value || NONE_OPTION}
+                  onChange={(v) => {
+                    if (v) onChange({ ...a, value: v === NONE_OPTION ? '' : v });
+                  }}
+                />
                 <p className="text-xs text-text-tertiary pt-1">
                   Money out becomes a shared household expense, with the household's default split.
                 </p>
@@ -478,18 +523,13 @@ function ActionRow({
             ))}
           {a.type === 'claim_tax_deduction' && (
             <>
-              <select
-                value={a.value}
-                onChange={(e) => onChange({ ...a, value: e.target.value })}
-                className={`${fieldClass} w-full`}
+              <Select
                 aria-label="Tax return label"
-              >
-                {Object.entries(TAX_LABEL_NAMES).map(([label, name]) => (
-                  <option key={label} value={label}>
-                    {label} {name}
-                  </option>
-                ))}
-              </select>
+                fieldSize="sm"
+                options={TAX_LABEL_OPTIONS}
+                value={a.value}
+                onChange={(v) => onChange({ ...a, value: v })}
+              />
               <p className="text-xs text-text-tertiary pt-1">
                 Money out is claimed in full under this label; change the work-use share on the
                 transaction. A claim you made yourself is never replaced.
@@ -520,13 +560,22 @@ function ActionRow({
   );
 }
 
-function SplitEditor({
+// newClientId uses crypto.getRandomValues, which plain-HTTP self-hosted origins have; randomUUID needs a secure context
+const newRowKey = () => newClientId();
+
+export function SplitEditor({
   parts,
   onChange,
 }: {
   parts: RuleSplitPart[];
   onChange: (p: RuleSplitPart[]) => void;
 }) {
+  const [keys, setKeys] = useState<string[]>(() => parts.map(newRowKey));
+  if (keys.length < parts.length) {
+    setKeys([...keys, ...Array.from({ length: parts.length - keys.length }, newRowKey)]);
+  } else if (keys.length > parts.length) {
+    setKeys(keys.slice(0, parts.length));
+  }
   const set = (i: number, patch: Partial<RuleSplitPart>) =>
     onChange(parts.map((p, j) => (j === i ? { ...p, ...patch } : p)));
   const pctTotal = parts.filter((p) => p.kind === 'percent').reduce((s, p) => s + p.value, 0);
@@ -535,48 +584,46 @@ function SplitEditor({
   return (
     <div className="mt-2 ml-2 pl-4 border-l-2 border-border-light space-y-2">
       {parts.map((p, i) => (
-        <div key={i} className="flex flex-wrap items-center gap-2">
-          <select
+        <div key={keys[i] ?? i} className="flex flex-wrap items-start gap-2">
+          <Select
+            aria-label="Split amount type"
+            fieldSize="sm"
+            options={SPLIT_KIND_OPTIONS}
             value={p.kind}
-            onChange={(e) => {
-              const kind = e.target.value as RuleSplitPart['kind'];
+            onChange={(v) => {
+              const kind = v as RuleSplitPart['kind'];
               set(i, { kind, value: kind === 'percent' ? 50 : 0 });
             }}
-            className={`${fieldClass} w-32`}
-            aria-label="Split amount type"
-          >
-            <option value="fixed">Amount</option>
-            <option value="percent">Percent</option>
-            <option value="remainder">Remainder</option>
-          </select>
+            className="w-32"
+          />
           <div className="w-28">
             {p.kind === 'fixed' && (
               <CurrencyInput
                 value={p.value}
                 onChange={(n) => set(i, { value: n })}
-                className={`${fieldClass} w-full`}
+                fieldSize="sm"
+                aria-label="Split amount"
+                className="w-full"
               />
             )}
             {p.kind === 'percent' && (
-              <div className="relative">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="any"
-                  value={p.value}
-                  onChange={(e) =>
-                    set(i, { value: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })
-                  }
-                  className={`${fieldClass} w-full pr-6`}
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-text-tertiary">
-                  %
-                </span>
-              </div>
+              <NumberField
+                label="Split percentage"
+                value={p.value}
+                onChange={(n) => {
+                  if (n !== null) set(i, { value: n });
+                }}
+                min={0}
+                max={100}
+                allowDecimal
+                suffix="%"
+                fieldSize="sm"
+                errorMessage={percentRangeMessage(0, 100)}
+                className="w-full [&>label]:sr-only"
+              />
             )}
             {p.kind === 'remainder' && (
-              <span className="text-xs text-text-tertiary">What's left</span>
+              <span className="flex h-8 items-center text-xs text-text-tertiary">What's left</span>
             )}
           </div>
           <div className="flex-1 min-w-40">
@@ -586,16 +633,22 @@ function SplitEditor({
               placeholder="Category…"
             />
           </div>
-          <input
-            value={p.notes ?? ''}
-            onChange={(e) => set(i, { notes: e.target.value || null })}
-            placeholder="Notes"
-            maxLength={5000}
-            className={`${fieldClass} w-32`}
-          />
+          <Field label="Split notes" className="w-32 [&>label]:sr-only">
+            <Input
+              fieldSize="sm"
+              value={p.notes ?? ''}
+              onChange={(e) => set(i, { notes: e.target.value || null })}
+              placeholder="Notes"
+              maxLength={5000}
+              className="w-full"
+            />
+          </Field>
           <button
             type="button"
-            onClick={() => onChange(parts.filter((_, j) => j !== i))}
+            onClick={() => {
+              setKeys((ks) => ks.filter((_, j) => j !== i));
+              onChange(parts.filter((_, j) => j !== i));
+            }}
             disabled={parts.length === 1}
             className="p-1.5 text-text-tertiary hover:text-negative disabled:opacity-30 transition-colors cursor-pointer"
             aria-label="Remove split"
@@ -607,7 +660,10 @@ function SplitEditor({
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={() => onChange([...parts, newSplitPart(hasRemainder ? 'fixed' : 'remainder')])}
+          onClick={() => {
+            setKeys((ks) => [...ks, newRowKey()]);
+            onChange([...parts, newSplitPart(hasRemainder ? 'fixed' : 'remainder')]);
+          }}
           className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 cursor-pointer"
         >
           <Plus size={12} /> Add split

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useCanSave } from '../../hooks/useConnection';
 import { useFormReset } from '../../hooks/useFormReset';
@@ -10,7 +11,11 @@ import { formatDay } from '../../utils/dates';
 import type { TransactionQueryParams } from '../../types';
 
 interface Props {
+  /** The register's list the selection is within */
   params: TransactionQueryParams;
+  /** Hand-picked rows within it (or, after Select all, the rows left out) */
+  ids?: string[];
+  excludeIds?: string[];
   isOpen: boolean;
   onClose: () => void;
 }
@@ -18,11 +23,11 @@ interface Props {
 const CONFIRM_WORD = 'delete';
 
 /**
- * Delete every transaction in the register's list. It first asks the server what would go (and
- * what is left alone: reconciled rows and ones tied to a household entry), shows the count and a
- * sample, and needs the word "delete" typed, because a deleted row cannot be brought back whole.
+ * Delete the register's selection. It first asks the server what would go (and what is left
+ * alone: reconciled rows and ones tied to a household entry), shows the count and a sample, and
+ * needs the word "delete" typed, because a deleted row cannot be brought back whole.
  */
-export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
+export function BulkDeleteModal({ params, ids, excludeIds, isOpen, onClose }: Props) {
   const canSave = useCanSave();
   const preview = usePreviewBulkDelete();
   const remove = useBulkDelete();
@@ -33,7 +38,7 @@ export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
     setDone(null);
     remove.reset();
     preview.reset();
-    preview.mutate({ params });
+    preview.mutate({ params, ids, excludeIds });
   });
 
   const data = preview.data;
@@ -43,7 +48,7 @@ export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
   function doDelete() {
     if (!data) return;
     remove.mutate(
-      { params, expectedCount: data.deletable },
+      { params, ids, excludeIds, expectedCount: data.deletable },
       { onSuccess: (r) => setDone({ deleted: r.deleted, reconciled: r.skipped.reconciled }) },
     );
   }
@@ -83,8 +88,8 @@ export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
                   ` in ${data.accounts.map((a) => a.name).join(', ')}`}{' '}
                 will be deleted for good. This can't be undone. Any that came from Up stay deleted
                 when Up syncs, so the account's balance won't match Up's and assigning money pauses
-                until they're restored (from the Budget page or Up review, Settings → Connected
-                Banks → Up).
+                until they're restored (from the Budget page or Up review, Accounts → Connected
+                banks → Up).
               </p>
               {data.sample.length > 0 && (
                 <ul className="text-sm text-text space-y-1 list-disc pl-5">
@@ -121,13 +126,13 @@ export function BulkDeleteModal({ params, isOpen, onClose }: Props) {
               ) : (
                 <label className="block text-sm font-medium text-text-secondary">
                   Type <span className="font-mono">{CONFIRM_WORD}</span> to confirm
-                  <input
+                  <Input
                     aria-label={`Type ${CONFIRM_WORD} to confirm`}
                     value={typed}
                     onChange={(e) => setTyped(e.target.value)}
                     autoComplete="off"
                     spellCheck={false}
-                    className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 bg-surface text-text focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                    className="mt-1 w-full"
                   />
                 </label>
               )}

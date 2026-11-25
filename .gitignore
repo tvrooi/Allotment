@@ -47,3 +47,13 @@ flybudget_data_key.txt
 __pycache__/
 *.pyc
 release-output/
+
+# UI review screenshots: attach to the PR or issue, never commit (docs/ui/README.md)
+.ui-evidence/
+
+# Artefatos gerados por `npx skills add` (Install-Skills.ps1) — reproduzíveis a
+# partir de skills.yaml + bundles.yaml, não são fonte de verdade.
+.agents/
+.claude/skills/
+.codex/skills/
+skills-lock.json

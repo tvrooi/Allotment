@@ -1,3 +1,4 @@
+import { Input } from '../ui/Input';
 import { SidebarFeatureSettings } from './SidebarFeatureSettings';
 import { useState } from 'react';
 import {
@@ -29,7 +30,7 @@ const sidebarModes: { value: SidebarMode; label: string; description: string }[]
 ];
 
 const dateFormats: { value: DateFormatOption; label: string; example: string }[] = [
-  { value: 'MMM d, yyyy', label: 'MMM d, yyyy', example: 'Jan 5, 2026' },
+  { value: 'd MMM yyyy', label: 'd MMM yyyy', example: '5 Jan 2026' },
   { value: 'MM/dd/yyyy', label: 'MM/dd/yyyy', example: '01/05/2026' },
   { value: 'dd/MM/yyyy', label: 'dd/MM/yyyy', example: '05/01/2026' },
   { value: 'dd.MM.yyyy', label: 'dd.MM.yyyy', example: '05.01.2026' },
@@ -103,7 +104,7 @@ export function PreferencesPanel() {
     setCurrencySymbol('$');
     setAmountFormat('auto');
     setSymbolPosition('auto');
-    setDateFormat('MMM d, yyyy');
+    setDateFormat('d MMM yyyy');
     setShowMerchantIcons(true);
     setShowCategoryIcons(true);
     setShowAccountIcons(true);
@@ -288,13 +289,13 @@ export function PreferencesPanel() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {!budgetCurrency && (
-              <input
+              <Input
                 type="text"
                 aria-label="Currency symbol"
                 value={currencySymbol}
                 onChange={(e) => setCurrencySymbol(e.target.value.slice(0, 3))}
                 maxLength={3}
-                className="w-20 text-center text-sm border border-border rounded-md px-3 py-1.5 max-md:min-h-11 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+                className="w-20 text-center"
               />
             )}
             {symbolPositions.map((opt) => (

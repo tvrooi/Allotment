@@ -1,3 +1,5 @@
+import { Combobox } from '../ui/Combobox';
+import { Input } from '../ui/Input';
 import { useState } from 'react';
 import { Loader2, CheckCircle2, Building2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -306,28 +308,27 @@ function AccountMappingCard({
       </div>
 
       {mapping.action === 'link' && (
-        <select
+        <Combobox
+          aria-label="Link to account"
           value={mapping.accountId ?? ''}
-          onChange={(e) => onChange({ accountId: e.target.value })}
-          className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-        >
-          <option value="">Select an account...</option>
-          {availableAccounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-              {!hideBalances && ` (${formatMoney(a.balance, a.currency)})`}
-            </option>
-          ))}
-        </select>
+          onChange={(accountId) => onChange({ accountId })}
+          placeholder="Select an account..."
+          optional
+          menuTrigger="focus"
+          items={availableAccounts.map((a) => ({
+            value: a.id,
+            label: a.name + (hideBalances ? '' : ` (${formatMoney(a.balance, a.currency)})`),
+          }))}
+        />
       )}
 
       {mapping.action === 'create' && (
-        <input
+        <Input
           type="text"
           value={mapping.accountName}
           onChange={(e) => onChange({ accountName: e.target.value })}
           placeholder="Account name"
-          className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+          aria-label="Account name"
         />
       )}
     </div>

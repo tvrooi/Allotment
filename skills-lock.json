@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "impeccable": {
+      "source": "tvrooi/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/impeccable/SKILL.md",
+      "computedHash": "ef1e9622479e7f466d26f7ed499441fbd8472221e094997752c06beffbd8997f"
+    }
+  }
+}

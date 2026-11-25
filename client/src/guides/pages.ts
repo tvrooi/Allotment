@@ -1,3 +1,4 @@
+import { CONNECTED_BANKS_PATH } from '../utils/movedSections';
 import type { Guide } from './types';
 
 // One short guide per page, offered the first time the page is opened (once the welcome tour
@@ -6,7 +7,8 @@ import type { Guide } from './types';
 
 export const accountsGuide: Guide = {
   id: 'accounts',
-  version: 1,
+  // 2: Connected banks is its own page under Accounts, opened from this page's header (#244)
+  version: 2,
   title: 'Accounts',
   summary: 'Adding accounts, net worth, and opening an account to import or reconcile.',
   page: '/accounts',
@@ -31,8 +33,9 @@ export const accountsGuide: Guide = {
     },
     {
       title: 'Bring in transactions automatically',
-      body: 'Connect Up under Settings → Connected banks and its settled transactions are imported for you.',
+      body: 'Open Connected banks at the top of this page and connect Up: its settled transactions are imported for you.',
       route: '/accounts',
+      target: 'accounts.connections',
     },
   ],
 };
@@ -325,9 +328,9 @@ export const filesGuide: Guide = {
     },
     {
       title: 'Find anything',
-      body: 'Search names, descriptions and labels, and the words inside PDFs, Word and Excel files. Narrow it by kind of file or by date.',
+      body: 'After you add a file, search names, descriptions and labels, and the words inside PDFs, Word and Excel files. Narrow it by kind of file or by date.',
       route: '/files',
-      target: 'files.search',
+      target: ['files.search', 'files.add'],
     },
     {
       title: 'Add and link',
@@ -368,21 +371,22 @@ export const reportsGuide: Guide = {
 
 export const settingsGuide: Guide = {
   id: 'settings',
-  version: 1,
+  // 2: Connected banks moved under Accounts and Categories under Budget (#244)
+  version: 2,
   title: 'Settings',
-  summary: 'Categories, connecting Up, backups and preferences.',
+  summary: 'Account order, tags, currencies, backups and preferences.',
   page: '/settings',
   steps: [
     {
       title: 'Everything in tabs',
-      body: 'Categories, account order, when your budget starts, tags, connected banks, currencies, data and preferences each have a tab.',
+      body: 'Account order, when your budget starts, tags, currencies, data and preferences each have a tab. Connected banks are under Accounts, and categories under Budget.',
       route: '/settings',
       target: 'settings.tabs',
     },
     {
       title: 'Connect Up',
-      body: 'Under Connected banks, connect Up and its settled transactions are imported for you, without duplicates. Your token is stored encrypted.',
-      route: '/settings',
+      body: 'Connected banks is under Accounts now. Connect Up there and its settled transactions are imported for you, without duplicates. Your token is stored encrypted.',
+      route: CONNECTED_BANKS_PATH,
     },
     {
       title: 'Back up and preferences',
@@ -413,7 +417,7 @@ export const payeesGuide: Guide = {
     },
     {
       title: 'Tidy up names',
-      body: 'Double-click a name to rename it, tick two or more payees to merge them into one, and click a payee’s picture to give it a logo.',
+      body: 'Open a payee by its name to see its spending, rules and transactions. Rename one with its pencil button, tick two or more payees to merge them into one, and click a payee’s picture to give it a logo.',
       phoneBody:
         'Rename or delete a payee from its ⋮ menu, tick two or more to merge them into one, and tap a payee’s picture to give it a logo.',
       route: '/payees',

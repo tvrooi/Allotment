@@ -11,16 +11,19 @@ test('the long-term forecast works in the offline demo', async ({ page }) => {
     'aria-selected',
     'true',
   );
-  await page.getByLabel('Plan name').fill('Demo plan');
-  await page.getByRole('button', { name: 'Create plan' }).click();
+  // The sample budget's plan (buying a first home) opens straight away
   await expect(page.getByText('Net worth today', { exact: true })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'Net worth by year, Demo plan' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Net worth by year, Buying a home' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Add an event' }).click();
   await page.getByRole('button', { name: /^Retirement/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click();
   await expect(page.getByText('Retirement · ').first()).toBeVisible();
-  await page.getByLabel('Year', { exact: true }).selectOption({ index: 2 });
+  // "See what made up a year" is the shared Select; its options name dates that move with today,
+  // so pick the second year by position
+  await page.getByRole('button', { name: /See what made up a year/ }).click();
+  await page.getByRole('listbox').getByRole('option').nth(1).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
   await expect(page.getByText('The parts add up to the change, to the cent')).toBeVisible();
 
   await page.getByRole('tab', { name: 'Simulation' }).click();

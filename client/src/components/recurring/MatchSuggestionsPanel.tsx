@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, Link2, X } from 'lucide-react';
 import { useMatchSuggestions, useMatchOccurrence, useDismissMatch } from '../../hooks/useSchedules';
 import { formatCurrency } from '../../utils/currency';
 import { formatShortDay } from '../../utils/dates';
@@ -15,25 +15,37 @@ export default function MatchSuggestionsPanel() {
   const totalCandidates = suggestions.reduce((s, sg) => s + sg.candidates.length, 0);
 
   return (
-    <div className="shrink-0 bg-brand-600 text-brand-contrast">
-      <div className="flex items-center justify-between px-6 py-2 text-sm font-medium">
-        <span>
+    // A quiet inline callout (the shape of Forecast's no-income callout) on a tinted surface:
+    // the brand fill stays for the page's own action (BRAND.md: Marigold is the one bright spot)
+    <section
+      aria-label="Possible matches"
+      className="shrink-0 mx-6 mt-3 rounded-lg border border-border-light bg-surface-alt"
+    >
+      <div className="flex items-center gap-3 px-4 py-2 text-sm">
+        <Link2 size={16} className="shrink-0 text-brand-600" aria-hidden />
+        <p className="flex-1 min-w-0 text-text">
           {totalCandidates} transaction{totalCandidates !== 1 ? 's' : ''} may match your recurring
           items
-        </span>
+        </p>
         <button
+          type="button"
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 max-md:min-h-11 underline underline-offset-2 hover:opacity-80 cursor-pointer"
+          aria-expanded={expanded}
+          className="shrink-0 inline-flex items-center gap-1 whitespace-nowrap max-md:min-h-11 font-medium text-brand-600 hover:text-brand-700 cursor-pointer"
         >
           {expanded ? 'Hide' : 'Review now'}
-          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          {expanded ? (
+            <ChevronDown size={14} aria-hidden />
+          ) : (
+            <ChevronRight size={14} aria-hidden />
+          )}
         </button>
       </div>
 
       {expanded && (
-        <div className="bg-surface text-text border-b border-border max-h-80 overflow-y-auto divide-y divide-border-light">
+        <div className="bg-surface text-text border-t border-border-light rounded-b-lg max-h-80 overflow-y-auto divide-y divide-border-light">
           {suggestions.map((sg) => (
-            <div key={sg.occurrenceId} className="px-6 py-3">
+            <div key={sg.occurrenceId} className="px-4 py-3">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-medium text-text">{sg.scheduleName}</span>
                 <span className="text-xs text-text-tertiary">
@@ -82,6 +94,6 @@ export default function MatchSuggestionsPanel() {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

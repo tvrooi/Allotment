@@ -8,6 +8,8 @@ interface Props {
   description?: React.ReactNode;
   /** Buttons or links: what the user can do about it */
   actions?: React.ReactNode;
+  /** Illustrative content, with one accessible sentence instead of decorative details. */
+  example?: { content: React.ReactNode; description: string };
   /** The page of Allotment's guide that explains this part of the app */
   learnMore?: DocsPage;
   /** Smaller, for inside a dashboard card */
@@ -26,6 +28,7 @@ export function EmptyState({
   title,
   description,
   actions,
+  example,
   learnMore,
   compact = false,
   keepActions = false,
@@ -34,6 +37,7 @@ export function EmptyState({
   // On the dashboard of a new budget the Get started checklist holds the next steps
   const onboarding = useOnboardingActive();
   const shownActions = onboarding && !keepActions ? undefined : actions;
+  const Heading = example ? 'h2' : 'p';
   return (
     <div
       className={`flex flex-col items-center text-center ${compact ? 'py-6 px-2' : 'py-14 px-6'} ${className}`}
@@ -48,13 +52,22 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <p className={`font-semibold text-text ${compact ? 'text-sm' : 'text-base'}`}>{title}</p>
+      <Heading className={`font-semibold text-text ${compact ? 'text-sm' : 'text-base'}`}>
+        {title}
+      </Heading>
       {description && (
         <p
           className={`text-text-tertiary mt-1 max-w-sm leading-relaxed ${compact ? 'text-xs' : 'text-sm'}`}
         >
           {description}
         </p>
+      )}
+      {example && (
+        <div className="mt-4 w-full max-w-sm rounded-md bg-surface-alt p-4 text-left text-sm text-text-secondary">
+          <p className="mb-2 font-medium text-text">Example</p>
+          <div aria-hidden="true">{example.content}</div>
+          <p className="sr-only">{example.description}</p>
+        </div>
       )}
       {shownActions && (
         <div

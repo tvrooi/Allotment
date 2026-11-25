@@ -1,40 +1,27 @@
 import { useMemo } from 'react';
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  Sector,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
-import { formatCentsAxis } from '../../utils/currency';
+import { areaY, barY, defineChart, group, lineY } from '@tanstack/charts';
+import type { ChartPoint } from '@tanstack/charts';
+import { pie, polar, radialArc } from '@tanstack/charts/polar';
+import { decorative } from '@tanstack/charts/mark/decorative';
+import { tooltip } from '@tanstack/charts/tooltip';
+import type { ChartTooltipContent } from '@tanstack/charts/tooltip';
+import { formatCurrency } from '../../utils/currency';
 import { chartColors } from '../../utils/chartColors';
-import {
-  CurrencyTooltip,
-  ShareTooltip,
-  sumSeries,
-  ChartSkeleton,
-  EmptyState,
-  EXPENSE_COLORS,
-  monthLabel,
-} from './ChartHelpers';
+import { ChartSkeleton, EmptyState, EXPENSE_COLORS, monthLabel } from './ChartHelpers';
 import ReportTable, { type FollowLink } from './ReportTable';
-import { useXAxisLayout } from '../../hooks/useXAxisLayout';
-
-// Plot insets for the charts below: left margin (16) + default y-axis width (60), right margin (16)
-const INSET = { left: 76, right: 16 };
-import type { PieSectorDataItem } from 'recharts';
+import { FillChart } from '../charts/FillChart';
+import { LegendKey } from '../charts/ChartLegend';
+import {
+  areaGradient,
+  bandScale,
+  currencyTooltip,
+  pointScale,
+  smooth,
+  valueScale,
+} from '../charts/kit';
 import type { CustomReportConfig, CustomReportData } from '../../types';
+
+const INFINITE = Number.POSITIVE_INFINITY;
 
 interface Props {
   config: CustomReportConfig;
@@ -81,81 +68,64 @@ function withColors(rows: Extract<CustomReportData, { mode: 'total' }>['data']) 
   }));
 }
 
-/** The hovered slice: pushed out a little past the others. */
-function ActiveSlice({
-  cx,
-  cy,
-  innerRadius,
-  outerRadius = 0,
-  startAngle,
-  endAngle,
-  fill,
-}: PieSectorDataItem) {
-  return (
-    <Sector
-      cx={cx}
-      cy={cy}
-      innerRadius={innerRadius}
-      outerRadius={outerRadius + 8}
-      startAngle={startAngle}
-      endAngle={endAngle}
-      fill={fill}
-    />
-  );
-}
-
-/** Every other slice while one is hovered: faded so the hovered one stands out. */
-function InactiveSlice({
-  cx,
-  cy,
-  innerRadius,
-  outerRadius,
-  startAngle,
-  endAngle,
-  fill,
-}: PieSectorDataItem) {
-  return (
-    <Sector
-      cx={cx}
-      cy={cy}
-      innerRadius={innerRadius}
-      outerRadius={outerRadius}
-      startAngle={startAngle}
-      endAngle={endAngle}
-      fill={fill}
-      fillOpacity={0.35}
-    />
-  );
-}
-
 function DonutView({ data }: { data: Extract<CustomReportData, { mode: 'total' }> }) {
-  const chartData = withColors(data.data);
+  const chartData = useMemo(() => withColors(data.data), [data]);
+  const total = useMemo(() => chartData.reduce((s, d) => s + d.value, 0), [chartData]);
+
+  const definition = useMemo(() => {
+    const slices = pie(chartData, { value: 'value' });
+    return defineChart({
+      marks: [
+        polar({
+          inset: 8,
+          radiusRatio: 0.86,
+          marks: [
+            radialArc(slices, {
+              innerRadius: ({ radius }) => radius * 0.62,
+              cornerRadius: 4,
+              padAngle: () => 0.02,
+              color: 'name',
+              key: 'name',
+            }),
+          ],
+          scales: { angle: null, radius: null },
+        }),
+      ],
+      scales: { x: null, y: null },
+      color: {
+        domain: chartData.map((d) => d.name),
+        range: chartData.map((d) => d.color),
+      },
+      tooltip: {
+        use: tooltip,
+        content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+          const d = points[0]?.datum as { name: string; value: number; color: string } | undefined;
+          if (!d) return { rows: [] };
+          const share = total > 0 ? ` · ${((d.value / total) * 100).toFixed(1)}%` : '';
+          return {
+            title: d.name,
+            rows: [
+              { label: 'Amount', value: `${formatCurrency(d.value)}${share}`, color: d.color },
+            ],
+          };
+        },
+      },
+    });
+  }, [chartData, total]);
+
   if (!chartData.length) return <EmptyState />;
-  const total = chartData.reduce((s, d) => s + d.value, 0);
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={chartData}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          innerRadius="40%"
-          outerRadius="75%"
-          paddingAngle={2}
-          activeShape={ActiveSlice}
-          inactiveShape={InactiveSlice}
-        >
-          {chartData.map((d, i) => (
-            <Cell key={i} fill={d.color} />
-          ))}
-        </Pie>
-        <Tooltip content={<ShareTooltip total={total} />} />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="h-full flex flex-col">
+      <div className="flex-1 min-h-0">
+        <FillChart definition={definition} ariaLabel="Share of the total by group" />
+      </div>
+      <div className="flex items-center justify-center gap-x-3 gap-y-1 flex-wrap pt-2 text-xs text-text-secondary shrink-0">
+        {chartData.map((d) => (
+          <LegendKey key={d.name} color={d.color} label={d.name} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -177,65 +147,81 @@ function TotalChartView({
   // Month groups arrive as "2025-06"; show them like the other charts ("Jun 25"). Checking the
   // format, not just groupBy, because data from the previous grouping can still be showing
   const byMonth = chartData.length > 0 && chartData.every((d) => /^\d{4}-\d{2}$/.test(d.name));
-  const labels = useMemo(
-    () => chartData.map((d) => (byMonth ? monthLabel(d.name) : d.name)),
-    [chartData, byMonth],
-  );
-  const xAxis = useXAxisLayout({
-    labels,
-    kind: chartType === 'line' || chartType === 'area' ? 'point' : 'band',
-    // Months come in date order, so labels can be skipped evenly like a time axis; other
-    // totals are sorted by amount, so every bar keeps its label
-    ordered: byMonth,
-    inset: INSET,
-  });
+  const label = (name: string) => (byMonth ? monthLabel(name) : name);
+
+  const definition = useMemo(() => {
+    const line = chartType === 'line' || chartType === 'area';
+    const marks = [
+      ...(chartType === 'area'
+        ? [
+            decorative(
+              areaY(chartData, {
+                x: 'name',
+                y: 'value',
+                fill: 'url(#gTotal)',
+                fillOpacity: 1,
+                curve: smooth,
+              }),
+            ),
+          ]
+        : []),
+      ...(line
+        ? [
+            lineY(chartData, {
+              x: 'name',
+              y: 'value',
+              z: () => 'Amount',
+              stroke: chartColors.brand,
+              strokeWidth: 2,
+              curve: smooth,
+              points: true,
+            }),
+          ]
+        : [
+            barY(chartData, {
+              x: 'name',
+              y: 'value',
+              fill: (d) => d.color,
+              radius: [4, 4, 0, 0],
+              maxThickness: 44,
+              inset: 1,
+            }),
+          ]),
+    ];
+    return defineChart({
+      marks,
+      scales: {
+        x: line ? pointScale(label) : bandScale(label),
+        y: valueScale(),
+      },
+      gradients: [areaGradient('gTotal', chartColors.brand)],
+      focus: 'nearest-x',
+      maxFocusDistance: INFINITE,
+      tooltip: {
+        use: tooltip,
+        content: (points: readonly ChartPoint[]): ChartTooltipContent => {
+          const d = points[0]?.datum as (typeof chartData)[number] | undefined;
+          if (!d) return { rows: [] };
+          const share = total > 0 ? ` · ${((d.value / total) * 100).toFixed(1)}%` : '';
+          return {
+            title: label(d.name),
+            rows: [
+              {
+                label: 'Amount',
+                value: `${formatCurrency(d.value)}${share}`,
+                color: chartType === 'bar' ? d.color : chartColors.brand,
+              },
+            ],
+          };
+        },
+      },
+    });
+    // `label` only reads byMonth
+  }, [chartData, chartType, total, byMonth]);
+
   if (!chartData.length) return <EmptyState />;
 
-  const ChartComponent =
-    chartType === 'line' ? LineChart : chartType === 'area' ? AreaChart : BarChart;
-
-  return (
-    <div ref={xAxis.ref} className="w-full h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <ChartComponent data={chartData} margin={{ top: 8, right: 16, left: 16, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-          <XAxis dataKey="name" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-          <YAxis
-            tick={{ fontSize: 11, fill: chartColors.axis }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={formatCentsAxis}
-          />
-          <Tooltip content={<ShareTooltip total={total} noSwatch={chartType !== 'bar'} />} />
-          {chartType === 'area' ? (
-            <Area
-              type="monotone"
-              dataKey="value"
-              name="Amount"
-              stroke={chartColors.brand}
-              fill={chartColors.brand}
-              fillOpacity={0.15}
-            />
-          ) : chartType === 'line' ? (
-            <Line
-              type="monotone"
-              dataKey="value"
-              name="Amount"
-              stroke={chartColors.brand}
-              strokeWidth={2}
-              dot={{ r: 3 }}
-            />
-          ) : (
-            <Bar dataKey="value" name="Amount" radius={[4, 4, 0, 0]} maxBarSize={48}>
-              {chartData.map((d, i) => (
-                <Cell key={i} fill={d.color} />
-              ))}
-            </Bar>
-          )}
-        </ChartComponent>
-      </ResponsiveContainer>
-    </div>
-  );
+  return <FillChart definition={definition} ariaLabel="Report totals" />;
 }
 
 function TimeChartView({
@@ -250,90 +236,105 @@ function TimeChartView({
     [data],
   );
   const chartType = singlePointType(config.chartType, chartData.length);
-  const labels = useMemo(() => chartData.map((d) => String(d.month)), [chartData]);
-  const xAxis = useXAxisLayout({
-    labels,
-    kind: chartType === 'line' || chartType === 'area' ? 'point' : 'band',
-    ordered: true,
-    inset: INSET,
-  });
-  if (!chartData.length) return <EmptyState />;
-
   const groups = data.groups;
 
-  if (chartType === 'stacked-bar') {
-    return (
-      <div ref={xAxis.ref} className="w-full h-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 8, right: 16, left: 16, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-            <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-            <YAxis
-              tick={{ fontSize: 11, fill: chartColors.axis }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={formatCentsAxis}
-            />
-            <Tooltip content={<CurrencyTooltip summary={sumSeries} hideZero />} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            {groups.map((g, i) => (
-              <Bar
-                key={g}
-                dataKey={g}
-                stackId="a"
-                fill={EXPENSE_COLORS[i % EXPENSE_COLORS.length]}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
+  const definition = useMemo(() => {
+    const colors: Record<string, string> = {};
+    groups.forEach((g, i) => (colors[g] = EXPENSE_COLORS[i % EXPENSE_COLORS.length]));
+    const value = (g: string) => (d: Record<string, unknown>) => Number(d[g] ?? 0);
 
-  const ChartComp = chartType === 'area' ? AreaChart : chartType === 'line' ? LineChart : BarChart;
+    // Wide rows (one column per group) become one row per group and month for stacked and grouped bars
+    const long = chartData.flatMap((d) =>
+      groups.map((g) => ({
+        month: String(d.month),
+        group: g,
+        value: Number((d as Record<string, unknown>)[g] ?? 0),
+      })),
+    );
+
+    const marks =
+      chartType === 'stacked-bar'
+        ? [
+            barY(long, {
+              x: 'month',
+              y: 'value',
+              z: 'group',
+              fill: (d) => colors[d.group],
+              maxThickness: 44,
+              inset: 1,
+            }),
+          ]
+        : chartType === 'bar'
+          ? [
+              barY(long, {
+                x: 'month',
+                y: 'value',
+                z: 'group',
+                layout: group({ padding: 0.1 }),
+                fill: (d) => colors[d.group],
+                radius: [3, 3, 0, 0],
+                maxThickness: 28,
+              }),
+            ]
+          : groups.flatMap((g) => [
+              ...(chartType === 'area'
+                ? [
+                    decorative(
+                      areaY(chartData, {
+                        x: 'month',
+                        y: value(g),
+                        fill: colors[g],
+                        fillOpacity: 0.1,
+                        curve: smooth,
+                      }),
+                    ),
+                  ]
+                : []),
+              lineY(chartData, {
+                x: 'month',
+                y: value(g),
+                z: () => g,
+                stroke: colors[g],
+                strokeWidth: 2,
+                curve: smooth,
+                points: true,
+              }),
+            ]);
+
+    const line = chartType === 'line' || chartType === 'area';
+    return defineChart({
+      marks,
+      scales: { x: line ? pointScale() : bandScale(), y: valueScale() },
+      focus: 'group-x',
+      maxFocusDistance: INFINITE,
+      tooltip: currencyTooltip({
+        colors,
+        hideZero: chartType === 'stacked-bar',
+        summary: (points) =>
+          points.length > 1
+            ? { label: 'Total', value: points.reduce((s, p) => s + (Number(p.yValue) || 0), 0) }
+            : null,
+      }),
+    });
+  }, [chartData, chartType, groups]);
+
+  if (!chartData.length) return <EmptyState />;
 
   return (
-    <div ref={xAxis.ref} className="w-full h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <ChartComp data={chartData} margin={{ top: 8, right: 16, left: 16, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-          <XAxis dataKey="month" axisLine={false} tickLine={false} {...xAxis.axisProps} />
-          <YAxis
-            tick={{ fontSize: 11, fill: chartColors.axis }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={formatCentsAxis}
+    <div className="h-full flex flex-col">
+      <div className="flex items-center gap-3 flex-wrap px-1 pb-1 text-2xs text-text-secondary shrink-0">
+        {groups.map((g, i) => (
+          <LegendKey
+            key={g}
+            color={EXPENSE_COLORS[i % EXPENSE_COLORS.length]}
+            label={g}
+            line={chartType === 'line' || chartType === 'area'}
           />
-          <Tooltip content={<CurrencyTooltip summary={sumSeries} />} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          {groups.map((g, i) => {
-            const color = EXPENSE_COLORS[i % EXPENSE_COLORS.length];
-            if (chartType === 'area')
-              return (
-                <Area
-                  key={g}
-                  type="monotone"
-                  dataKey={g}
-                  stroke={color}
-                  fill={color}
-                  fillOpacity={0.1}
-                />
-              );
-            if (chartType === 'line')
-              return (
-                <Line
-                  key={g}
-                  type="monotone"
-                  dataKey={g}
-                  stroke={color}
-                  strokeWidth={2}
-                  dot={{ r: 2 }}
-                />
-              );
-            return <Bar key={g} dataKey={g} fill={color} radius={[2, 2, 0, 0]} maxBarSize={32} />;
-          })}
-        </ChartComp>
-      </ResponsiveContainer>
+        ))}
+      </div>
+      <div className="flex-1 min-h-0">
+        <FillChart definition={definition} ariaLabel="Report over time" />
+      </div>
     </div>
   );
 }

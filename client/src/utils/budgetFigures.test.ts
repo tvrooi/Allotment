@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+  nextExpectedFunding,
+  expectedFundingNote,
   availability,
+  availableTone,
+  captionTone,
   categoryFigures,
+  plotOf,
+  barOf,
   isActiveCategory,
+  savedSplit,
   selectionFigures,
   splitCategories,
 } from './budgetFigures';
@@ -217,6 +224,51 @@ describe('availability', () => {
     expect(availability(cat, false).kind).toBe('overspent');
   });
 
+  it('flags bills still to come that the envelope cannot cover, naming the bill', () => {
+    const item = (name: string, amount: number) => ({
+      scheduleId: name,
+      name,
+      date: '2026-11-20',
+      amount,
+    });
+    const charity = {
+      ...base,
+      balance: 0,
+      expected: 2_500,
+      expectedItems: [item('Food bank', 2_500)],
+    };
+    expect(availability(charity, false)).toEqual({
+      kind: 'uncovered',
+      remaining: 0,
+      caption: '$25 short for Food bank',
+    });
+    // Only the part that is not covered is short; several bills are not named one by one
+    const two = {
+      ...base,
+      balance: 1_000,
+      budgeted: 1_000,
+      expected: 2_500,
+      expectedItems: [item('A', 1_500), item('B', 1_000)],
+    };
+    expect(availability(two, false).caption).toBe('$15 short of expected bills');
+    expect(availableTone('uncovered', 0)).toContain('bg-caution-subtle');
+    expect(captionTone('uncovered')).toBe('text-caution');
+  });
+
+  it('stays calm when the money covers the bills, and overspent still wins', () => {
+    const covered = { ...base, balance: 2_500, budgeted: 2_500, expected: 2_500 };
+    expect(availability(covered, false).kind).toBe('available');
+    expect(availability({ ...base, balance: 0, expected: 0 }, false).kind).toBe('zero');
+    expect(availability({ ...base, balance: -100, spent: 100, expected: 500 }, false).kind).toBe(
+      'overspent',
+    );
+    // A bill that has posted is no longer expected: it is in the balance, not counted twice
+    expect(availability({ ...base, balance: 0, spent: 2_500, expected: 0 }, false).kind).toBe(
+      'zero',
+    );
+    expect(availability({ ...base, balance: 0, expected: 500 }, true).kind).toBe('zero');
+  });
+
   it('income never reads as overspent or short', () => {
     expect(availability({ ...base, budgeted: 500, balance: 200 }, true).kind).toBe('available');
     expect(availability({ ...base, budgeted: 500, balance: 1000 }, true).kind).toBe('zero');
@@ -262,4 +314,230 @@ describe('selectionFigures (BUD-10, property-based)', () => {
   it('is all zeros for no selection', () => {
     expect(Object.values(selectionFigures([])).every((v) => v === 0)).toBe(true);
   });
+});
+
+describe('availableTone', () => {
+  it('marks only what needs a decision as a pill, in its own colour', () => {
+    expect(availableTone('overspent', -500)).toContain('bg-negative-subtle');
+    expect(availableTone('overspent', -500)).toContain('text-negative');
+    expect(availableTone('short', 500)).toContain('bg-caution-subtle');
+    expect(availableTone('carried', 500)).toContain('text-caution');
+    // An envelope with money in it, or nothing, is a plain figure
+    expect(availableTone('available', 500)).not.toMatch(/\bbg-/);
+    expect(availableTone('zero', 0)).toBe('text-text-tertiary');
+    expect(captionTone('overspent')).toBe('text-negative');
+    expect(captionTone('short')).toBe('text-caution');
+  });
+});
+
+describe('plotOf', () => {
+  const base: BudgetCategory = {
+    id: 'c',
+    groupId: 'g',
+    name: 'Rent',
+    icon: null,
+    budgetType: null,
+    sortOrder: 0,
+    createdAt: '',
+    budgeted: 0,
+    spent: 0,
+    carryOver: 0,
+    balance: 0,
+  };
+  const target = (underfunded: number) =>
+    ({ underfunded }) as unknown as NonNullable<BudgetCategory['target']>;
+
+  it('fills with the money still in the envelope, so spending empties it', () => {
+    expect(plotOf(base)).toEqual({ state: 'bare', fill: 0 });
+    expect(plotOf({ ...base, budgeted: 230_000, balance: 230_000 })).toEqual({
+      state: 'planted',
+      fill: 1,
+    });
+    expect(plotOf({ ...base, budgeted: 230_000, spent: 115_000, balance: 115_000 })).toEqual({
+      state: 'planted',
+      fill: 0.5,
+    });
+    expect(plotOf({ ...base, budgeted: 6_500, spent: 6_500, balance: 0 })).toEqual({
+      state: 'used',
+      fill: 0,
+    });
+    // Carried-in money counts as given, so it isn't bare
+    expect(plotOf({ ...base, carryOver: 5_000, balance: 5_000 }).state).toBe('planted');
+    // Short of a target: growing, filled by how much of the need is in
+    expect(plotOf({ ...base, budgeted: 3_000, balance: 3_000, target: target(1_000) })).toEqual({
+      state: 'growing',
+      fill: 0.75,
+    });
+    expect(plotOf({ ...base, budgeted: 1_000, spent: 1_500, balance: -500 }).state).toBe(
+      'overspent',
+    );
+  });
+});
+
+describe('barOf', () => {
+  const base: BudgetCategory = {
+    id: 'c',
+    groupId: 'g',
+    name: 'Eating Out',
+    icon: null,
+    budgetType: null,
+    sortOrder: 0,
+    createdAt: '',
+    budgeted: 0,
+    spent: 0,
+    carryOver: 0,
+    balance: 0,
+  };
+
+  it('shows money left out of carried-in plus assigned, not spent over assigned', () => {
+    // Assigned $200, $88 carried in, $182 spent: 77% of the assignment, but $106 is left
+    const bar = barOf(
+      { ...base, budgeted: 20_000, carryOver: 8_800, spent: 18_200, balance: 10_600 },
+      false,
+    );
+    expect(bar?.label).toBe('$106 left of $288');
+    expect(bar?.state).toBe('ok');
+    expect(bar?.fill).toBeCloseTo(10_600 / 28_800);
+  });
+
+  it('says so in words when the bills still expected outrun what is left', () => {
+    const bar = barOf({ ...base, budgeted: 1_000, balance: 1_000, expected: 2_500 }, false);
+    expect(bar?.label).toBe('$10 left of $10, $25 still expected, $15 short');
+  });
+
+  it('takes recurring debits still expected out of what is left', () => {
+    const bar = barOf({ ...base, budgeted: 10_000, balance: 10_000, expected: 2_500 }, false);
+    expect(bar?.fill).toBeCloseTo(0.75);
+    expect(bar?.expectedFill).toBeCloseTo(0.25);
+    expect(bar?.label).toContain('$25 still expected');
+  });
+
+  it('marks low, empty and overspent in words as well as colour', () => {
+    expect(barOf({ ...base, budgeted: 10_000, balance: 1_000 }, false)?.state).toBe('low');
+    expect(barOf({ ...base, budgeted: 10_000, spent: 10_000, balance: 0 }, false)?.state).toBe(
+      'empty',
+    );
+    expect(barOf({ ...base, budgeted: 10_000, spent: 12_000, balance: -2_000 }, false)).toEqual({
+      state: 'overspent',
+      fill: 1,
+      expectedFill: 0,
+      label: 'Overspent by $20',
+    });
+  });
+
+  it('draws nothing for an envelope that was given nothing', () => {
+    expect(barOf(base, false)).toBeNull();
+  });
+
+  it('fills income as the plan arrives', () => {
+    const bar = barOf({ ...base, budgeted: 100_000, balance: 140_000 }, true);
+    expect(bar?.state).toBe('income');
+    expect(bar?.fill).toBeCloseTo(0.4);
+    expect(bar?.label).toBe('$400 received of $1,000 planned');
+  });
+});
+
+describe('savedSplit', () => {
+  const env = (budgetType: BudgetCategory['budgetType'], balance: number) =>
+    ({
+      id: 'x',
+      name: 'x',
+      budgetType,
+      budgeted: 0,
+      spent: 0,
+      carryOver: balance,
+      balance,
+    }) as unknown as BudgetCategory;
+
+  it('puts Savings-type envelopes in saved and the rest in spending, adding up to the total', () => {
+    const split = savedSplit([
+      env('flexible', 300_000),
+      env('fixed', 50_000),
+      env('savings', 5_000_000),
+    ]);
+    expect(split).toEqual({ spending: 350_000, saved: 5_000_000, total: 5_350_000 });
+  });
+
+  it('has nothing saved when no envelope is a Savings one', () => {
+    expect(savedSplit([env(null, 1_000)]).saved).toBe(0);
+  });
+});
+
+describe('next expected funding deadline', () => {
+  const item = (date: string, amount: number) => ({ date, amount, name: 'Bill', scheduleId: date });
+  it('finds the first gap in date order, combining bills on the same day', () => {
+    const expectedItems = [
+      item('2026-11-25', 9000),
+      item('2026-11-10', 3000),
+      item('2026-11-10', 2000),
+    ];
+    expect(nextExpectedFunding({ balance: 1000, expectedItems })).toMatchObject({
+      date: '2026-11-10',
+      needed: 4000,
+    });
+    expect(nextExpectedFunding({ balance: 6000, expectedItems })).toMatchObject({
+      date: '2026-11-25',
+      needed: 8000,
+    });
+    expect(expectedItems[0].date).toBe('2026-11-25');
+  });
+  it('shows no deadline when covered or empty; overspending cannot fund a future bill', () => {
+    expect(
+      nextExpectedFunding({ balance: 5000, expectedItems: [item('2026-11-10', 5000)] }),
+    ).toBeNull();
+    expect(nextExpectedFunding({ balance: 0, expectedItems: [] })).toBeNull();
+    expect(
+      nextExpectedFunding({ balance: -2000, expectedItems: [item('2026-11-10', 5000)] }),
+    ).toMatchObject({ date: '2026-11-10', needed: 5000 });
+  });
+});
+
+describe('overdue funding notes', () => {
+  const cat = {
+    balance: 0,
+    expectedItems: [{ date: '2026-11-07', amount: 2500, name: 'Bill', scheduleId: 'bill' }],
+  };
+  it('keeps the due day and marks a past funding gap overdue', () => {
+    expect(expectedFundingNote(cat, '2026-11-10')).toEqual({
+      label: '$25 needed by the 7th',
+      overdue: true,
+    });
+  });
+  it('does not mark today, future deadlines or funded bills overdue', () => {
+    for (const today of ['2026-11-07', '2026-11-06'])
+      expect(expectedFundingNote(cat, today)).toEqual({
+        label: '$25 needed by the 7th',
+        overdue: false,
+      });
+    expect(expectedFundingNote({ ...cat, balance: 2500 }, '2026-11-10')).toEqual({
+      label: 'Funded',
+      overdue: false,
+    });
+  });
+  it('compares full dates across months and years, not just the day number', () => {
+    expect(expectedFundingNote(cat, '2027-01-01').overdue).toBe(true);
+    expect(expectedFundingNote(cat, '2026-10-31').overdue).toBe(false);
+  });
+});
+
+it('makes only overdue bill shortfalls red, retaining amber before the deadline', () => {
+  expect(availableTone('uncovered', 0, true)).toContain('bg-negative-subtle text-negative');
+  expect(availableTone('uncovered', 0, false)).toContain('bg-caution-subtle text-caution');
+  expect(availableTone('available', 500, true)).not.toContain('text-negative');
+});
+
+it('explains the first gap using all bills due by then, without counting later bills', () => {
+  const items = [
+    { scheduleId: 'later', name: 'Later', date: '2026-11-25', amount: 9000 },
+    { scheduleId: 'earlier', name: 'Earlier', date: '2026-11-05', amount: 3000 },
+    { scheduleId: 'next', name: 'Next', date: '2026-11-10', amount: 4000 },
+  ];
+  expect(nextExpectedFunding({ balance: 5000, expectedItems: items })).toEqual({
+    date: '2026-11-10',
+    due: 7000,
+    covered: 5000,
+    needed: 2000,
+    items: [items[1], items[2]],
+  });
+  expect(items[0].scheduleId).toBe('later');
 });

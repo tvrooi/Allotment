@@ -1,3 +1,4 @@
+import { DataFeedback, dataUnavailable } from './DataFeedback';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parse } from 'date-fns';
@@ -20,7 +21,8 @@ function getStatus(spent: number, planned: number): 'over' | 'warning' | 'health
 }
 
 export default function BudgetProgress({ currentMonth }: Props) {
-  const { data: groups = [], isLoading } = useBudget(currentMonth);
+  const budgetQuery = useBudget(currentMonth);
+  const { data: groups = [] } = budgetQuery;
 
   const monthLabel = useMemo(
     () => format(parse(currentMonth, 'yyyy-MM', new Date()), 'MMMM yyyy'),
@@ -44,7 +46,10 @@ export default function BudgetProgress({ currentMonth }: Props) {
       .filter((g) => g.planned > 0);
   }, [groups]);
 
-  if (isLoading) {
+  const sources = [budgetQuery];
+  if (dataUnavailable(sources)) return <DataFeedback title="Budget" sources={sources} />;
+
+  if (sources.some((q) => q.isLoading)) {
     return (
       <Card>
         <div className="h-5 w-40 bg-surface-alt rounded animate-pulse mb-4" />
@@ -66,6 +71,7 @@ export default function BudgetProgress({ currentMonth }: Props) {
 
   return (
     <Card>
+      <DataFeedback title="Budget" sources={sources} />
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-text">Budget</h2>

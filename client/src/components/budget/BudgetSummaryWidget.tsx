@@ -1,6 +1,6 @@
 import type { BudgetSummary } from '../../types';
 import { CashBridge } from './CashBridge';
-import { unresolvedReason } from '../../utils/fundingStatus';
+import { figureInDoubt, readyToAssignStatus, unresolvedReason } from '../../utils/fundingStatus';
 import { useState } from 'react';
 import { CategoryPicker } from '../transactions/CategoryPicker';
 import { HelpTip } from '../ui/HelpTip';
@@ -10,6 +10,9 @@ import { Link } from 'react-router-dom';
 import { formatAsOfDay } from '../../utils/dates';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { HoldMoney } from './HoldMoney';
+import { Button } from '../ui/Button';
+import { AlertCircle, ChevronRight } from 'lucide-react';
+import { Plant } from '../ui/Plant';
 
 interface ExpenseBreakdown {
   planned: number;
@@ -18,13 +21,9 @@ interface ExpenseBreakdown {
 
 interface BudgetSummaryWidgetProps {
   funding?: BudgetSummary;
-  expenseAvailable?: number;
   toBeBudgeted: number;
-  carryOver: number;
   incomePlanned: number;
   incomeEarned: number;
-  expensesPlanned: number;
-  expensesSpent: number;
   savingsPlanned: number;
   savingsContributed: number;
   fixedExpenses?: ExpenseBreakdown;
@@ -36,50 +35,30 @@ interface BudgetSummaryWidgetProps {
     disabled: boolean;
     onPick: (categoryId: string, categoryName: string) => void;
   };
+  /** Targets still short: Fund targets becomes the recommended action, "Put the rest in" the other */
+  fundTargets?: { count: number; disabled: boolean; onOpen: () => void };
   /** Hold money for next month (the current month only) */
   canHold?: boolean;
 }
 
-/** On a phone the working behind Ready to assign folds away, so the envelopes come sooner */
+/** The working behind Ready to assign folds away (on a phone with Hold, so the envelopes come sooner) */
 const READY_HELP =
   "Ready to assign is the money in your accounts that you haven't given a job yet. Give it to categories (envelopes) until this reaches $0, so every dollar is planned. Spending takes money out of its envelope, not out of here.";
 
-function PhoneCollapsed({
-  collapsed,
-  label,
-  children,
-}: {
-  collapsed: boolean;
-  label: string;
-  children: React.ReactNode;
-}) {
-  if (!collapsed) return <>{children}</>;
+function PhoneCollapsed({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <details>
-      <summary className="px-4 min-h-11 flex items-center cursor-pointer select-none text-xs text-text-secondary">
+    <details className="group">
+      <summary className="px-4 min-h-11 flex items-center gap-1 cursor-pointer select-none text-nav text-text-secondary">
+        <ChevronRight
+          size={14}
+          aria-hidden
+          className="shrink-0 transition-transform group-open:rotate-90"
+        />
         {label}
       </summary>
       {children}
     </details>
   );
-}
-
-function getHeroStyle(tbb: number, incomePlanned: number, hasMoney: boolean) {
-  // A new budget: no money yet is nothing to praise
-  if (tbb === 0 && !hasMoney)
-    return { bg: 'bg-surface-alt', text: 'text-text-secondary', label: 'Nothing to assign yet' };
-  if (tbb < 0)
-    return {
-      bg: 'bg-negative-subtle',
-      text: 'text-negative',
-      label: 'Assigned more than you have',
-    };
-  if (tbb === 0)
-    return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Fully budgeted' };
-  const threshold = Math.max(incomePlanned * 0.02, 500);
-  if (tbb <= threshold)
-    return { bg: 'bg-caution-subtle', text: 'text-caution', label: 'Almost budgeted' };
-  return { bg: 'bg-positive-subtle', text: 'text-positive', label: 'Give every dollar a job' };
 }
 
 function getBarColor(actual: number, planned: number, type: 'income' | 'expenses' | 'savings') {
@@ -94,20 +73,11 @@ interface SummarySectionProps {
   actual: number;
   actualLabel: string;
   type: 'income' | 'expenses' | 'savings';
-  available?: number;
 }
 
-function SummarySection({
-  label,
-  planned,
-  actual,
-  actualLabel,
-  type,
-  available,
-}: SummarySectionProps) {
+function SummarySection({ label, planned, actual, actualLabel, type }: SummarySectionProps) {
   const rawRemaining = planned - actual;
-  const displayRemaining =
-    available ?? (type === 'income' ? Math.max(rawRemaining, 0) : rawRemaining);
+  const displayRemaining = type === 'income' ? Math.max(rawRemaining, 0) : rawRemaining;
   const ratio =
     type === 'income' ? (actual > 0 ? 1 : 0) : planned > 0 ? Math.min(actual / planned, 1) : 0;
   const barColor = getBarColor(actual, planned, type);
@@ -141,18 +111,16 @@ function SummarySection({
           <span className="text-sm font-semibold tabular-nums text-text">
             {formatCurrency(actual)}
           </span>
-          <span className="text-xs text-text-tertiary">{actualLabel}</span>
+          <span className="text-nav text-text-tertiary">{actualLabel}</span>
         </div>
         <div className="flex flex-col items-end">
           <span className={`text-sm font-medium tabular-nums ${remainingColor}`}>
             {displayRemaining === 0 ? '$0' : formatCurrency(displayRemaining)}
           </span>
-          <span className="text-xs text-text-tertiary">
-            {available !== undefined
-              ? 'Available'
-              : type === 'income'
-                ? 'expected income remaining'
-                : 'monthly spending progress remaining'}
+          <span className="text-nav text-text-tertiary">
+            {type === 'income'
+              ? 'expected income remaining'
+              : 'monthly spending progress remaining'}
           </span>
         </div>
       </div>
@@ -173,18 +141,16 @@ const TABS: { key: Tab; label: string }[] = [
 
 export function BudgetSummaryWidget({
   funding,
-  expenseAvailable,
   toBeBudgeted,
   incomePlanned,
   incomeEarned,
-  expensesPlanned,
-  expensesSpent,
   savingsPlanned,
   savingsContributed,
   fixedExpenses,
   flexibleExpenses,
   nonMonthlyExpenses,
   putRest,
+  fundTargets,
   canHold,
 }: BudgetSummaryWidgetProps) {
   const [activeTab, setActiveTab] = useState<Tab>('summary');
@@ -199,18 +165,99 @@ export function BudgetSummaryWidget({
       : formatCurrency(toBeBudgeted);
   const canPutRest =
     !!putRest && toBeBudgeted > 0 && !funding?.accountIssues?.length && funding?.complete !== false;
-  const hero =
-    funding && (!funding.complete || !funding.resolved)
-      ? {
-          bg: 'bg-caution-subtle',
-          text: 'text-caution',
-          label: unresolvedReason(funding),
-        }
-      : getHeroStyle(
-          toBeBudgeted,
-          incomePlanned,
-          !funding || funding.resources !== 0 || (funding.envelopes ?? funding.reserved) !== 0,
-        );
+  const fundFirst = canPutRest && !!fundTargets && fundTargets.count > 0;
+  // Only balances that disagree with the bank or missing rates make the figure itself doubtful.
+  // Overspending, uncategorised spending and card shortfalls are jobs to do beside a figure that
+  // holds, so they get their own line instead of turning the whole of Ready to assign yellow.
+  const doubtful = !!funding && figureInDoubt(funding);
+  // Every label, colour and the $0 seedling come from one tested function (#241)
+  const status = readyToAssignStatus(toBeBudgeted, incomePlanned, funding);
+  const statusLabel = status.glyph ? (
+    <span className="inline-flex items-center gap-2">
+      <Plant
+        stage="seedling"
+        size={16}
+        ground={false}
+        className="shrink-0"
+        data-testid="ready-glyph"
+      />
+      {status.label}
+    </span>
+  ) : (
+    status.label
+  );
+  // A negative figure already says "Assigned more than you have", so it isn't repeated here
+  const todo =
+    funding && !doubtful && !funding.resolved
+      ? unresolvedReason({ ...funding, toBeBudgeted: Math.max(funding.toBeBudgeted, 0) })
+      : null;
+  const todoNotice = todo && !(toBeBudgeted < 0 && todo === 'Check the Review page') && (
+    <p className="mt-2.5 flex items-start gap-1.5 px-1 text-nav text-text-secondary">
+      <AlertCircle size={14} className="text-caution shrink-0 mt-px" aria-hidden />
+      <span className="flex-1 min-w-0">{todo}.</span>
+      {/* At the end of the line, so it never wraps alone under the reason */}
+      <Link
+        to="/review"
+        className="shrink-0 py-3.5 -my-3.5 font-medium text-brand-700 underline underline-offset-2"
+      >
+        Review
+      </Link>
+    </p>
+  );
+
+  // Only the rows with something in them: a column of $0 says nothing
+  const issueRows = funding
+    ? (
+        [
+          ['Overspent envelopes', funding.overspent],
+          ['Uncategorised spending', funding.uncategorized],
+          ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
+          ['Held for next month', funding.held ?? 0],
+          ['Card payment shortfall', funding.paymentShortfall ?? 0],
+          ['Payments without funding', funding.uncoveredCardPayments ?? 0],
+        ] as const
+      ).filter(([, value]) => value !== 0)
+    : [];
+  const workings = funding && (
+    <div className="px-4 pb-3 text-nav">
+      <p className="text-text-tertiary mb-1.5">
+        Ready to assign as of {formatAsOfDay(funding.asOf)}
+      </p>
+      <CashBridge
+        breakdown={funding.breakdown}
+        resources={funding.resources}
+        readyToAssign={toBeBudgeted}
+      />
+      <p className="text-text-tertiary">
+        A Saver is still yours to assign: put the money in an envelope to set it aside.
+      </p>
+      {issueRows.length > 0 && (
+        <dl className="grid gap-1 mt-2">
+          {issueRows.map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-2">
+              <dt className="text-text-secondary">{label}</dt>
+              <dd
+                className={`tabular-nums ${
+                  value <= 0 || SETTING_ASIDE.has(label)
+                    ? 'text-text'
+                    : label === 'Overspent envelopes'
+                      ? 'text-negative font-medium'
+                      : 'text-caution font-medium'
+                }`}
+              >
+                {formatCurrency(value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {(funding.cashOverspent ?? 0) > 0 && (
+        <p className="text-text-tertiary mt-1.5">
+          {`${formatCurrency(funding.cashOverspent ?? 0)} overspent from cash comes out of next month's Ready to assign.`}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="rounded-lg shadow-card border border-border-light overflow-hidden bg-surface">
@@ -221,18 +268,20 @@ export function BudgetSummaryWidget({
             role="status"
             aria-label="Ready to assign"
             data-guide="budget.ready"
-            className={`${hero.bg} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}
+            className={`${status.bg} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}
           >
-            <div className={`min-w-0 text-left text-xs ${hero.text}`}>
-              <p className="font-medium uppercase tracking-wide">
+            <div className={`min-w-0 text-left text-nav ${status.text}`}>
+              <p className="font-medium">
                 Ready to assign
                 <HelpTip label="What is Ready to assign?" inline>
                   {READY_HELP}
                 </HelpTip>
               </p>
-              <p>{hero.label}</p>
+              {status.label !== null && <p className={status.labelClass}>{statusLabel}</p>}
             </div>
-            <p className={`text-lg font-semibold tabular-nums whitespace-nowrap ${hero.text}`}>
+            <p
+              className={`text-lg font-semibold tabular-nums whitespace-nowrap ${status.figureClass}`}
+            >
               {readyAmount}
             </p>
           </div>
@@ -241,18 +290,24 @@ export function BudgetSummaryWidget({
             role="status"
             aria-label="Ready to assign"
             data-guide="budget.ready"
-            className={`${hero.bg} rounded-lg px-4 py-3 text-center`}
+            className={`${status.bg} rounded-lg px-4 pt-3 pb-3.5`}
           >
-            <p className={`text-xs font-medium uppercase tracking-wide ${hero.text}`}>
+            <p className={`text-sm font-medium ${status.text}`}>
               Ready to assign
-            </p>
-            <p className={`text-lg font-semibold tabular-nums ${hero.text}`}>{readyAmount}</p>
-            <p className={`text-xs ${hero.text} mt-0.5`}>{hero.label}</p>
-            <p className={`text-xs ${hero.text} mt-1`}>
-              Money you have that isn't in a category yet.
               <HelpTip label="What is Ready to assign?" inline>
                 {READY_HELP}
               </HelpTip>
+            </p>
+            <p
+              className={`mt-0.5 text-title font-semibold tracking-tight tabular-nums ${status.figureClass}`}
+            >
+              {readyAmount}
+            </p>
+            {status.label !== null && (
+              <p className={`text-sm font-medium ${status.labelClass}`}>{statusLabel}</p>
+            )}
+            <p className={`text-nav text-pretty ${status.text} mt-1`}>
+              Money you have that isn't in a category yet.
             </p>
           </div>
         )}
@@ -263,32 +318,46 @@ export function BudgetSummaryWidget({
             aria-label={`${p.name}: ready to assign`}
             className={`mt-2 rounded-lg px-4 py-2 text-center ${p.readyToAssign < 0 ? 'bg-caution-subtle text-caution' : 'bg-surface-alt text-text'}`}
           >
-            <p className="text-xs font-medium uppercase tracking-wide">{p.name}</p>
+            <p className="text-nav font-medium">{p.name}</p>
             <p className="text-base font-semibold tabular-nums">
               {formatCurrency(p.readyToAssign)}
             </p>
-            <p className="text-xs text-text-secondary">to assign to the bills paid from {p.name}</p>
+            <p className="text-nav text-text-secondary">
+              to assign to the bills paid from {p.name}
+            </p>
           </div>
         ))}
-        {showHold && !isPhone && <HoldMoney summary={funding} />}
         {showHold && isPhone && (funding.holdAmount ?? 0) > 0 && (
-          <p className="mt-2 text-center text-xs text-text-secondary">
+          <p className="mt-2 text-center text-nav text-text-secondary">
             {formatCurrency(funding.holdAmount ?? 0)} held for next month.
           </p>
         )}
         {canPutRest && (
-          <div className="relative mt-2 text-center">
-            <button
+          <div className="relative mt-2 grid gap-2 text-center">
+            {/* Targets still short come first: that is the job the money is for. Otherwise the
+                whole of Ready to assign goes to one envelope, chosen from a list. */}
+            {fundFirst && (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={fundTargets.onOpen}
+                disabled={fundTargets.disabled}
+              >
+                Fund targets ({fundTargets.count})
+              </Button>
+            )}
+            <Button
               ref={setPickerButton}
-              type="button"
+              size="sm"
+              variant={fundFirst ? 'secondary' : 'primary'}
+              className="w-full"
               onClick={() => setPicking((o) => !o)}
               disabled={putRest.disabled}
               aria-haspopup="listbox"
               aria-expanded={picking}
-              className="min-h-11 md:min-h-0 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-surface-alt text-text hover:bg-hover disabled:opacity-50"
             >
-              Put the rest in…
-            </button>
+              Put {formatCurrency(toBeBudgeted)} in an envelope…
+            </Button>
             {picking && (
               <CategoryPicker
                 anchor={pickerButton}
@@ -306,10 +375,14 @@ export function BudgetSummaryWidget({
             )}
           </div>
         )}
+        {/* What is left to sort out, under the action rather than ahead of it */}
+        {todoNotice}
+        {/* The alternative, quieter: keep some of it for next month */}
+        {showHold && !isPhone && <HoldMoney summary={funding} />}
       </div>
 
       {!!funding?.accountIssues?.length && (
-        <div role="alert" className="px-4 pb-3 text-xs text-caution">
+        <div role="alert" className="px-4 pb-3 text-nav text-caution">
           <p>Ready to assign is unverified. Resolve these balances before funding categories.</p>
           <ul className="mt-2 space-y-2">
             {funding.accountIssues.map((issue) => (
@@ -327,75 +400,78 @@ export function BudgetSummaryWidget({
           </ul>
         </div>
       )}
-      <PhoneCollapsed
-        collapsed={isPhone}
-        label={showHold ? 'Hold money, and how this is worked out' : 'How this is worked out'}
-      >
-        {showHold && isPhone && (
+      {/* On a phone each fold has its own plain label, so the envelopes come sooner */}
+      {showHold && isPhone && (
+        <PhoneCollapsed label="Hold money for next month">
           <div className="px-4 pb-3">
             <HoldMoney summary={funding} />
           </div>
-        )}
-        {funding && (
-          <div className="px-4 pb-3 text-xs">
-            <p className="text-text-tertiary mb-1.5">
-              Ready to assign as of {formatAsOfDay(funding.asOf)}
-            </p>
-            <CashBridge
-              breakdown={funding.breakdown}
-              resources={funding.resources}
-              readyToAssign={toBeBudgeted}
-            />
-            <p className="text-text-tertiary mb-2">
-              A Saver is still yours to assign: put the money in an envelope to set it aside.
-            </p>
-            <dl className="grid gap-1">
-              {(
-                [
-                  ['Overspent envelopes', funding.overspent],
-                  ['Uncategorised spending', funding.uncategorized],
-                  ['Assigned in later months', funding.laterDeduction ?? funding.futureAssigned],
-                  ['Held for next month', funding.held ?? 0],
-                  ['Card payment shortfall', funding.paymentShortfall ?? 0],
-                  ['Payments without funding', funding.uncoveredCardPayments ?? 0],
-                ] as const
-              ).map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-2">
-                  <dt className="text-text-secondary">{label}</dt>
-                  <dd
-                    className={`tabular-nums ${value > 0 && !SETTING_ASIDE.has(label) ? 'text-negative font-medium' : 'text-text'}`}
-                  >
-                    {formatCurrency(value)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <p className="text-text-tertiary mt-1.5">
-              {(funding.cashOverspent ?? 0) > 0
-                ? `${formatCurrency(funding.cashOverspent ?? 0)} overspent from cash comes out of next month's Ready to assign.`
-                : ''}
-            </p>
+        </PhoneCollapsed>
+      )}
+      {isPhone
+        ? workings && (
+            <PhoneCollapsed label="How Ready to assign is worked out">{workings}</PhoneCollapsed>
+          )
+        : // Desktop folds the working too, so the rail leads with Ready to assign and its actions
+          workings && (
+            <details className="group border-t border-border-light">
+              <summary className="px-4 min-h-11 md:min-h-9 flex items-center gap-1 cursor-pointer select-none text-nav text-text-secondary hover:text-text">
+                <ChevronRight
+                  size={14}
+                  aria-hidden
+                  className="shrink-0 transition-transform group-open:rotate-90"
+                />
+                How Ready to assign is worked out
+              </summary>
+              {workings}
+            </details>
+          )}
+      {/* The desktop table already totals income and each budget type, so only phones, with no
+          table, keep this summary */}
+      {isPhone && (
+        <PhoneCollapsed label="Income and expenses">
+          <div className="flex justify-center gap-4 px-4 pt-2 pb-2">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`pb-1.5 max-md:min-h-11 max-md:px-2 text-nav transition-colors border-b-2 ${
+                  activeTab === tab.key
+                    ? 'border-text text-text font-semibold'
+                    : 'border-transparent text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-        )}
-        <div className="flex justify-center gap-4 px-4 pb-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`pb-1.5 max-md:min-h-11 max-md:px-2 text-xs transition-colors border-b-2 ${
-                activeTab === tab.key
-                  ? 'border-text text-text font-semibold'
-                  : 'border-transparent text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
 
-        <div className="px-4 pb-2">
-          {activeTab === 'summary' && (
-            <div>
+          <div className="px-4 pb-2">
+            {activeTab === 'summary' && (
+              <div>
+                <SummarySection
+                  label="Income"
+                  planned={incomePlanned}
+                  actual={incomeEarned}
+                  actualLabel="earned"
+                  type="income"
+                />
+                <div className="border-t border-border-light" />
+                {savingsPlanned > 0 && (
+                  <>
+                    <div className="border-t border-border-light" />
+                    <SummarySection
+                      label="Save up"
+                      planned={savingsPlanned}
+                      actual={savingsContributed}
+                      actualLabel="spent from savings categories"
+                      type="savings"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+            {activeTab === 'income' && (
               <SummarySection
                 label="Income"
                 planned={incomePlanned}
@@ -403,80 +479,51 @@ export function BudgetSummaryWidget({
                 actualLabel="earned"
                 type="income"
               />
-              <div className="border-t border-border-light" />
-              <SummarySection
-                label="Expense envelopes"
-                available={expenseAvailable}
-                planned={expensesPlanned}
-                actual={expensesSpent}
-                actualLabel="Spent this month"
-                type="expenses"
-              />
-              {savingsPlanned > 0 && (
-                <>
-                  <div className="border-t border-border-light" />
+            )}
+            {activeTab === 'expenses' && (
+              <div>
+                {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
                   <SummarySection
-                    label="Save up"
-                    planned={savingsPlanned}
-                    actual={savingsContributed}
-                    actualLabel="spent from savings categories"
-                    type="savings"
-                  />
-                </>
-              )}
-            </div>
-          )}
-          {activeTab === 'income' && (
-            <SummarySection
-              label="Income"
-              planned={incomePlanned}
-              actual={incomeEarned}
-              actualLabel="earned"
-              type="income"
-            />
-          )}
-          {activeTab === 'expenses' && (
-            <div>
-              {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
-                <SummarySection
-                  label="Fixed"
-                  planned={fixedExpenses.planned}
-                  actual={fixedExpenses.spent}
-                  actualLabel="spent"
-                  type="expenses"
-                />
-              )}
-              {flexibleExpenses && (flexibleExpenses.planned > 0 || flexibleExpenses.spent > 0) && (
-                <>
-                  {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
-                    <div className="border-t border-border-light" />
-                  )}
-                  <SummarySection
-                    label="Flexible"
-                    planned={flexibleExpenses.planned}
-                    actual={flexibleExpenses.spent}
+                    label="Fixed"
+                    planned={fixedExpenses.planned}
+                    actual={fixedExpenses.spent}
                     actualLabel="spent"
                     type="expenses"
                   />
-                </>
-              )}
-              {nonMonthlyExpenses &&
-                (nonMonthlyExpenses.planned > 0 || nonMonthlyExpenses.spent > 0) && (
-                  <>
-                    <div className="border-t border-border-light" />
-                    <SummarySection
-                      label="Non-Monthly"
-                      planned={nonMonthlyExpenses.planned}
-                      actual={nonMonthlyExpenses.spent}
-                      actualLabel="spent"
-                      type="expenses"
-                    />
-                  </>
                 )}
-            </div>
-          )}
-        </div>
-      </PhoneCollapsed>
+                {flexibleExpenses &&
+                  (flexibleExpenses.planned > 0 || flexibleExpenses.spent > 0) && (
+                    <>
+                      {fixedExpenses && (fixedExpenses.planned > 0 || fixedExpenses.spent > 0) && (
+                        <div className="border-t border-border-light" />
+                      )}
+                      <SummarySection
+                        label="Flexible"
+                        planned={flexibleExpenses.planned}
+                        actual={flexibleExpenses.spent}
+                        actualLabel="spent"
+                        type="expenses"
+                      />
+                    </>
+                  )}
+                {nonMonthlyExpenses &&
+                  (nonMonthlyExpenses.planned > 0 || nonMonthlyExpenses.spent > 0) && (
+                    <>
+                      <div className="border-t border-border-light" />
+                      <SummarySection
+                        label="Non-monthly"
+                        planned={nonMonthlyExpenses.planned}
+                        actual={nonMonthlyExpenses.spent}
+                        actualLabel="spent"
+                        type="expenses"
+                      />
+                    </>
+                  )}
+              </div>
+            )}
+          </div>
+        </PhoneCollapsed>
+      )}
     </div>
   );
 }

@@ -75,7 +75,7 @@ test.describe('the budget header', () => {
 
     // Tap 1: the search field. Tap 2: the category.
     await page.getByRole('searchbox', { name: 'Find a category' }).fill('Groc');
-    const planned = page.getByRole('button', { name: /^Planned for Groceries:/ });
+    const planned = page.getByRole('button', { name: /^Assigned to Groceries:/ });
     await expect(planned).toBeInViewport();
     expect(await sidewaysOverflow(page)).toEqual([]);
     await planned.click();
@@ -83,12 +83,15 @@ test.describe('the budget header', () => {
     await expect(page.getByRole('dialog', { name: 'Plan Groceries' })).toBeVisible();
   });
 
-  test('the Ready to assign help does not cover "Put the rest in…"', async ({ page, api }) => {
+  test('the Ready to assign help does not cover "Put $X in an envelope…"', async ({
+    page,
+    api,
+  }) => {
     await api.createAccount('Everyday', 100_000);
     await open(page, '/budget');
     await page.getByRole('button', { name: 'What is Ready to assign?' }).click();
     const note = await box(page.getByRole('note'));
-    const put = await box(page.getByRole('button', { name: 'Put the rest in…' }));
+    const put = await box(page.getByRole('button', { name: /^Put .* in an envelope/ }));
     expect(note.y + note.height).toBeLessThanOrEqual(put.y + 1);
     expect(note.x).toBeGreaterThanOrEqual(0);
     expect(note.x + note.width).toBeLessThanOrEqual(WIDTH);
@@ -162,22 +165,84 @@ test('the Settings tabs show they scroll, and none is cut off', async ({ page, a
   await expectTabsReadable(page, bar, tabs);
 });
 
-test('the category list in Add transaction is as wide as its field', async ({ page, api }) => {
+test('the category list in Add transaction opens flush with its field, without the keyboard', async ({
+  page,
+  api,
+}) => {
   await api.createAccount('Everyday', 100_000);
   await open(page, '/transactions');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('dialog', { name: 'Add transaction' });
   const field = dialog.getByRole('button', { name: /^Category:/ });
   await field.click();
-  const search = page.getByRole('textbox', { name: 'Search categories' });
+  // The list is the popover's own dialog; the card carrying the shadow is its parent
+  const list = page.getByRole('dialog', { name: 'Search categories' });
+  const card = list.locator('xpath=..');
+  const search = list.getByRole('textbox', { name: 'Search categories' });
   await expect(search).toBeVisible();
-  const picker = search.locator('xpath=ancestor::div[contains(@class,"shadow-lg")][1]');
+  // Measured once the card's entrance (a 110 ms scale) has finished, or its box is a few px small
+  await card.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+
+  // Flush with the field, as the Account list is: same left and right edges
   const f = await box(field);
-  const p = await box(picker);
-  // Full width give or take a scrollbar or border (the old list was about 65% of the field)
-  expect(Math.round(p.width)).toBeGreaterThanOrEqual(Math.round(f.width) - 8);
-  expect(p.x).toBeGreaterThanOrEqual(0);
-  expect(p.x + p.width).toBeLessThanOrEqual(WIDTH);
+  const p = await box(card);
+  expect(Math.abs(p.x - f.x), 'left edges').toBeLessThanOrEqual(1);
+  expect(Math.abs(p.x + p.width - (f.x + f.width)), 'right edges').toBeLessThanOrEqual(1);
+  // Directly above or below the field, never covering it
+  const gapAbove = f.y - (p.y + p.height);
+  const gapBelow = p.y - (f.y + f.height);
+  expect(
+    (gapAbove >= 0 && gapAbove <= 8) || (gapBelow >= 0 && gapBelow <= 8),
+    `list sits directly above or below the field (above ${gapAbove}, below ${gapBelow})`,
+  ).toBe(true);
+  // The plain popover card the Account list wears, not the raised one
+  expect(await card.getAttribute('class')).not.toContain('shadow-lg');
+
+  // No text field has focus, so the phone keyboard stays down
+  await expect(search).not.toBeFocused();
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toMatch(
+    /^(INPUT|TEXTAREA)$/,
+  );
+
+  // The search is one tap away; typing filters, a tap on a category sets the field
+  await search.click();
+  await expect(search).toBeFocused();
+  await search.fill('groc');
+  await list.getByRole('option', { name: 'Groceries', exact: true }).click();
+  await expect(list).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Category: Groceries' })).toBeVisible();
+  await expect(dialog).toBeVisible();
+
+  // Escape (a hardware keyboard) closes only the list; the dialog and its values stay
+  await dialog.getByRole('button', { name: /^Category:/ }).click();
+  await expect(list).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(list).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Category: Groceries' })).toBeVisible();
+});
+
+// Owner decision A (UAT G-03-1): only Add transaction's list is calm on a phone. The details
+// sheet's category list keeps its search focused on open and its raised card.
+test('other phone category lists still focus their search', async ({ page, api }) => {
+  const account = await api.createAccount('Everyday', 100_000);
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -1_999,
+    payeeName: 'Streamflix',
+  });
+  await open(page, '/transactions');
+  await page.getByTestId('transaction-card').filter({ hasText: 'Streamflix' }).click();
+  const details = page.getByRole('complementary', { name: 'Transaction details' });
+  await details.getByRole('button', { name: 'Uncategorised' }).click();
+  const list = page.getByRole('dialog', { name: 'Search categories' });
+  const search = list.getByRole('textbox', { name: 'Search categories' });
+  await expect(search).toBeFocused();
+  expect(await list.locator('xpath=..').getAttribute('class')).toContain('shadow-lg');
+  await page.keyboard.press('Escape');
+  await expect(list).toHaveCount(0);
+  await expect(details).toBeVisible();
 });
 
 /**
@@ -208,7 +273,8 @@ test('tab bars scroll sideways only, never up and down', async ({ page, api }) =
   await api.createAccount('Everyday', 100_000);
   for (const route of [
     '/settings',
-    '/settings?tab=connections',
+    // The bank provider switch, on the Connected banks page under Accounts (#244)
+    '/accounts/connections',
     '/transactions',
     '/forecast',
     '/tax',
@@ -217,7 +283,11 @@ test('tab bars scroll sideways only, never up and down', async ({ page, api }) =
     await open(page, route);
     await page.waitForLoadState('networkidle');
     await expect(
-      page.locator('main [data-testid="scroll-cue-scroller"], main [role="tablist"]').first(),
+      page
+        .locator(
+          'main [data-testid="scroll-cue-scroller"], main [role="tablist"], main .scroll-row',
+        )
+        .first(),
     ).toBeVisible();
     const { count, problems } = await rowsThatScrollUpAndDown(page);
     expect(count, route).toBeGreaterThan(0);
@@ -227,9 +297,10 @@ test('tab bars scroll sideways only, never up and down', async ({ page, api }) =
 
 test('Settings opened on a later tab shows that tab whole', async ({ page, api }) => {
   await api.createAccount('Everyday', 100_000);
-  await open(page, '/settings?tab=connections');
+  // Connected banks, the tab this used, moved to Accounts (#244); Data is as far along
+  await open(page, '/settings?tab=data');
   const bar = page.getByTestId('scroll-cue').first();
-  const tab = bar.getByRole('tab', { name: 'Connected banks' });
+  const tab = bar.getByRole('tab', { name: 'Data' });
   await expect(tab).toHaveAttribute('aria-selected', 'true');
   // Clear of the fade at either edge, not half hidden under it
   const t = await box(tab);
@@ -298,3 +369,45 @@ for (const width of [320, WIDTH]) {
     expect(await sidewaysOverflow(page)).toEqual([]);
   });
 }
+
+// The import's category mapping is a fixed table with a third for the file's names: a long
+// single word must wrap inside that column, not run under the category button (03-25 review)
+test('a long category name in the import mapping stays in its own column', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 0);
+  await open(page, `/accounts/${account.id}`);
+  await page.getByRole('button', { name: 'Import CSV' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import transactions' });
+  const day = (n: number) => isoDay(n).split('-').reverse().join('/');
+  // Days from the 13th, so the file reads only as day/month: two days that could be either
+  // (11/10 and 12/10) make the import ask for the date format instead of offering Preview
+  let start = -40;
+  while (!/-(1[3-9]|2[0-7])$/.test(isoDay(start))) start--;
+  const file =
+    'Date,Payee,Category,Memo,Outflow,Inflow\n' +
+    `${day(start)},Telco,Telecommunications,,$60.00,\n` +
+    `${day(start + 1)},Telco,Telecommunications,,$60.00,\n`;
+  await dialog.getByLabel('Bank file').setInputFiles({
+    name: 'register.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(file),
+  });
+  await dialog.getByRole('button', { name: 'Preview' }).click();
+  const target = dialog.getByRole('button', { name: 'Category for Telecommunications' });
+  await expect(target).toBeVisible();
+  const label = target.locator('xpath=ancestor::tr[1]/td[1]');
+  // The text's own extent, which a table cell does not clip, against the cell's inner edge
+  const { text, inner } = await label.evaluate((td) => {
+    const range = document.createRange();
+    range.selectNodeContents(td);
+    const cell = td.getBoundingClientRect();
+    return {
+      text: range.getBoundingClientRect().right,
+      inner: cell.right - parseFloat(getComputedStyle(td).paddingRight),
+    };
+  });
+  expect(text).toBeLessThanOrEqual(inner + 0.5);
+  expect(text).toBeLessThanOrEqual((await box(target)).x);
+});

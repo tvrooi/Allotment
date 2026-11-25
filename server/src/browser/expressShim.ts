@@ -15,9 +15,11 @@ export interface ShimRequest {
 }
 
 export interface ShimResponse {
+  locals: Record<string, unknown>;
   statusCode: number;
   headers: Record<string, string>;
-  body: string | undefined;
+  /** Text, or a stored file's bytes (receipts and Files) */
+  body: string | Uint8Array | undefined;
   headersSent: boolean;
   status(code: number): ShimResponse;
   json(value: unknown): ShimResponse;
@@ -25,7 +27,7 @@ export interface ShimResponse {
   sendStatus(code: number): ShimResponse;
   setHeader(name: string, value: string): ShimResponse;
   set(name: string, value: string): ShimResponse;
-  end(): ShimResponse;
+  end(data?: string | Uint8Array): ShimResponse;
 }
 
 type Next = (err?: unknown) => void;
@@ -144,6 +146,7 @@ export function Router(): ShimRouter {
 
 export function createResponse(): ShimResponse {
   const res: ShimResponse = {
+    locals: {},
     statusCode: 200,
     headers: {},
     body: undefined,
@@ -159,6 +162,7 @@ export function createResponse(): ShimResponse {
       return res;
     },
     send(body) {
+      if (body instanceof Uint8Array) return res.end(body);
       if (body !== undefined && typeof body !== 'string') return res.json(body);
       res.body = body;
       res.headersSent = true;
@@ -175,7 +179,8 @@ export function createResponse(): ShimResponse {
     set(name, value) {
       return res.setHeader(name, value);
     },
-    end() {
+    end(data) {
+      if (data !== undefined) res.body = data;
       res.headersSent = true;
       return res;
     },
@@ -188,5 +193,10 @@ function json() {
   return (_req: ShimRequest, _res: ShimResponse, next: Next) => next();
 }
 
-const express = Object.assign(() => new ShimRouter(), { Router, json });
+/** `express.raw()`: only receipt upload uses it, which the demo refuses before it gets there. */
+function raw(_options?: unknown) {
+  return (_req: ShimRequest, _res: ShimResponse, next: Next) => next();
+}
+
+const express = Object.assign(() => new ShimRouter(), { Router, json, raw });
 export default express;

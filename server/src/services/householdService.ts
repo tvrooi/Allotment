@@ -1083,9 +1083,14 @@ export function sharePayments(
   });
 }
 
-export function shareBillPayments(groupId: string, scheduleId: string, transactionIds: string[]) {
+export function shareBillPayments(
+  groupId: string,
+  scheduleId: string,
+  transactionIds: string[],
+  preview = false,
+) {
   const split = parseSplit(billLink(groupId, scheduleId).splitJson) ?? undefined;
-  return sharePayments(groupId, transactionIds, { split, source: 'bill' });
+  return sharePayments(groupId, transactionIds, { split, source: 'bill', preview });
 }
 
 /**
@@ -1248,16 +1253,23 @@ const groupEdit = z
     name: name.optional(),
     /** Make this the household that opens first (there is only ever one) */
     isDefault: z.literal(true).optional(),
+    /** Off hides the household's bills and coverage; nothing is deleted */
+    includeBills: z.boolean().optional(),
   })
   .strict();
 
-/** Renames a household or makes it the one that opens first; its entries are unchanged */
+/** Renames a household, sets whether it includes bills, or makes it open first; entries are unchanged */
 export function updateGroup(groupId: string, raw: unknown) {
   const state = snapshot(groupId);
   const input = groupEdit.parse(raw);
   db.transaction((tx) => {
     if (input.name !== undefined)
       tx.update(groups).set({ name: input.name }).where(eq(groups.id, groupId)).run();
+    if (input.includeBills !== undefined)
+      tx.update(groups)
+        .set({ includeBills: input.includeBills ? 1 : 0 })
+        .where(eq(groups.id, groupId))
+        .run();
     if (input.isDefault) {
       tx.update(groups).set({ isDefault: 0 }).run();
       tx.update(groups).set({ isDefault: 1 }).where(eq(groups.id, groupId)).run();

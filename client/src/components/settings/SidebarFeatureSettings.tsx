@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useGuideProgress, useUpdateGuides } from '../../hooks/useGuides';
-import { NAV_FEATURES } from '../../utils/navFeatures';
+import { NAV_FEATURES, SETUP_FEATURES } from '../../utils/navFeatures';
+import { useCanSave } from '../../hooks/useConnection';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
 import type { NavChoice } from '../../api/guides';
 
 type Choice = NavChoice | 'auto';
@@ -18,6 +20,7 @@ const CHOICES: { value: Choice; label: string }[] = [
 export function SidebarFeatureSettings() {
   const { data: progress, isError } = useGuideProgress();
   const update = useUpdateGuides();
+  const canSave = useCanSave();
   const heading = useRef<HTMLHeadingElement>(null);
   const location = useLocation();
   const focusHere = (location.state as { focus?: string } | null)?.focus === 'sidebar-features';
@@ -44,7 +47,8 @@ export function SidebarFeatureSettings() {
           Show in the menu
         </h4>
         <p className="text-xs text-text-tertiary mt-0.5">
-          These appear once they hold something. Their pages always open from a link.
+          When in use shows Household, Tax time and Files as dimmed Set up rows until used. Other
+          features appear once they hold something. Their pages always open from a link.
         </p>
       </div>
       <ul className="divide-y divide-border rounded-md border border-border bg-surface">
@@ -62,7 +66,12 @@ export function SidebarFeatureSettings() {
                 <p className="text-sm text-text">{f.label}</p>
                 <p className="text-xs text-text-tertiary">
                   {f.description}
-                  {choice === 'auto' && (inUse ? ' · in use, shown' : ' · not in use yet')}
+                  {choice === 'auto' &&
+                    (inUse
+                      ? ' · in use, shown'
+                      : SETUP_FEATURES.some((key) => key === f.key)
+                        ? ' · Set up row until used'
+                        : ' · not in use yet')}
                 </p>
               </div>
               <div
@@ -76,7 +85,7 @@ export function SidebarFeatureSettings() {
                     type="button"
                     role="radio"
                     aria-checked={choice === c.value}
-                    disabled={!progress}
+                    disabled={!progress || !canSave || update.isPending}
                     onClick={() => update.mutate({ navFeatures: { [f.key]: c.value } })}
                     className={`px-2.5 py-1 max-md:min-h-11 rounded-md border text-xs ${
                       choice === c.value
@@ -92,6 +101,7 @@ export function SidebarFeatureSettings() {
           );
         })}
       </ul>
+      <SavingPausedHint />
     </section>
   );
 }

@@ -61,6 +61,18 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Finding your way',
+        body: (
+          <p>
+            The sidebar lists every page. To jump straight to a page, account, category, payee or
+            goal, search for it: press <b>Cmd+K</b> on a Mac (<b>Ctrl+K</b> elsewhere) or <b>/</b>{' '}
+            on any page, type a few letters and press Enter. On a phone, tap the magnifying glass at
+            the top. With nothing typed, it shows where you went last on this device. Press <b>?</b>{' '}
+            for the list of guides and every keyboard shortcut.
+          </p>
+        ),
+      },
+      {
         heading: 'Where your data is',
         body: (
           <p>
@@ -121,11 +133,11 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Keeping it up to date',
         body: (
           <p>
-            Allotment syncs when it starts and when you choose <b>Sync Now</b> in Settings →
-            Connected banks. You can also turn on background sync there. Each sync fetches recent
-            transactions; all of Up's history is checked once a week, or straight away with{' '}
-            <b>Check all history</b>. Your token is stored encrypted and is never included in
-            backups or exports.
+            Allotment syncs every time it starts, and whenever you choose <b>Sync Now</b> in
+            Accounts → Connected banks, where you can also turn on background sync. Each sync
+            fetches recent transactions; all of Up's history is checked once a week, or straight
+            away with <b>Check all history</b>. Your token is stored encrypted and is never included
+            in backups or exports.
           </p>
         ),
       },
@@ -164,7 +176,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         body: (
           <ol>
             <li>
-              In Allotment, open Settings → Connected banks → <b>Enable Banking</b>, or choose{' '}
+              In Allotment, open Accounts → Connected banks → <b>Enable Banking</b>, or choose{' '}
               <b>Connect via Enable Banking</b> when you add an account. The setup form shows your
               redirect URL with a <b>Copy</b> button.
             </li>
@@ -222,9 +234,9 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
               until the bank books them.
             </li>
             <li>
-              Banks give access for a few months at most (180 days under the rules). Settings →
-              Connected banks says when it ends; choose <b>Reconnect</b> and log in again. Your
-              accounts and history stay as they are.
+              Banks give access for a few months at most (180 days under the rules), and the
+              Accounts → Connected banks page says when it ends; choose <b>Reconnect</b> and log in
+              again. Your accounts and history stay as they are.
             </li>
             <li>
               Your private key is stored encrypted and is never included in backups or exports.
@@ -275,13 +287,25 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Adding one by hand',
+        body: (
+          <p>
+            For cash, or anything a bank won’t send: choose <b>Add a transaction</b> at the top of
+            the sidebar, or press <b>N</b>, on any page. On a phone, tap <b>Add</b> in the middle of
+            the bar at the foot of the screen. The amount is ready to type, and the account is the
+            one whose page you’re on, or else the one you used last on this device.
+          </p>
+        ),
+      },
+      {
         heading: 'Working through the list',
         body: (
           <p>
-            Click a transaction (or tap it on a phone) to open its details. Use the up and down
-            arrows beside <b>Close</b> to open the one above or below without closing the panel.
-            They follow the list as you see it, search and filters included. What you typed is saved
-            before the next one opens.
+            Click anywhere on a transaction (or tap it on a phone) to open its details, where its
+            payee and everything else can change; its category button changes the category right in
+            the list. Use the up and down arrows beside <b>Close</b> to open the one above or below
+            without closing the panel. They follow the list as you see it, search and filters
+            included. What you typed is saved before the next one opens.
           </p>
         ),
       },
@@ -322,7 +346,9 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         body: (
           <p>
             Money you have that isn’t in an envelope yet. Assign it until it reaches $0. If it goes
-            below $0, you’ve assigned more than you have: take some back from an envelope.
+            below $0, you’ve assigned more than you have: take some back from an envelope. Under it,{' '}
+            <b>Put $X in an envelope…</b> gives all of it to one envelope you choose; when a target
+            is still short, <b>Fund targets</b> comes first.
           </p>
         ),
       },
@@ -346,12 +372,23 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         ),
       },
       {
+        heading: 'Bills coming that an envelope can’t cover',
+        body: (
+          <p>
+            An envelope that isn’t overspent but has less than the recurring bills still to come is
+            amber, and says how much it is short, such as “$25 short for Food bank”. Select it to
+            see Available <b>After expected bills</b>. Once the bill is paid it stops counting as
+            expected, so it is never taken off twice.
+          </p>
+        ),
+      },
+      {
         heading: 'Spending you’ll be paid back for',
         body: (
           <p>
             Normally an envelope that ends the month overspent starts the next one at $0, and the
             money you spent comes out of Ready to assign. For spending someone will pay back, such
-            as a work expense, open the category (<b>Settings → Categories → Edit</b>) and tick{' '}
+            as a work expense, open the category (<b>Budget → Categories → Edit</b>) and tick{' '}
             <b>Keep overspending</b>. Its deficit then carries into the next month and Ready to
             assign isn’t reduced. When the repayment arrives and you give it that category, the
             envelope is back to $0. Review still lists it as overspent, marked as kept until repaid.
@@ -364,10 +401,10 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
           <p>
             If you’re living on last month’s pay, or some of this month’s money isn’t for this
             month, choose <b>Hold money…</b> under Ready to assign in the current month and enter
-            how much (on a phone, open <b>Hold money, and how this is worked out</b> first). It
-            leaves Ready to assign now, so the month can reach $0 and read fully budgeted, and it
-            comes back when next month starts. It can’t be given to a category until then, and you
-            can only hold what is ready to assign. <b>Change hold</b> and <b>Release hold</b> put it
+            how much (on a phone, open <b>Hold money for next month</b> first). It leaves Ready to
+            assign now, so the month can reach $0 and read “Every dollar has a job”, and it comes
+            back when next month starts. It can’t be given to a category until then, and you can
+            only hold what is ready to assign. <b>Change hold</b> and <b>Release hold</b> put it
             back. Nothing is spent or moved out of your accounts.
           </p>
         ),
@@ -475,7 +512,8 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
             phone). If it has money, <b>Move money</b> opens with that envelope as the source: type
             an amount and choose where it goes. If it is overspent (red), the panel opens with that
             envelope as the destination and the amount it is short: choose which envelope pays for
-            it. You can also open <b>Move money / Cover overspending</b> yourself and choose both.
+            it. You can also open the panel yourself (<b>Cover overspending</b>, or{' '}
+            <b>Move between envelopes</b> when nothing is overspent) and choose both.
           </p>
         ),
       },
@@ -754,12 +792,12 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Coming back after a break',
         body: (
           <p>
-            <b>Resume budgeting</b> says how long since your last review, how many transactions
-            arrived since, what spending has no category, which accounts to reconcile and, with Up
-            connected, the bank changes to look at. Start with today’s plan: you don’t need to sort
-            out old transactions first. <b>Mark review complete</b> saves the date and today’s
-            figures, so next time <b>Since your last review</b> can compare. It moves no money and
-            reconciles nothing.
+            At the end of Review, <b>Resume budgeting</b> says how long since your last review, how
+            many transactions arrived since, what spending has no category, which accounts to
+            reconcile and, with Up connected, the bank changes to look at. Start with today’s plan:
+            you don’t need to sort out old transactions first. <b>Record today’s review</b> saves
+            the date and today’s figures, so next time <b>Since your last review</b> can compare. It
+            moves no money and reconciles nothing.
           </p>
         ),
       },
@@ -767,7 +805,15 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
         heading: 'Needs attention',
         body: (
           <ul>
-            <li>Spending with no category: choose one right there.</li>
+            <li>
+              Spending with no category: open the category picker and type to search. Enter chooses
+              a match; Escape cancels without saving. After saving, the notification offers Undo,
+              even if that was the last item in the queue. For repeated merchants, use Sort repeated
+              payees together to categorise their uncategorised personal-budget transactions in one
+              step. Use View transactions beside a payee to inspect its uncategorised entries across
+              all dates before choosing. Browser Back returns to Review. Applying the category to
+              future transactions is optional.
+            </li>
             <li>
               Overspent envelopes: <L to="move-money">move money</L> from one that has some.
             </li>

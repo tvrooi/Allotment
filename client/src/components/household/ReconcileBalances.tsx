@@ -6,7 +6,8 @@ import { formatMoney } from '../../utils/currency';
 import { todayIso } from '../../utils/calendarDay';
 import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
-import { Input } from '../ui/Input';
+import { DatePicker } from '../ui/DatePicker';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Modal } from '../ui/Modal';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 
@@ -28,6 +29,7 @@ export function ReconcileBalances({ groupId, currency, people, balances, toPool,
   const qc = useQueryClient();
   const canSave = useCanSave();
   const money = (n: number) => formatMoney(n, currency);
+  const { allValid, report } = useAmountValidity();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(todayIso());
   const [agreed, setAgreed] = useState<Record<string, number>>({});
@@ -51,12 +53,14 @@ export function ReconcileBalances({ groupId, currency, people, balances, toPool,
     },
     onError: (e: Error) => setError(e.message),
   });
+  const latest = todayIso();
+  const canAgree = allValid && !!date && date <= latest;
   const part = (n: number) => (n === 0 ? '—' : money(n));
 
   return (
     <>
       <details className="mt-3 text-xs text-text-secondary">
-        <summary className="cursor-pointer text-text-tertiary">
+        <summary className="cursor-pointer w-fit text-sm font-medium text-text-secondary max-md:py-3.5">
           Where these figures come from
         </summary>
         <p className="mt-2">
@@ -100,68 +104,67 @@ export function ReconcileBalances({ groupId, currency, people, balances, toPool,
         </Button>
       </details>
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Reconcile balances">
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            reconcile.mutate();
-          }}
-        >
-          <p className="text-sm text-text-secondary">
-            Agree everyone’s balance from a date. Allotment records adjustment entries so the
-            balances match, and keeps every earlier entry. What people owe each other directly is
-            cleared, so record a repayment first if it was paid. Removing the adjustment entries
-            undoes this.
-          </p>
-          <label className="grid gap-1 text-sm font-medium text-text-secondary">
-            Agreed on
-            <Input
-              type="date"
-              value={date}
-              max={todayIso()}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </label>
-          <div className="divide-y divide-border-light border-y border-border-light">
-            {people.map((p) => (
-              <div key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span className="text-text">
-                  {p.name}
-                  <span className="block text-xs text-text-tertiary">
-                    Now {money(balances[p.id] ?? 0)}
-                  </span>
-                </span>
-                <div className="w-36">
-                  <CurrencyInput
-                    aria-label={`Agreed balance for ${p.name}`}
-                    value={agreed[p.id] ?? 0}
-                    onChange={(cents) => setAgreed((a) => ({ ...a, [p.id]: cents }))}
-                    allowNegative
-                    currency={currency}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-text-tertiary">
-            Positive means credit held in the household account; negative means they owe it.
-          </p>
-          {error && (
-            <p role="alert" className="text-sm text-negative">
-              {error}
+        <AmountFields report={report}>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (canAgree && canSave) reconcile.mutate();
+            }}
+          >
+            <p className="text-sm text-text-secondary">
+              Agree everyone’s balance from a date. Allotment records adjustment entries so the
+              balances match, and keeps every earlier entry. What people owe each other directly is
+              cleared, so record a repayment first if it was paid. Removing the adjustment entries
+              undoes this.
             </p>
-          )}
-          <SavingPausedHint />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={reconcile.isPending || !canSave}>
-              Agree balances
-            </Button>
-          </div>
-        </form>
+            <DatePicker
+              label="Agreed on"
+              value={date}
+              maxValue={latest}
+              onChange={setDate}
+              isRequired
+            />
+            <div className="divide-y divide-border-light border-y border-border-light">
+              {people.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="text-text">
+                    {p.name}
+                    <span className="block text-xs text-text-tertiary">
+                      Now {money(balances[p.id] ?? 0)}
+                    </span>
+                  </span>
+                  <div className="w-36">
+                    <CurrencyInput
+                      aria-label={`Agreed balance for ${p.name}`}
+                      value={agreed[p.id] ?? 0}
+                      onChange={(cents) => setAgreed((a) => ({ ...a, [p.id]: cents }))}
+                      allowNegative
+                      currency={currency}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-text-tertiary">
+              Positive means credit held in the household account; negative means they owe it.
+            </p>
+            {error && (
+              <p role="alert" className="text-sm text-negative">
+                {error}
+              </p>
+            )}
+            <SavingPausedHint />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={reconcile.isPending || !canSave || !canAgree}>
+                Agree balances
+              </Button>
+            </div>
+          </form>
+        </AmountFields>
       </Modal>
     </>
   );

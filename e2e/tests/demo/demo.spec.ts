@@ -25,18 +25,35 @@ async function openDemo(page: Page, route = '/dashboard') {
   await expect(page.getByRole('region', { name: 'Demo' })).toBeVisible();
 }
 
+/** The dashboard's "Left to spend · <month>" figure: the budget has loaded */
+const leftToSpend = (page: Page) => page.getByText(/^Left to spend · /);
+
 test('the demo opens on a finished budget, and every page works', async ({ page }) => {
   // It never talks to a server: every request stays on the demo's own files
   const requests: string[] = [];
   page.on('request', (r) => requests.push(new URL(r.url()).pathname));
 
   await openDemo(page);
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
   await expect(page.getByText('Bills and income')).toBeVisible();
+  // The status strip names the sample's Up feed and the household's balance
+  const strip = page.getByRole('region', { name: 'Budget status' });
+  await expect(strip.getByRole('link', { name: /^Synced from Up / })).toHaveAttribute(
+    'href',
+    '#/accounts/connections?provider=up',
+  );
+  await expect(strip.getByRole('listitem')).toHaveCount(2);
+  await expect(strip.getByText('Harbour St house')).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Review attention' })
+      .getByRole('link', { name: 'Open review' }),
+  ).toBeVisible();
 
   for (const [route, text] of [
     ['/budget', 'Contents Insurance'],
-    ['/transactions', 'All transactions'],
+    // The heading is now just "Transactions", like the sidebar link, so look for the count
+    ['/transactions', /^[\d,]+ transactions?$/],
     ['/accounts', 'Synced from Up'],
     ['/recurring', "Riley's pay"],
     ['/reports', 'Where the money goes'],
@@ -44,7 +61,10 @@ test('the demo opens on a finished budget, and every page works', async ({ page 
     ['/goals', 'Emergency fund'],
     ['/payees', 'Daily Grind Coffee'],
     ['/rules', 'Rename payee to Daily Grind Coffee'],
-    ['/settings', 'Pay'],
+    // Settings opens on its Accounts tab
+    ['/settings', 'Account order'],
+    ['/budget/categories', 'Pay'],
+    ['/accounts/connections', 'Not available in the demo'],
   ] as const) {
     await page.evaluate((r) => (location.hash = `#${r}`), route);
     await expect(page.getByText(text).first(), route).toBeVisible();
@@ -109,17 +129,18 @@ test('changes stay in the tab, and "Start over" brings the demo budget back', as
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
   await page.getByRole('link', { name: 'Payees' }).click();
   await expect(page.getByRole('row', { name: /Corner Grocer/ })).toBeVisible();
 });
 
 test("bank connections can't be set up in the demo", async ({ page }) => {
-  await openDemo(page, '/settings?tab=connections');
+  await openDemo(page, '/accounts/connections');
   await expect(page.getByText('Not available in the demo')).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Add account' }).click();
+  // The sidebar's add menu, scoped to the sidebar as a guard: Accounts has its own Add account
+  await page.getByRole('complementary').getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: 'Connect via SimpleFIN' }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect a bank' });
   await expect(dialog).toContainText('need the Allotment app');
@@ -139,7 +160,9 @@ test("bank connections can't be set up in the demo", async ({ page }) => {
   expect(status).toBe(403);
 
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Add account' }).click();
+  // The SimpleFIN dialog closes first, so the next one is the only "Connect a bank"
+  await expect(dialog).toBeHidden();
+  await page.getByRole('complementary').getByRole('button', { name: 'Add account' }).click();
   await page.getByRole('button', { name: 'Connect via Enable Banking' }).click();
   await expect(page.getByRole('dialog', { name: 'Connect a bank' })).toContainText(
     'Enable Banking',
@@ -257,7 +280,7 @@ test("the demo's preferences stay in the tab, and Start over resets them", async
   expect(stored.session).toContain('dark');
 
   await page.getByRole('button', { name: 'Start over' }).click();
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 });
 
@@ -277,7 +300,7 @@ test('the demo runs under a strict Content Security Policy', async ({ page }) =>
   expect(meta).toContain("default-src 'self'");
   expect(meta).toContain("connect-src 'self'");
   await expect(page.getByRole('region', { name: 'Demo' })).toBeVisible();
-  await expect(page.getByText('Left to spend', { exact: true })).toBeVisible();
+  await expect(leftToSpend(page)).toBeVisible();
 
   // A request to another site is blocked
   const blocked = await page.evaluate(() =>
@@ -369,4 +392,55 @@ test('the demo has working-from-home hours, and lodging a year records them in t
   await edit.getByRole('button', { name: 'Save hours' }).click();
   await page.getByRole('tab', { name: 'Deductions' }).click();
   await expect(page.getByRole('region', { name: 'Amended since lodging' })).toBeVisible();
+});
+
+test('the search palette finds the sample budget’s payees and goals', async ({ page }) => {
+  await openDemo(page);
+  await expect(leftToSpend(page)).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+k');
+  const palette = page.getByRole('dialog', { name: 'Search' });
+  await palette.getByRole('combobox').fill('grind');
+  await palette
+    .getByRole('group', { name: 'Payees', exact: true })
+    .getByRole('option', { name: /^Daily Grind Coffee/ })
+    .click();
+  // A payee opens its own page (#235), in the demo too
+  await expect(page).toHaveURL(/#\/payees\/demo-payee-dailyGrind$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Daily Grind Coffee' })).toBeVisible();
+  await expect(palette).toBeHidden();
+
+  await page.keyboard.press('ControlOrMeta+k');
+  await palette.getByRole('combobox').fill('emergency');
+  // The goal, and the envelope of the same name under Categories
+  await expect(
+    palette.getByRole('option', { name: 'Emergency Fund · Savings Goals' }),
+  ).toBeVisible();
+  await palette
+    .getByRole('group', { name: 'Goals' })
+    .getByRole('option', { name: 'Emergency fund' })
+    .click();
+  await expect(page).toHaveURL(/#\/goals$/);
+});
+
+test('the palette searches demo transactions and the sample files', async ({ page }) => {
+  await openDemo(page, '/files');
+  await page.getByRole('heading', { level: 1 }).first().waitFor();
+  await page.keyboard.press('ControlOrMeta+k');
+  const palette = page.getByRole('dialog', { name: 'Search' });
+  await palette.getByRole('combobox').fill('Daily Grind');
+  await expect(
+    palette
+      .getByRole('group', { name: 'Transactions', exact: true })
+      .getByRole('option', { name: /^Daily Grind Coffee/ })
+      .first(),
+  ).toBeVisible();
+  // The sample files are searched in the tab, like a server's
+  const files = palette.getByRole('group', { name: 'Files', exact: true }).getByRole('option');
+  await palette.getByRole('combobox').fill('shieldwell');
+  await expect(files.filter({ hasText: 'shieldwell-certificate-of-insurance.pdf' })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('phone-header')).toBeVisible();
+  await palette.getByRole('combobox').fill('shieldwell');
+  await expect(files.filter({ hasText: 'shieldwell-certificate-of-insurance.pdf' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

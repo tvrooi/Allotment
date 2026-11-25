@@ -28,6 +28,8 @@ import { forecastRouter } from '../routes/forecast.js';
 import { reviewRouter } from '../routes/review.js';
 import { investmentsRouter } from '../routes/investments.js';
 import { taxRouter } from '../routes/tax.js';
+import { receiptsRouter } from '../routes/receipts.js';
+import { filesRouter } from '../routes/files.js';
 import { prioritiesRouter } from '../routes/priorities.js';
 import { guidesRouter } from '../routes/guides.js';
 import { currencyRouter } from '../routes/currency.js';
@@ -111,25 +113,21 @@ app.use('/payday', paydayRouter as unknown as ShimRouter);
 app.use('/forecast', forecastRouter as unknown as ShimRouter);
 app.use('/review', reviewRouter as unknown as ShimRouter);
 app.use('/investments', investmentsRouter as unknown as ShimRouter);
-// Receipts are files, which the demo's in-page server does not take; tax claims work
-app.get('/receipts', (_req, res) => res.json([]));
-app.get('/receipts/counts', (_req, res) => res.json([]));
-app.use('/receipts', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
-// Files likewise: an empty library, and nothing can be added
-app.get('/files', (_req, res) => res.json({ total: 0, documents: [] }));
-app.get('/files/counts', (_req, res) => res.json([]));
-app.get('/files/storage', (_req, res) =>
-  res.json({
-    bytes: 0,
-    files: 0,
-    onDisk: 0,
-    documents: 0,
-    capMb: null,
-    maxFileBytes: 0,
-    maxVideoBytes: 0,
-  }),
-);
-app.use('/files', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
+// Receipts and Files: the sample budget's files live in the worker's database, and can be opened,
+// edited, matched, linked and deleted. Adding a file, the receipt reader (a model on another
+// computer or online) and the zip downloads need the app.
+const refuse = (_req: ShimRequest, res: ShimResponse) =>
+  res.status(403).json({ error: NOT_IN_DEMO });
+app.post('/receipts', refuse);
+app.put('/receipts/reader', refuse);
+app.use('/receipts/reader/models', refuse);
+app.use('/receipts/reader/sample', refuse);
+app.post('/receipts/:id/read', refuse);
+app.use('/receipts', receiptsRouter as unknown as ShimRouter);
+app.post('/files', refuse);
+app.get('/files/export', refuse);
+app.post('/files/:id/text', refuse);
+app.use('/files', filesRouter as unknown as ShimRouter);
 app.get('/tax/years/:fy/archive', (_req, res) => res.status(403).json({ error: NOT_IN_DEMO }));
 app.use('/tax', taxRouter as unknown as ShimRouter);
 app.use('/priorities', prioritiesRouter as unknown as ShimRouter);
@@ -174,7 +172,8 @@ export interface DemoRequest {
 export interface DemoResponse {
   status: number;
   headers: Record<string, string>;
-  body?: string;
+  /** Text, or a stored file's bytes */
+  body?: string | Uint8Array;
 }
 
 /** Handles one API request, like the Express app in index.ts would. */

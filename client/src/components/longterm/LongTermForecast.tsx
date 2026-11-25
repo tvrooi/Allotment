@@ -1,22 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import * as api from '../../api/longTerm';
+import { useCanSave } from '../../hooks/useConnection';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { PrivateSection } from '../ui/Private';
+import { EmptyState } from '../ui/EmptyState';
 import { usePlanEditor } from '../../hooks/usePlanEditor';
-import { Button } from '../ui/Button';
+import { Button, ButtonLink } from '../ui/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
-import { Input, Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
+import { Field } from '../ui/Field';
+import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
-import { StatCardRow } from '../reports/ChartHelpers';
-import { formatCurrency } from '../../utils/currency';
+import { Select } from '../ui/Select';
+import RowMenu from '../ui/RowMenu';
+import { StatCardRow, type StatCard } from '../reports/ChartHelpers';
+import { formatExampleMoney, formatCurrency, formatWholeCurrency } from '../../utils/currency';
 import { inDollars, newDraft, PPB, type Dollars } from '../../utils/longTerm';
 import { AccountsPanel } from './AccountsPanel';
 import { AssumptionsPanel } from './AssumptionsPanel';
 import { ComparePanel } from './ComparePanel';
 import { EventEditor } from './EventEditor';
 import { EventList } from './EventList';
-import { Field, WholeNumberField } from './fields';
+import { WholeNumberField } from './fields';
 import { NetWorthChart } from './NetWorthChart';
 import { SavingsPanel } from './SavingsPanel';
 import { SimulationPanel } from './SimulationPanel';
@@ -34,6 +41,9 @@ const remember = (key: string, value?: string): string | null => {
     return value ?? null;
   }
 };
+
+/** The Compare with list's "No comparison" choice; a plan id is a 21-character nanoid, never this */
+const NO_COMPARISON = '__none';
 
 type Panel = 'events' | 'assumptions' | 'accounts' | 'savings' | 'compare' | 'simulation';
 const PANELS: { id: Panel; label: string }[] = [
@@ -60,6 +70,7 @@ function NewPlanForm({
   const [birthYear, setBirthYear] = useState(new Date().getFullYear() - 40);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const canSave = useCanSave();
   const { allValid, report } = useAmountValidity();
   async function create() {
     setBusy(true);
@@ -86,7 +97,7 @@ function NewPlanForm({
       className="space-y-4 max-w-md"
       onSubmit={(e) => {
         e.preventDefault();
-        if (name.trim() && !busy && allValid) void create();
+        if (name.trim() && !busy && allValid && canSave) void create();
       }}
     >
       {first && (
@@ -97,12 +108,7 @@ function NewPlanForm({
         </p>
       )}
       <Field label="Plan name">
-        <Input
-          aria-label="Plan name"
-          value={name}
-          maxLength={100}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <Input value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />
       </Field>
       <AmountFields report={report}>
         <WholeNumberField
@@ -124,10 +130,11 @@ function NewPlanForm({
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={!name.trim() || busy || !allValid}>
+        <Button type="submit" disabled={!name.trim() || busy || !allValid || !canSave}>
           Create plan
         </Button>
       </div>
+      <SavingPausedHint />
     </form>
   );
 }
@@ -174,6 +181,7 @@ export function LongTermForecast() {
   const plans = useQuery({ queryKey: ['lt-plans'], queryFn: api.listPlans });
   const [chosen, setChosen] = useState<string | null>(() => remember('lt-plan'));
   const list = plans.data;
+  const [creating, setCreating] = useState(false);
   const selected = list?.find((p) => p.id === chosen)?.id ?? list?.[0]?.id ?? null;
   useEffect(() => {
     if (selected) remember('lt-plan', selected);
@@ -188,9 +196,45 @@ export function LongTermForecast() {
             {(plans.error as Error).message}
           </p>
         )}
-        {list && list.length === 0 && <NewPlanForm first onCreated={setChosen} />}
+        {list &&
+          list.length === 0 &&
+          (creating ? (
+            <PrivateSection title="Forecasts are hidden in Safe mode">
+              <NewPlanForm
+                first
+                onCreated={(id) => {
+                  setChosen(id);
+                  setCreating(false);
+                }}
+              />
+            </PrivateSection>
+          ) : (
+            <EmptyState
+              title="See where your plans could take you"
+              description="Explore how saving and life changes could shape your future balance."
+              example={{
+                content: (
+                  <>
+                    <p>At age 65</p>
+                    <p className="mt-1 font-medium text-text">
+                      {formatExampleMoney(85_000_000)} projected balance
+                    </p>
+                  </>
+                ),
+                description:
+                  'An illustrative plan projects a balance of ' +
+                  formatExampleMoney(85_000_000) +
+                  ' at age 65.',
+              }}
+              keepActions
+              actions={<Button onClick={() => setCreating(true)}>Create a plan</Button>}
+            />
+          ))}
+
         {list && selected && (
-          <Workspace key={selected} id={selected} plans={list} onSelect={setChosen} />
+          <PrivateSection title="Forecasts are hidden in Safe mode">
+            <Workspace key={selected} id={selected} plans={list} onSelect={setChosen} />
+          </PrivateSection>
         )}
       </div>
     </div>
@@ -288,10 +332,10 @@ function Editor({
     remember('lt-dollars', m);
   }
 
-  const cards = useMemo(() => {
-    if (!r) return [];
+  const summary = useMemo(() => {
+    if (!r) return null;
     const show = (cents: number, index: number) =>
-      formatCurrency(inDollars(cents, years[index].inflationIndexPpb, mode));
+      formatWholeCurrency(inDollars(cents, years[index].inflationIndexPpb, mode));
     const last = years.length - 1;
     const lowest = years.reduce(
       (m, y) => (y.closingNetWorth < m.closingNetWorth ? y : m),
@@ -308,41 +352,55 @@ function Editor({
     const opens = years.slice(1).find((y) => y.superPhase !== 'preserved');
     const atRetirement =
       retiredIndex >= 0 && retiredIndex < years.length - 1 ? years[retiredIndex] : undefined;
-    return [
+    const endNegative = years[last].closingNetWorth < 0;
+    const headline = r.firstUnfunded
+      ? `Your accounts run short from ${r.firstUnfunded.calendarYear}, at age ${r.firstUnfunded.age}.`
+      : lowest.closingNetWorth < 0
+        ? `Your net worth dips below zero, lowest in ${years[0].calendarYear + lowest.index}.`
+        : `Your net worth stays positive to age ${r.endAge}.`;
+    const lead = {
+      headline,
+      label: `Net worth at ${r.endAge}`,
+      value: show(years[last].closingNetWorth, last),
+      negative: endNegative,
+    };
+    // The lowest point only earns a card when it is not simply the last year again
+    const cards: StatCard[] = [
       {
         label: 'Net worth today',
         value: show(years[0].closingNetWorth, 0),
         sub: `${show(years[0].wealth.accessible, 0)} accessible · ${show(years[0].wealth.preserved, 0)} preserved super`,
       },
-      {
-        label: `Net worth at ${r.endAge}`,
-        value: show(years[last].closingNetWorth, last),
-        tone: years[last].closingNetWorth < 0 ? ('negative' as const) : undefined,
-      },
-      {
-        label: 'Lowest net worth',
-        value: show(lowest.closingNetWorth, lowest.index),
-        sub:
-          lowest.index === 0 ? 'Today' : `In ${lowest.index} year${lowest.index === 1 ? '' : 's'}`,
-        tone: lowest.closingNetWorth < 0 ? ('negative' as const) : undefined,
-      },
-      {
-        label: 'Accessible at retirement',
-        value: atRetirement ? show(atRetirement.wealth.accessible, atRetirement.index) : '—',
-        sub: atRetirement
-          ? `Cash, investments and released super at ${r.retirementAge}`
-          : 'No retirement event yet',
-        tone:
-          atRetirement && atRetirement.wealth.accessible < 0 ? ('negative' as const) : undefined,
-      },
+      ...(lowest.index !== last
+        ? [
+            {
+              label: 'Lowest net worth',
+              value: show(lowest.closingNetWorth, lowest.index),
+              sub:
+                lowest.index === 0
+                  ? 'Today'
+                  : `In ${lowest.index} year${lowest.index === 1 ? '' : 's'}`,
+              tone: lowest.closingNetWorth < 0 ? ('negative' as const) : undefined,
+            },
+          ]
+        : []),
+      ...(atRetirement
+        ? [
+            {
+              label: 'Accessible at retirement',
+              value: show(atRetirement.wealth.accessible, atRetirement.index),
+              sub: `Cash, investments and released super at ${r.retirementAge}`,
+              tone: atRetirement.wealth.accessible < 0 ? ('negative' as const) : undefined,
+            },
+          ]
+        : []),
       {
         label: `Super at ${r.preservationAge}`,
         value:
           superNow === null || !atPreservation
             ? '—'
-            : formatCurrency(inDollars(superNow, atPreservation.inflationIndexPpb, mode)),
-        sub:
-          r.retirementAge === null ? 'No retirement event yet' : `Retiring at ${r.retirementAge}`,
+            : formatWholeCurrency(inDollars(superNow, atPreservation.inflationIndexPpb, mode)),
+        sub: r.retirementAge === null ? undefined : `Retiring at ${r.retirementAge}`,
       },
       {
         label: 'Super opens',
@@ -354,6 +412,7 @@ function Editor({
             : 'Reached 65, while still working',
       },
     ];
+    return { lead, cards, noRetirement: r.retirementAge === null };
   }, [r, years, mode]);
 
   async function removePlan() {
@@ -426,66 +485,73 @@ function Editor({
     </p>
   );
 
+  // With no income at all, the cause leads and its own warning line would only repeat it
+  const noIncome =
+    point.data?.income.source === 'none' && working.settings.income.takeHome === null;
+  const warnings = (r?.warnings ?? []).filter(
+    (w) => !(noIncome && w.startsWith('There is no payday plan')),
+  );
+  function enterIncome() {
+    setPanel('assumptions');
+    setTimeout(
+      () => document.getElementById('lt-plan-sections')?.scrollIntoView({ block: 'start' }),
+      0,
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Plan" className="min-w-48">
-          <Select
-            aria-label="Plan"
-            value={saved.id}
-            onChange={(e) => {
-              const id = e.target.value;
-              guard(() => onSelect(id));
-            }}
-          >
-            {plans.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.id === saved.id ? working.name : p.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() =>
-            guard(() => {
-              setText('');
-              setPlanError(null);
-              setModal('new');
-            })
-          }
-        >
-          <Plus size={14} /> New plan
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() =>
-            guard(() => {
-              setText(`${saved.plan.name} copy`);
-              setPlanError(null);
-              setModal('duplicate');
-            })
-          }
-        >
-          <Copy size={14} /> Duplicate
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            setText(saved.plan.name);
-            setPlanError(null);
-            setModal('rename');
+        <Combobox
+          label="Plan"
+          items={plans.map((p) => ({
+            value: p.id,
+            label: p.id === saved.id ? working.name : p.name,
+          }))}
+          value={saved.id}
+          // Emptying the text to search keeps the plan shown until another is picked
+          onChange={(id) => {
+            if (id && id !== saved.id) guard(() => onSelect(id));
           }}
+          className="min-w-48 max-md:flex-1"
+        />
+        <RowMenu
+          label="Plan actions"
+          items={[
+            {
+              label: 'New plan',
+              onClick: () =>
+                guard(() => {
+                  setText('');
+                  setPlanError(null);
+                  setModal('new');
+                }),
+            },
+            {
+              label: 'Duplicate',
+              onClick: () =>
+                guard(() => {
+                  setText(`${saved.plan.name} copy`);
+                  setPlanError(null);
+                  setModal('duplicate');
+                }),
+            },
+            {
+              label: 'Rename',
+              onClick: () => {
+                setText(saved.plan.name);
+                setPlanError(null);
+                setModal('rename');
+              },
+            },
+            { label: 'Delete', danger: true, onClick: () => guard(() => setModal('delete')) },
+          ]}
+        />
+        <div
+          className="flex gap-1 ml-auto max-md:ml-0 max-md:w-full max-md:[&>button]:flex-1 max-md:[&>button]:min-h-11"
+          role="group"
+          aria-label="Dollars"
         >
-          <Pencil size={14} /> Rename
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => guard(() => setModal('delete'))}>
-          <Trash2 size={14} /> Delete
-        </Button>
-        <div className="flex gap-1 ml-auto" role="group" aria-label="Dollars">
           {(['today', 'future'] as const).map((m) => (
             <Button
               key={m}
@@ -499,24 +565,38 @@ function Editor({
           ))}
         </div>
       </div>
-      <Tip tip={TIPS.todaysDollars} className="rounded-lg border border-border-light p-4" />
-      <p className="text-xs text-text-tertiary">
-        A projection, not a promise.{' '}
-        {mode === 'today'
-          ? `Amounts are in today's dollars, with inflation at ${working.settings.inflationBps / 100}% a year taken out.`
-          : `Amounts are in the dollars of each year, with inflation at ${working.settings.inflationBps / 100}% a year.`}{' '}
-        Nothing here changes your budget.
-      </p>
-
       {!editing && modal === null && conflictBox}
-      {r?.warnings.length ? (
+      {noIncome && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-caution/30 bg-caution-subtle px-4 py-3"
+        >
+          <p className="flex-1 min-w-64 text-sm text-text">
+            <span className="font-medium">This forecast assumes you earn nothing.</span> You have no
+            payday plan and no take-home income entered
+            {r?.firstUnfunded
+              ? `, so your accounts run short from ${r.firstUnfunded.calendarYear}`
+              : ''}
+            . Add your take-home pay to see a realistic picture.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={enterIncome}>
+              Enter take-home pay
+            </Button>
+            <ButtonLink size="sm" variant="secondary" to="/budget">
+              Set up a payday plan
+            </ButtonLink>
+          </div>
+        </div>
+      )}
+      {warnings.length ? (
         <ul className="text-sm text-caution list-disc pl-5" aria-label="Forecast warnings">
-          {r.warnings.map((w) => (
+          {warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}
         </ul>
       ) : null}
-      {r?.firstUnfunded && (
+      {r?.firstUnfunded && !noIncome && (
         <p role="alert" className="rounded-md border border-negative p-3 text-sm text-negative">
           Unfunded spending: from {r.firstUnfunded.calendarYear} (age {r.firstUnfunded.age}) your
           accounts cannot pay for all of your spending. The shortfall is counted against your net
@@ -531,7 +611,25 @@ function Editor({
 
       {r && (
         <>
-          <StatCardRow variant="hero" cards={cards} />
+          {summary && (
+            <div className="space-y-3">
+              <div>
+                <p className="text-base text-text-secondary">{summary.lead.headline}</p>
+                <p
+                  className={`font-display text-4xl max-md:text-3xl tracking-tight tabular-nums mt-1 ${summary.lead.negative ? 'text-negative' : 'text-text'}`}
+                >
+                  {summary.lead.value}
+                </p>
+                <p className="text-sm text-text-secondary">{summary.lead.label}</p>
+              </div>
+              <StatCardRow cards={summary.cards} />
+              {summary.noRetirement && (
+                <p className="text-sm text-text-tertiary">
+                  Add a retirement event in Life events to see what you will have to live on.
+                </p>
+              )}
+            </div>
+          )}
           {r.studyLoans && <StudySummary study={r.studyLoans} />}
           <NetWorthChart
             years={years}
@@ -546,32 +644,34 @@ function Editor({
             onSelect={setYear}
           />
           <div className="flex flex-wrap items-end gap-3">
-            <Field label="See what made up a year">
-              <Select
-                aria-label="Year"
-                value={yearIndex ?? ''}
-                onChange={(e) => setYear(e.target.value === '' ? null : Number(e.target.value))}
-              >
-                <option value="">Choose a year</option>
-                {years.slice(1).map((y) => (
-                  <option key={y.index} value={y.index}>
-                    {y.calendarYear} (age {y.age} to {y.age + 1})
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <p className="text-xs text-text-tertiary pb-3">
-              Each point is your net worth that many years from today. A year here is the 12 months
-              from today's date, named after the calendar year it starts in.
+            <Select
+              label="See what made up a year"
+              placeholder="Choose a year"
+              value={yearIndex === null ? '' : String(yearIndex)}
+              onChange={(v) => setYear(v === '' ? null : Number(v))}
+              options={years.slice(1).map((y) => ({
+                value: String(y.index),
+                label: `${y.calendarYear} (age ${y.age} to ${y.age + 1})`,
+              }))}
+              className="w-auto min-w-56"
+            />
+            <p className="text-xs text-text-tertiary pb-3 max-w-prose">
+              A projection, not a promise.{' '}
+              {mode === 'today'
+                ? `Amounts are in today's dollars, with inflation at ${working.settings.inflationBps / 100}% a year taken out.`
+                : `Amounts are in the dollars of each year, with inflation at ${working.settings.inflationBps / 100}% a year.`}{' '}
+              Each point is your net worth that many years from today. Nothing here changes your
+              budget.
             </p>
           </div>
+          <Tip tip={TIPS.todaysDollars} className="rounded-lg border border-border-light p-4" />
           {selectedYear && (
             <YearBreakdown year={selectedYear} previousIndexPpb={prevIndex} mode={mode} />
           )}
         </>
       )}
 
-      <section className="space-y-4">
+      <section id="lt-plan-sections" className="space-y-4 scroll-mt-4">
         <ScrollCue
           className="border-b border-border-light"
           scrollerClassName="flex gap-1 -mb-px"
@@ -677,20 +777,19 @@ function Editor({
               </p>
             ) : (
               <>
-                <Field label="Compare with" className="max-w-xs">
-                  <Select
-                    aria-label="Compare with"
-                    value={refSummary ? reference : ''}
-                    onChange={(e) => setReference(e.target.value)}
-                  >
-                    <option value="">No comparison</option>
-                    {others.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                <Combobox
+                  label="Compare with"
+                  items={[
+                    { value: NO_COMPARISON, label: 'No comparison' },
+                    ...others.map((p) => ({ value: p.id, label: p.name })),
+                  ]}
+                  value={refSummary ? reference : NO_COMPARISON}
+                  // Emptying the text to search keeps the comparison until another is picked
+                  onChange={(id) => {
+                    if (id) setReference(id === NO_COMPARISON ? '' : id);
+                  }}
+                  className="max-w-xs"
+                />
                 {comparison.error && (
                   <p role="alert" className="text-sm text-negative">
                     {(comparison.error as Error).message}
@@ -740,12 +839,7 @@ function Editor({
           }}
         >
           <Field label="Plan name">
-            <Input
-              aria-label="Plan name"
-              value={text}
-              maxLength={100}
-              onChange={(e) => setText(e.target.value)}
-            />
+            <Input value={text} maxLength={100} onChange={(e) => setText(e.target.value)} />
           </Field>
           {modal === 'rename' && conflictBox}
           {planError && (

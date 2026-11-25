@@ -13,13 +13,11 @@ export function AssignMenu({
   underfundedCount,
   onAutoAssign,
   onFundTargets,
-  onPayday,
 }: {
   disabled: boolean;
   underfundedCount: number;
   onAutoAssign: () => void;
   onFundTargets: () => void;
-  onPayday: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -40,11 +38,20 @@ export function AssignMenu({
       <span className="text-xs text-text-tertiary">{hint}</span>
     </button>
   );
+  // Nothing underfunded: the menu would hold one item, so show that action directly
+  if (underfundedCount === 0) {
+    return (
+      <Button size="sm" variant="secondary" disabled={disabled} onClick={onAutoAssign}>
+        Auto-assign…
+      </Button>
+    );
+  }
   return (
     <div className="relative">
       <Button
         ref={buttonRef}
         size="sm"
+        variant="secondary"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -59,14 +66,12 @@ export function AssignMenu({
           className="absolute right-0 top-full z-40 mt-1 w-72 rounded-lg border border-border bg-surface py-1 shadow-lg"
         >
           {item('Auto-assign', onAutoAssign, 'Top up envelopes by a rule you choose', disabled)}
-          {underfundedCount > 0 &&
-            item(
-              `Fund targets (${underfundedCount})`,
-              onFundTargets,
-              'Give underfunded targets what they need',
-              disabled,
-            )}
-          {item('Until next payday', onPayday, 'Plan what this pay covers')}
+          {item(
+            `Fund targets (${underfundedCount})`,
+            onFundTargets,
+            'Give underfunded targets what they need',
+            disabled,
+          )}
         </div>
       )}
     </div>

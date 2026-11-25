@@ -4,15 +4,24 @@ import { queueOnDevice, useOutbox } from '../offline/outbox';
 import { newClientId } from '../utils/offline';
 import { useCanSave } from './useConnection';
 import { useCreateTransaction, useCreateTransfer } from './useTransactions';
+import { SAVING_PAUSED } from '../components/connection/savingPaused';
 
 /**
- * Whether a new transaction can be added right now, and whether it would wait on this
- * device (Allotment can't reach its server, but this browser can store it).
+ * Whether a new transaction can be added right now, whether it would wait on this device
+ * (Allotment can't reach its server, but this browser can store it), and the tooltip that
+ * says so on an Add button.
  */
 export function useCanAddTransaction() {
   const canSave = useCanSave();
   const canWait = useOutbox((s) => s.available);
-  return { allowed: canSave || canWait, onDevice: !canSave };
+  const allowed = canSave || canWait;
+  const onDevice = !canSave;
+  const hint = !allowed
+    ? SAVING_PAUSED
+    : onDevice
+      ? 'Saved on this device and sent when Allotment reconnects'
+      : undefined;
+  return { allowed, onDevice, hint };
 }
 
 export type NewTransaction =
@@ -25,7 +34,7 @@ export type NewTransaction =
  * when Allotment reconnects (the id stops a save that did arrive from being made twice).
  */
 export function useAddTransaction() {
-  const { allowed, onDevice } = useCanAddTransaction();
+  const { allowed, onDevice, hint } = useCanAddTransaction();
   const createTx = useCreateTransaction();
   const createTransfer = useCreateTransfer();
 
@@ -47,6 +56,7 @@ export function useAddTransaction() {
     add,
     allowed,
     onDevice,
+    hint,
     pending: createTx.isPending || createTransfer.isPending,
   };
 }

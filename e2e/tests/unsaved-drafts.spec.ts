@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, chooseOption } from './fixtures';
 
 // UX audit AU-007: one Escape threw away a half-written goal, and Back threw away a report's
 // unsaved settings. Now leaving with changes asks "Keep editing / Discard"; leaving without
@@ -63,7 +63,12 @@ for (const phone of [false, true]) {
 
     await open(page, '/reports/custom');
     await page.getByRole('button', { name: 'Table' }).click();
-    await page.getByRole('combobox', { name: 'Group by' }).selectOption('payee');
+    // Group by is the shared Select (03-20): on desktop a button trigger named by its value and
+    // label, whose text shows the choice; on a phone a native select, whose value does
+    const groupBy = phone
+      ? page.getByRole('combobox', { name: 'Group by' })
+      : page.getByRole('button', { name: /Group by$/ });
+    await chooseOption(groupBy, 'Payee');
     await back.click();
     const prompt = page.getByRole('alert').filter({ hasText: 'Leave without saving this report?' });
     await expect(prompt).toBeVisible();
@@ -71,7 +76,8 @@ for (const phone of [false, true]) {
 
     await prompt.getByRole('button', { name: 'Keep editing' }).click();
     await expect(prompt).toHaveCount(0);
-    await expect(page.getByRole('combobox', { name: 'Group by' })).toHaveValue('payee');
+    if (phone) await expect(groupBy).toHaveValue('payee');
+    else await expect(groupBy).toHaveText('Payee');
 
     await back.click();
     await prompt.getByRole('button', { name: 'Discard' }).click();
@@ -79,7 +85,7 @@ for (const phone of [false, true]) {
 
     // Saved, or reopened as saved: nothing unsaved, so Back leaves straight away
     await open(page, '/reports/custom');
-    await page.getByRole('combobox', { name: 'Group by' }).selectOption('payee');
+    await chooseOption(groupBy, 'Payee');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     const save = page.getByRole('dialog', { name: 'Save report' });
     await save.getByRole('textbox', { name: 'Report name' }).fill('By payee');

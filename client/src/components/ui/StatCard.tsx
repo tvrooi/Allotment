@@ -5,6 +5,8 @@ interface Props {
   accent?: 'positive' | 'negative' | 'caution' | 'brand';
   valueColor?: string;
   className?: string;
+  /** Below the sub line, such as a progress cue */
+  footer?: React.ReactNode;
 }
 
 const accentBorders: Record<string, string> = {
@@ -14,7 +16,7 @@ const accentBorders: Record<string, string> = {
   brand: 'border-l-[3px] border-l-brand-600',
 };
 
-export function StatCard({ label, value, sub, accent, valueColor, className = '' }: Props) {
+export function StatCard({ label, value, sub, accent, valueColor, className = '', footer }: Props) {
   return (
     <div
       className={`bg-surface rounded-lg px-6 py-4 max-md:px-4 border border-border-light shadow-card ${
@@ -28,6 +30,7 @@ export function StatCard({ label, value, sub, accent, valueColor, className = ''
         {value}
       </p>
       {sub && <p className="text-xs text-text-tertiary mt-0.5">{sub}</p>}
+      {footer}
     </div>
   );
 }

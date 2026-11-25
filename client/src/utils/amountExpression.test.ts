@@ -79,7 +79,12 @@ describe('readAmountExpression (BUD-05)', () => {
 
 describe('assignmentToInput', () => {
   it('keeps the sign, so an unchanged negative assignment saves as it was', () => {
-    expect(assignmentToInput(-5000, dollars)).toBe('-50.00');
+    expect(assignmentToInput(-5000, dollars)).toBe('-50');
+    expect(assignmentToInput(-5050, dollars)).toBe('-50.50');
+    expect(assignmentToInput(230000, dollars)).toBe('2300');
+    expect(read(assignmentToInput(230000, dollars))).toBe(230000);
+    expect(assignmentToInput(123400, euros)).toBe('1234');
+    expect(read(assignmentToInput(123400, euros), euros)).toBe(123400);
     expect(read(assignmentToInput(-5000, dollars))).toBe(-5000);
     expect(assignmentToInput(123450, euros)).toBe('1234,50');
     expect(assignmentToInput(0, dollars)).toBe('');

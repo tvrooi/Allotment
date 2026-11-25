@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, setToggle, fillDate } from './fixtures';
 
 // Depreciating assets on Tax time (docs/DEPRECIATING-ASSETS-PLAN.md, phase 2). Mock data only.
 
@@ -19,8 +19,8 @@ test('a claim over $300 is depreciated instead, then locked once its year is lod
   await page.getByTestId('transaction-row').filter({ hasText: 'Laptop Store' }).focus();
   await page.keyboard.press('Enter');
   const panel = page.getByRole('complementary', { name: 'Transaction details' });
-  await panel.getByLabel('Claim as a tax deduction').check();
-  await expect(panel.getByLabel('Tax return label')).toHaveValue('D5');
+  await setToggle(panel.getByRole('checkbox', { name: 'Claim as a tax deduction' }));
+  await expect(panel.getByRole('button', { name: /Tax return label/ })).toContainText('D5');
 
   // Over $300: Deductions offers to depreciate it instead
   await open(page, '/tax');
@@ -37,7 +37,7 @@ test('a claim over $300 is depreciated instead, then locked once its year is lod
   // Both methods previewed side by side before choosing
   await expect(form.getByRole('table', { name: 'Diminishing value' })).toBeVisible();
   await expect(form.getByRole('table', { name: 'Prime cost' })).toBeVisible();
-  await form.getByLabel('Prime cost').check();
+  await setToggle(form.getByRole('radio', { name: 'Prime cost' }));
   await form.getByRole('button', { name: 'Depreciate instead' }).click();
 
   const detail = page.getByRole('dialog', { name: 'Work laptop' });
@@ -80,7 +80,7 @@ test('a low-cost asset goes into the low-value pool: D6 in Deductions', async ({
   const form = page.getByRole('dialog', { name: 'Add an asset' });
   await form.getByLabel('Name').fill('Headset');
   await form.getByLabel('Cost', { exact: true }).fill('800');
-  await form.getByLabel('Start date (first used or installed ready for use)').fill(isoDay());
+  await fillDate(form, 'Start date (first used or installed ready for use)', isoDay());
   await form.getByLabel('Effective life (years)').fill('3');
   await form.getByRole('button', { name: 'Add asset' }).click();
 

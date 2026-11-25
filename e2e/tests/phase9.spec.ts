@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, setToggle } from './fixtures';
 
 // Phase 9 (docs/PHASE-9-DEVELOPMENT-PHASE.md): tags, review, hiding from reports and saved
 // views, on mock data.
@@ -37,7 +37,8 @@ test('tags a transaction, filters by the tag and manages it in Settings', async 
   await expect(row(page, 'Mock hotel').getByText('Holiday')).toBeVisible();
 
   await page.getByRole('button', { name: 'Filters' }).click();
-  await page.getByRole('checkbox', { name: 'Holiday' }).check();
+  await page.getByRole('tab', { name: 'Tags', exact: true }).click();
+  await setToggle(page.getByRole('checkbox', { name: 'Holiday' }));
   await expect(page.getByText('1 transaction', { exact: true })).toBeVisible();
   await expect(row(page, 'Mock cafe')).toHaveCount(0);
 
@@ -68,7 +69,7 @@ test('hiding a transaction changes reports, not balances', async ({ page, api })
 
   await open(page, '/transactions');
   const panel = await openDetails(page, 'Mock laptop');
-  await panel.getByRole('checkbox', { name: /Hide from reports/ }).check();
+  await setToggle(panel.getByRole('checkbox', { name: /Hide from reports/ }));
   await expect(
     row(page, 'Mock laptop').getByRole('img', { name: 'Hidden from reports' }),
   ).toBeVisible();
@@ -79,7 +80,10 @@ test('hiding a transaction changes reports, not balances', async ({ page, api })
   expect(await api.balance(account.id)).toBe(balance);
 });
 
-test('marks the selection reviewed after confirming, and undoes it', async ({ page, api }) => {
+test('marks the whole list reviewed from the selection menu, and undoes it', async ({
+  page,
+  api,
+}) => {
   const account = await api.createAccount('Checking', 100_000);
   for (const payeeName of ['Mock one', 'Mock two', 'Mock three'])
     await api.createTransaction({ accountId: account.id, date: isoDay(), amount: -100, payeeName });
@@ -87,14 +91,26 @@ test('marks the selection reviewed after confirming, and undoes it', async ({ pa
   await open(page, '/transactions?range=this-month&reviewed=0');
   await expect(page.getByText('3 transactions', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Select all 3' }).click();
-  await page.getByRole('button', { name: 'Mark reviewed' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Mark 3 reviewed' }).click();
+  await page.getByRole('button', { name: 'More actions' }).click();
+  await page
+    .getByRole('menu', { name: 'Actions for 3 selected transactions' })
+    .getByRole('menuitem', { name: 'Review' })
+    .hover();
+  await page
+    .getByRole('menu', { name: 'Review' })
+    .getByRole('menuitem', { name: 'Mark reviewed' })
+    .click();
   await expect(page.getByText('No transactions found')).toBeVisible();
   const rows = await api.transactions(`?account_id=${account.id}`);
   expect(rows.every((r: { reviewedAt: string | null }) => r.reviewedAt)).toBe(true);
 
-  await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+  // One Undo, the undo toast's, wired to the undo stack (it then offers Redo) (#245)
+  const toast = page.getByTestId('undo-toast');
+  await expect(toast).toContainText('Marked 3 reviewed.');
+  await expect(page.getByRole('main').getByRole('button', { name: 'Undo' })).toHaveCount(0);
+  await toast.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByText('3 transactions', { exact: true })).toBeVisible();
+  await expect(toast.getByRole('button', { name: 'Redo' })).toBeVisible();
 });
 
 test('saves the current filters as a view and reopens it', async ({ page, api }) => {

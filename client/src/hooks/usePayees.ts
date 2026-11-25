@@ -41,6 +41,7 @@ export function useUpdatePayee() {
   return useMutation({
     mutationFn: ({
       id,
+      message: _message,
       ...data
     }: {
       id: string;
@@ -48,31 +49,40 @@ export function useUpdatePayee() {
       defaultCategoryId?: string | null;
       logo?: string | null;
       skipCategoryFollowup?: 0 | 1;
+      /** What the toast says about the change (it offers Undo only when one was recorded) */
+      message?: string;
     }) => payeesApi.updatePayee(id, data),
     onMutate: async ({ id }) => {
       const payees = qc.getQueryData<PayeeWithCount[]>(QK);
       return { old: payees?.find((p) => p.id === id) };
     },
-    onSuccess: (_, { id, ...data }, ctx) => {
+    onSuccess: (_, { id, message, ...data }, ctx) => {
       qc.invalidateQueries({ queryKey: QK });
-      if (!ctx?.old) return;
+      // Without the payee's earlier values there is nothing to undo: say so, without Undo
+      if (!ctx?.old) {
+        if (message) useUndoStore.getState().announce(message, false);
+        return;
+      }
       const snapshot = ctx.old;
-      useUndoStore.getState().push({
-        description: `Edit payee`,
-        undo: async () => {
-          await payeesApi.updatePayee(id, {
-            name: snapshot.name,
-            defaultCategoryId: snapshot.defaultCategoryId,
-            logo: snapshot.logo ?? null,
-            skipCategoryFollowup: snapshot.skipCategoryFollowup ? 1 : 0,
-          });
-          qc.invalidateQueries({ queryKey: QK });
+      useUndoStore.getState().push(
+        {
+          description: `Edit payee`,
+          undo: async () => {
+            await payeesApi.updatePayee(id, {
+              name: snapshot.name,
+              defaultCategoryId: snapshot.defaultCategoryId,
+              logo: snapshot.logo ?? null,
+              skipCategoryFollowup: snapshot.skipCategoryFollowup ? 1 : 0,
+            });
+            qc.invalidateQueries({ queryKey: QK });
+          },
+          redo: async () => {
+            await payeesApi.updatePayee(id, data);
+            qc.invalidateQueries({ queryKey: QK });
+          },
         },
-        redo: async () => {
-          await payeesApi.updatePayee(id, data);
-          qc.invalidateQueries({ queryKey: QK });
-        },
-      });
+        { message },
+      );
     },
   });
 }

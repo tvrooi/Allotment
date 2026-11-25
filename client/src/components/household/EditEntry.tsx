@@ -2,7 +2,10 @@ import { useId, useState } from 'react';
 import type { HouseholdSplit } from '../../api/households';
 import { Button } from '../ui/Button';
 import { CurrencyInput } from '../ui/CurrencyInput';
-import { Input, Select } from '../ui/Input';
+import { Input } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
+import { DatePicker } from '../ui/DatePicker';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Modal } from '../ui/Modal';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
@@ -55,6 +58,7 @@ export function EditEntry({
   onClose,
 }: Props) {
   const uid = useId();
+  const { allValid, report } = useAmountValidity();
   const canSave = useCanSave();
   const [description, setDescription] = useState(entry.description);
   const [date, setDate] = useState(entry.date);
@@ -68,6 +72,7 @@ export function EditEntry({
 
   const submit = (split?: HouseholdSplit | null) => {
     if (locked) return onSave({ description });
+    if (!allValid || !date) return;
     const base = {
       kind: entry.kind,
       date,
@@ -87,119 +92,121 @@ export function EditEntry({
 
   return (
     <Modal isOpen onClose={onClose} title="Edit entry" size="lg">
-      <form
-        className="grid gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!isExpense || locked) submit();
-        }}
-      >
-        <div className={field}>
-          <label htmlFor={`${uid}-description`}>Description</label>
-          <Input
-            id={`${uid}-description`}
-            value={description}
-            required
-            maxLength={200}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        {locked ? (
-          <p className="text-xs text-text-tertiary">
-            {entry.kind === 'refund'
-              ? 'Only the description of a refund can change.'
-              : 'A refund depends on this entry, so only its description can change. Remove the refund first to change anything else.'}
-          </p>
-        ) : (
-          <>
-            {linked ? (
-              <p className="text-xs text-text-tertiary">
-                Linked to a bank payment of {formatMoney(Math.abs(entry.amount), currency)} on{' '}
-                {formatDay(entry.date)}: its date and amount stay as the payment has them.
-              </p>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className={field}>
-                  <label htmlFor={`${uid}-date`}>Date</label>
-                  <Input
-                    id={`${uid}-date`}
-                    type="date"
-                    value={date}
-                    required
-                    onChange={(e) => setDate(e.target.value)}
+      <AmountFields report={report}>
+        <form
+          className="grid gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!isExpense || locked) submit();
+          }}
+        >
+          <div className={field}>
+            <label htmlFor={`${uid}-description`}>Description</label>
+            <Input
+              id={`${uid}-description`}
+              value={description}
+              required
+              maxLength={200}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          {locked ? (
+            <p className="text-xs text-text-tertiary">
+              {entry.kind === 'refund'
+                ? 'Only the description of a refund can change.'
+                : 'A refund depends on this entry, so only its description can change. Remove the refund first to change anything else.'}
+            </p>
+          ) : (
+            <>
+              {linked ? (
+                <p className="text-xs text-text-tertiary">
+                  Linked to a bank payment of {formatMoney(Math.abs(entry.amount), currency)} on{' '}
+                  {formatDay(entry.date)}: its date and amount stay as the payment has them.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className={field}>
+                    <DatePicker
+                      id={`${uid}-date`}
+                      label="Date"
+                      value={date}
+                      onChange={setDate}
+                      isRequired
+                    />
+                  </div>
+                  <div className={field}>
+                    <span>Amount ({currency})</span>
+                    <CurrencyInput aria-label="Amount" value={amount} onChange={setAmount} />
+                  </div>
+                </div>
+              )}
+              <Combobox
+                label="Paid by"
+                value={payerId}
+                onChange={setPayerId}
+                placeholder={isExpense && hasPool ? 'Household pool' : undefined}
+                optional={isExpense && hasPool}
+                items={people.map((person) => ({ value: person.id, label: person.name }))}
+              />
+              {settled && (
+                <Combobox
+                  label="Paid to"
+                  value={recipientId}
+                  onChange={setRecipientId}
+                  items={people
+                    .filter((person) => person.id !== payerId)
+                    .map((person) => ({
+                      value: person.id,
+                      label: person.name,
+                    }))}
+                />
+              )}
+              {isExpense && (
+                <div className="grid gap-1">
+                  <span className="text-sm font-medium text-text-secondary">Split</span>
+                  <SplitEditor
+                    people={people}
+                    current={{
+                      mode: 'exact',
+                      shares: people.map((p) => ({
+                        personId: p.id,
+                        value: entry.shares.find((s) => s.personId === p.id)?.amount ?? 0,
+                      })),
+                    }}
+                    allowFixed
+                    expected={amount}
+                    currency={currency}
+                    saving={saving || !canSave || !allValid || !date}
+                    saveLabel="Save changes"
+                    onSave={submit}
                   />
                 </div>
-                <div className={field}>
-                  <span>Amount ({currency})</span>
-                  <CurrencyInput aria-label="Amount" value={amount} onChange={setAmount} />
-                </div>
-              </div>
-            )}
-            <label className={field}>
-              Paid by
-              <Select value={payerId} onChange={(e) => setPayerId(e.target.value)}>
-                {isExpense && hasPool && <option value="">Household pool</option>}
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            {settled && (
-              <label className={field}>
-                Paid to
-                <Select value={recipientId} onChange={(e) => setRecipientId(e.target.value)}>
-                  {people
-                    .filter((p) => p.id !== payerId)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </Select>
-              </label>
-            )}
-            {isExpense && (
-              <div className="grid gap-1">
-                <span className="text-sm font-medium text-text-secondary">Split</span>
-                <SplitEditor
-                  people={people}
-                  current={{
-                    mode: 'exact',
-                    shares: people.map((p) => ({
-                      personId: p.id,
-                      value: entry.shares.find((s) => s.personId === p.id)?.amount ?? 0,
-                    })),
-                  }}
-                  allowFixed
-                  expected={amount}
-                  currency={currency}
-                  saving={saving || !canSave}
-                  saveLabel="Save changes"
-                  onSave={submit}
-                />
-              </div>
-            )}
-          </>
-        )}
-        {error && (
-          <p role="alert" className="text-sm text-negative">
-            {error}
-          </p>
-        )}
-        <SavingPausedHint />
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          {(!isExpense || locked) && (
-            <Button type="submit" disabled={saving || !canSave || !description.trim()}>
-              Save changes
-            </Button>
+              )}
+            </>
           )}
-        </div>
-      </form>
+          {error && (
+            <p role="alert" className="text-sm text-negative">
+              {error}
+            </p>
+          )}
+          <SavingPausedHint />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            {(!isExpense || locked) && (
+              <Button
+                type="submit"
+                disabled={
+                  saving || !canSave || !description.trim() || (!locked && (!allValid || !date))
+                }
+              >
+                Save changes
+              </Button>
+            )}
+          </div>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }

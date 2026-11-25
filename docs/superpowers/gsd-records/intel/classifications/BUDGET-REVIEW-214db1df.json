@@ -1,0 +1,22 @@
+{
+  "source_path": "/Users/tristanvanrooyen/Github/Allotment/docs/BUDGET-REVIEW.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Budget review, buffer and guided setup (phases 6F–6G)",
+  "summary": "Specifies the read-only Review page: needs-attention queue, guided setup steps, next-month and cash-runway buffer, and the review API routes.",
+  "scope": [
+    "Review page",
+    "needs attention queue",
+    "guided setup",
+    "next month and buffer",
+    "cash runway",
+    "fundingState",
+    "reviewService",
+    "GET /api/review routes"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "cross_refs cleared on 2026-11-14 by owner decision: they were see-also links, not dependencies."
+}

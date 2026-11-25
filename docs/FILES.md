@@ -95,7 +95,7 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
   - Office files are downloaded to open.
 - **Access tokens:** `/api/files` is not on the allowlist. No token sees, adds or changes a file
   (tested in `routes/files.test.ts`). Files are not in MCP.
-- **Demo:** the in-browser demo shows an empty library and refuses uploads ("not in the demo").
+- **Demo:** the in-browser demo's library has sample receipts and documents (`server/src/demo/demoFiles.ts`) that can be opened, edited, linked and deleted in the tab; adding files, finding text and Download all are refused ("not in the demo").
 - Mock data and made-up files only, in tests and the demo.
 
 ## 4. Links
@@ -131,7 +131,8 @@ mention, and there are no paid plans: storage is the owner's own disk, with an o
 - **Files** in the sidebar (`/files`): views All files, Starred, Important, Receipts and Not
   linked; **labels** to drill into; search; kind and date filters; **Download all**; the storage
   meter and limit. URL state: `q`, `view`, `tag`, `kind`, `from`, `to`, and `file` for the one
-  open.
+  open. An unfiltered empty library shows a promise, an illustrative example and Add a file
+  using the existing picker and drop target; search and filter controls appear once useful.
 - **A file's details** (`FileDetailModal`): preview, Important, Star, Download, name, date,
   description, labels (choose or add one), **Linked to** with Link (a transaction by search, or a
   category, goal or account) and remove, Use as a receipt or Open the receipt, Read its text

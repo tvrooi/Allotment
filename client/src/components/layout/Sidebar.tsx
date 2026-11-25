@@ -1,31 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Landmark,
-  ArrowLeftRight,
-  Wallet,
-  Repeat,
-  BarChart3,
-  Workflow,
-  Target,
-  House,
-  TrendingUp,
-  Users,
-  Zap,
-  Settings,
-  Pin,
-  X,
-  ClipboardCheck,
-  CandlestickChart,
-  Receipt,
-  Eye,
-  EyeOff,
-  CalendarClock,
-  FolderOpen,
-  ChevronDown,
-  Plus,
-} from 'lucide-react';
+import { Pin, X, Eye, EyeOff, ChevronDown, Plus } from 'lucide-react';
 import { usePreferencesStore, type NavGroup } from '../../store/preferencesStore';
 import { useSafeModeStore } from '../../store/safeModeStore';
 import { SidebarAccountList } from './SidebarAccountList';
@@ -34,8 +9,11 @@ import { useNextSteps } from '../../hooks/useNextSteps';
 import { HelpMenu } from '../guide/HelpMenu';
 import { BrandName } from '../ui/BrandName';
 import { useGuideProgress } from '../../hooks/useGuides';
-import { featureShown, hiddenFeatureCount } from '../../utils/navFeatures';
-import type { NavFeature } from '../../api/guides';
+import { featureShown, featureState, hiddenFeatureCount } from '../../utils/navFeatures';
+import { MORE_FEATURES_LINK, NAV_PAGES, type NavPage } from './navPages';
+import { useAddTransactionStore } from '../../store/addTransactionStore';
+import { useCanAddTransaction } from '../../hooks/useOffline';
+import { filledDisabled } from '../ui/Button';
 import logoUrl from '/logo.png';
 
 interface NavItemProps {
@@ -45,23 +23,42 @@ interface NavItemProps {
   collapsed: boolean;
   /** A count of things waiting there (Review's "Do this next") */
   badge?: number;
+  setup?: boolean;
 }
 
-function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
+function NavItem({ to, icon, label, collapsed, badge, setup }: NavItemProps) {
   return (
     <NavLink
       to={to}
-      title={badge ? `${label}: ${badge} to do` : collapsed ? label : undefined}
+      aria-label={setup ? label + ', set up' : undefined}
+      title={
+        badge
+          ? `${label}: ${badge} to do`
+          : collapsed
+            ? label + (setup ? ', set up' : '')
+            : undefined
+      }
       className={({ isActive }) =>
         // Phones (the drawer): full-size touch targets
-        `flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-row px-3 rounded-md text-sm font-medium transition-colors ${
+        `group flex items-center gap-3 py-2 max-md:min-h-11 max-md:text-row px-3 rounded-md text-sm transition-colors ${setup ? 'font-normal hover:font-medium focus-visible:font-medium' : 'font-medium'} ${
           isActive
             ? 'bg-sidebar-active text-sidebar-text-hi'
-            : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
+            : setup
+              ? 'text-text-tertiary hover:bg-sidebar-hover hover:text-sidebar-text-hi focus-visible:bg-sidebar-hover focus-visible:text-sidebar-text-hi'
+              : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'
         }`
       }
     >
-      {icon}
+      {setup ? (
+        <span
+          aria-hidden
+          className="shrink-0 opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          {icon}
+        </span>
+      ) : (
+        icon
+      )}
       <span
         className={`truncate transition-opacity duration-200 ${
           collapsed ? 'opacity-0' : 'opacity-100'
@@ -69,6 +66,14 @@ function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
       >
         {label}
       </span>
+      {setup && (
+        <span
+          aria-hidden
+          className={`ml-auto shrink-0 text-2xs transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}
+        >
+          Set up
+        </span>
+      )}
       {!!badge && (
         // Kept out of the link's name ("Review"); the count is in its tooltip and on the page
         <span
@@ -80,12 +85,6 @@ function NavItem({ to, icon, label, collapsed, badge }: NavItemProps) {
       )}
     </NavLink>
   );
-}
-
-interface SectionItem {
-  to: string;
-  icon: React.ReactNode;
-  label: string;
 }
 
 /**
@@ -101,17 +100,17 @@ function NavSection({
   group: NavGroup;
   label: string;
   collapsed: boolean;
-  items: (SectionItem | false)[];
+  items: NavPage[];
 }) {
   const { pathname } = useLocation();
+  const { data: progress, isError } = useGuideProgress();
   const folded = usePreferencesStore((s) => !!s.navGroupsFolded[group]);
   const setFolded = usePreferencesStore((s) => s.setNavGroupFolded);
   const listId = `nav-group-${group}`;
-  const listed = items.filter((i): i is SectionItem => !!i);
   const visible =
     collapsed || !folded
-      ? listed
-      : listed.filter((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
+      ? items
+      : items.filter((i) => pathname === i.path || pathname.startsWith(`${i.path}/`));
   return (
     <div className="pt-3">
       {collapsed ? (
@@ -134,7 +133,14 @@ function NavSection({
       )}
       <div id={listId} role="group" aria-label={label} className="mt-1 space-y-1">
         {visible.map((i) => (
-          <NavItem key={i.to} to={i.to} icon={i.icon} label={i.label} collapsed={collapsed} />
+          <NavItem
+            key={i.path}
+            to={i.path}
+            icon={<i.icon size={18} />}
+            label={i.label}
+            collapsed={collapsed}
+            setup={!!i.feature && featureState(i.feature, progress, pathname, isError) === 'setup'}
+          />
         ))}
       </div>
     </div>
@@ -203,7 +209,24 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
   const reviewCount = useNextSteps().length;
   const { pathname } = useLocation();
   const { data: progress, isError } = useGuideProgress();
-  const shown = (feature: NavFeature) => featureShown(feature, progress, pathname, isError);
+  // The pages a part of the sidebar lists (navPages.ts), less optional features left out
+  const pagesIn = (section: NavPage['section']) =>
+    NAV_PAGES.filter(
+      (p) =>
+        p.section === section &&
+        (!p.feature || featureShown(p.feature, progress, pathname, isError)),
+    );
+  const navItem = (p: NavPage) => (
+    <NavItem
+      key={p.path}
+      to={p.path}
+      icon={<p.icon size={18} />}
+      label={p.label}
+      collapsed={!isExpanded}
+      setup={!!p.feature && featureState(p.feature, progress, pathname, isError) === 'setup'}
+      badge={p.path === '/review' ? reviewCount : undefined}
+    />
+  );
   const hiddenCount = hiddenFeatureCount(progress, pathname, isError);
   const sidebarMode = usePreferencesStore((s) => s.sidebarMode);
   const setSidebarMode = usePreferencesStore((s) => s.setSidebarMode);
@@ -252,105 +275,32 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         </div>
       </div>
 
+      {/* Desktop: adding a transaction is one click from every page, the rail included.
+          Phones have the tab bar's Add (PhoneTabBar.tsx) instead. */}
+      {!onClose && <AddTransactionButton isExpanded={isExpanded} />}
+
       {/* Navigation and accounts share a scroll area on short screens. */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {/* Primary nav: the everyday pages, then Planning and Tools (audit decision I-4).
-            Optional features appear once they hold something or are turned on (navFeatures.ts). */}
+            Optional features use normal, setup or hidden rows (navFeatures.ts). */}
         <nav data-guide="nav.main" aria-label="Main" className="pt-4 px-3 space-y-1">
-          <NavItem
-            to="/dashboard"
-            icon={<LayoutDashboard size={18} />}
-            label="Dashboard"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/accounts"
-            icon={<Landmark size={18} />}
-            label="Accounts"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/transactions"
-            icon={<ArrowLeftRight size={18} />}
-            label="Transactions"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/budget"
-            icon={<Wallet size={18} />}
-            label="Budget"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/review"
-            icon={<ClipboardCheck size={18} />}
-            label="Review"
-            collapsed={!isExpanded}
-            badge={reviewCount}
-          />
-          <NavItem
-            to="/recurring"
-            icon={<Repeat size={18} />}
-            label="Recurring"
-            collapsed={!isExpanded}
-          />
-          {shown('pay-later') && (
-            <NavItem
-              to="/payment-plans"
-              icon={<CalendarClock size={18} />}
-              label="Pay later"
-              collapsed={!isExpanded}
-            />
-          )}
-          {shown('household') && (
-            <NavItem
-              to="/household"
-              icon={<House size={18} />}
-              label="Household"
-              collapsed={!isExpanded}
-            />
-          )}
-          <NavItem
-            to="/reports"
-            icon={<BarChart3 size={18} />}
-            label="Reports"
-            collapsed={!isExpanded}
-          />
-          <NavItem
-            to="/cash-flow"
-            icon={<Workflow size={18} />}
-            label="Cash flow"
-            collapsed={!isExpanded}
-          />
+          {pagesIn('main').map(navItem)}
           <NavSection
             group="planning"
             label="Planning"
             collapsed={!isExpanded}
-            items={[
-              { to: '/goals', icon: <Target size={18} />, label: 'Goals' },
-              { to: '/forecast', icon: <TrendingUp size={18} />, label: 'Forecast' },
-              shown('investments') && {
-                to: '/investments',
-                icon: <CandlestickChart size={18} />,
-                label: 'Investments',
-              },
-              shown('tax') && { to: '/tax', icon: <Receipt size={18} />, label: 'Tax time' },
-            ]}
+            items={pagesIn('planning')}
           />
           <NavSection
             group="tools"
             label="Tools"
             collapsed={!isExpanded}
-            items={[
-              { to: '/payees', icon: <Users size={18} />, label: 'Payees' },
-              { to: '/rules', icon: <Zap size={18} />, label: 'Rules' },
-              shown('files') && { to: '/files', icon: <FolderOpen size={18} />, label: 'Files' },
-            ]}
+            items={pagesIn('tools')}
           />
           {hiddenCount > 0 && (
             <Link
-              to="/settings?tab=preferences"
-              state={{ focus: 'sidebar-features' }}
+              to={MORE_FEATURES_LINK.to}
+              state={MORE_FEATURES_LINK.state}
               title={!isExpanded ? 'More features' : undefined}
               className="flex items-center gap-3 py-2 max-md:min-h-11 px-3 rounded-md text-xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
             >
@@ -381,12 +331,7 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
         aria-label="Settings"
         className="shrink-0 py-3 px-3 border-t border-sidebar-border space-y-1"
       >
-        <NavItem
-          to="/settings"
-          icon={<Settings size={18} />}
-          label="Settings"
-          collapsed={!isExpanded}
-        />
+        {pagesIn('footer').map(navItem)}
       </nav>
 
       {/* Where the data lives and whether the server is reachable, and (desktop) the pin:
@@ -409,10 +354,45 @@ function SidebarContent({ isExpanded, onClose }: { isExpanded: boolean; onClose?
             className="shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-2xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi"
           >
             <Pin size={12} aria-hidden fill={pinned ? 'currentColor' : 'none'} />
-            {pinned ? 'Pinned' : 'Pin'}
+            {/* Icon only: the words took the room the server status needs to read in full */}
+            <span className="sr-only">{pinned ? 'Pinned' : 'Pin'}</span>
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Opens the app shell's Add transaction dialog; the N key does the same */
+function AddTransactionButton({ isExpanded }: { isExpanded: boolean }) {
+  const show = useAddTransactionStore((s) => s.show);
+  const { allowed, hint } = useCanAddTransaction();
+  return (
+    <div className="shrink-0 px-3 pt-4">
+      <button
+        type="button"
+        onClick={show}
+        disabled={!allowed}
+        aria-label="Add a transaction"
+        aria-keyshortcuts="N"
+        title={hint ?? (isExpanded ? undefined : 'Add a transaction (N)')}
+        className={`h-10 flex items-center justify-center gap-2 rounded-full border border-transparent bg-brand-600 text-brand-contrast hover:bg-brand-700 shadow-xs text-sm font-medium whitespace-nowrap transition-colors disabled:pointer-events-none ${filledDisabled} ${
+          isExpanded ? 'w-full px-4' : 'w-10'
+        }`}
+      >
+        <Plus size={18} aria-hidden className="shrink-0" />
+        {isExpanded && (
+          <>
+            <span aria-hidden>Add a transaction</span>
+            <kbd
+              aria-hidden
+              className="ml-1 rounded border border-current/40 px-1 font-sans text-2xs leading-4 opacity-80"
+            >
+              N
+            </kbd>
+          </>
+        )}
+      </button>
     </div>
   );
 }
@@ -427,13 +407,14 @@ export function SafeModeButton({ className }: { className: string }) {
       type="button"
       onClick={toggle}
       aria-pressed={on}
-      aria-label="Safe mode"
+      // Says what the eye does, as its tooltip does (and keeps "Safe mode", its name in Settings)
+      aria-label="Hide balances (Safe mode)"
       aria-keyshortcuts="Alt+Shift+H"
       data-guide="nav.safe-mode"
       className={className}
     >
       <Icon size={16} aria-hidden className={on ? 'text-brand-600' : undefined} />
-      <HeaderTooltip>{on ? 'Show balances' : 'Hide balances'}</HeaderTooltip>
+      <HeaderTooltip>{on ? 'Hide balances: on' : 'Hide balances'}</HeaderTooltip>
     </button>
   );
 }

@@ -17,6 +17,7 @@ import { computeDateRange, decodeRangeParam, resolveDateRange } from '../utils/d
 import { Button } from '../components/ui/Button';
 import { DiscardPrompt } from '../components/ui/DiscardPrompt';
 import type { CustomReportConfig } from '../types';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 const defaultConfig = (): CustomReportConfig => ({
   chartType: 'bar',
@@ -119,7 +120,9 @@ export default function CustomReportBuilder() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-3 border-b border-border bg-surface flex flex-wrap items-center justify-between gap-2">
+      <div
+        className={`py-3 border-b border-border bg-surface flex flex-wrap items-center justify-between gap-2 ${PAGE_GUTTER}`}
+      >
         <div className="flex items-center gap-3">
           <Link
             to={backTo}

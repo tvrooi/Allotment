@@ -1,10 +1,15 @@
-import { useState, useRef, useEffect, useId } from 'react';
+import { useState, useEffect, useId } from 'react';
+import { useMatch } from 'react-router-dom';
 import { format, isValid as isValidDate, parseISO } from 'date-fns';
-import { MinusCircle, PlusCircle, ChevronDown } from 'lucide-react';
+import { MinusCircle, PlusCircle } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { SavedOnDeviceHint } from '../connection/SavingPausedHint';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { Combobox } from '../ui/Combobox';
+import { DatePicker } from '../ui/DatePicker';
+import { Input } from '../ui/Input';
+import type { ListGroup } from '../ui/listItems';
 import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { formatMoney } from '../../utils/currency';
 import { useAccounts, useCreateAccount } from '../../hooks/useAccounts';
@@ -17,14 +22,16 @@ import { AccountIcon } from '../accounts/AccountIcon';
 import { useHideBalances } from '../../utils/safeMode';
 import { Private } from '../ui/Private';
 import { formatDay } from '../../utils/dates';
+import {
+  defaultAddAccount,
+  readLastAddAccount,
+  rememberAddAccount,
+} from '../../utils/addTransaction';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const inputClass =
-  'block w-full rounded-md border border-border px-3 py-2 text-sm text-text bg-surface placeholder-text-disabled focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600';
 
 export function AddTransactionModal({ isOpen, onClose }: Props) {
   const [type, setType] = useState<'debit' | 'credit'>('debit');
@@ -36,7 +43,6 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [showAccountPicker, setShowAccountPicker] = useState(false);
   const [notes, setNotes] = useState('');
   // A transfer between currencies: the amount on the other account's side, in its currency.
   // Filled in at the day's rate until it's typed over (the bank's rate and fees differ).
@@ -44,13 +50,17 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
   const [otherTyped, setOtherTyped] = useState(false);
   const currencyOf = useAccountCurrency();
 
-  const accountRef = useRef<HTMLDivElement>(null);
+  // The account list is drawn inside the dialog, so its options and footer belong to it
+  const [accountListHost, setAccountListHost] = useState<HTMLDivElement | null>(null);
 
-  const { data: accounts = [] } = useAccounts();
+  const { data: accounts = [], isError: accountsFailed } = useAccounts();
+  // On an account's page (its register or reconcile), that account
+  const pageAccountId = useMatch('/accounts/:id/*')?.params.id ?? null;
   const newTx = useAddTransaction();
   const createAccount = useCreateAccount();
   const canSave = useCanSave();
   const [accountError, setAccountError] = useState('');
+  const [pendingAccountId, setPendingAccountId] = useState<string | null>(null);
 
   const openAccounts = accounts.filter((a) => !a.closedAt);
   // The category list always ends with a transfer to each other account (issue #89), even
@@ -63,6 +73,23 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
   const accountChoices = openAccounts.filter((a) => a.id !== transferToId);
   const onBudgetAccounts = accountChoices.filter((a) => !a.isOffBudget);
   const offBudgetAccounts = accountChoices.filter((a) => a.isOffBudget);
+  // Each account with its icon and its balance; the balance stays inside Private (Safe mode)
+  const accountOption = (a: (typeof accountChoices)[number]) => ({
+    value: a.id,
+    label: a.name,
+    icon: <AccountIcon name={a.name} type={a.type} logo={a.logo} />,
+    trailing: (
+      <span
+        className={`text-xs tabular-nums shrink-0 ${a.balance >= 0 || hideBalances ? 'text-text-tertiary' : 'text-negative'}`}
+      >
+        <Private>{formatMoney(a.balance, a.currency)}</Private>
+      </span>
+    ),
+  });
+  const accountGroups: ListGroup[] = [
+    { label: 'On budget', options: onBudgetAccounts.map(accountOption) },
+    { label: 'Off budget', options: offBudgetAccounts.map(accountOption) },
+  ].filter((group) => group.options.length > 0);
   const selectedAccount = openAccounts.find((a) => a.id === accountId);
   const cashAccount = openAccounts.find((a) => a.type === 'cash');
   // A hand-entered row on a bank-fed account makes it disagree with the bank until it is fixed
@@ -91,7 +118,12 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
   const dateValid = date !== '' && /^\d{4}-\d{2}-\d{2}$/.test(date) && isValidDate(parseISO(date));
   // Text in the amount that isn't an amount: the amount from before would be saved
   const { allValid: amountValid, report } = useAmountValidity();
+  // From the Cash create request until the list holds the new account: the dialog would
+  // otherwise still save to the previous account (perhaps the bank-fed one), and a second press
+  // would make a second Cash account
+  const switching = createAccount.isPending || pendingAccountId !== null;
   const isValid =
+    !switching &&
     amount > 0 &&
     amountValid &&
     (!crossCurrency || otherAmount > 0) &&
@@ -99,42 +131,58 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
     dateValid &&
     accountId !== '';
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
-        setShowAccountPicker(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  useEffect(() => {
+  // Each opening starts afresh, before its first render: the Amount field takes focus straight
+  // away, and must not show what was typed last time
+  const [shownOpen, setShownOpen] = useState(false);
+  if (isOpen !== shownOpen) {
+    setShownOpen(isOpen);
     if (isOpen) {
       setType('debit');
       setAmount(0);
       setPayeeName('');
       setPayeeId(null);
       setDate(format(new Date(), 'yyyy-MM-dd'));
-      setAccountId('');
+      setAccountId(defaultAddAccount(accounts, pageAccountId, readLastAddAccount()));
       setAccountError('');
-      setShowAccountPicker(false);
+      setPendingAccountId(null);
       setCategoryId(null);
       setNotes('');
       setOtherAmount(0);
       setOtherTyped(false);
     }
-  }, [isOpen]);
+  }
+
+  // Ready to type the amount. This runs after ui/Modal's own effect, which focuses the dialog
+  // itself (child effects run first); focus still goes back to the opener on close.
+  useEffect(() => {
+    if (isOpen) document.getElementById(`${fieldId}-amount`)?.focus();
+  }, [isOpen, fieldId]);
+
+  // A just-created account is chosen once the list holds it. React Aria refreshes the text when a
+  // late option arrives only while the field is not focused, and the footer keeps focus in it
+  useEffect(() => {
+    if (!pendingAccountId || !accounts.some((a) => a.id === pendingAccountId)) return;
+    setPendingAccountId(null);
+    setAccountId(pendingAccountId);
+  }, [pendingAccountId, accounts]);
+  // The list could not be reloaded: stop waiting for it and say so, rather than hold the dialog
+  useEffect(() => {
+    if (!pendingAccountId || !accountsFailed) return;
+    setPendingAccountId(null);
+    setAccountError(
+      'The Cash account was made, but the account list could not be reloaded. Choose Cash again.',
+    );
+  }, [pendingAccountId, accountsFailed]);
 
   function chooseAccount(id: string) {
     setAccountId(id);
-    setShowAccountPicker(false);
     // A transfer to the account just chosen would go nowhere
     if (categoryId === `transfer:${id}`) setCategoryId(null);
   }
 
   /** Pick the Cash account, making one first when there is none (cash never touches a bank feed) */
   async function chooseCash() {
+    if (switching) return;
     setAccountError('');
     if (cashAccount) return chooseAccount(cashAccount.id);
     try {
@@ -143,7 +191,8 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
         type: 'cash',
         startingBalance: 0,
       });
-      chooseAccount(created.id);
+      // Chosen once the account list has it: the field shows a chosen account by its option
+      setPendingAccountId(created.id);
     } catch (error) {
       setAccountError(error instanceof Error ? error.message : 'Could not create the Cash account');
     }
@@ -151,6 +200,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
 
   function handleSubmit() {
     if (!isValid) return;
+    rememberAddAccount(accountId);
     if (transferToId) {
       // A debit moves money out of this account, a credit brings it in. Between currencies,
       // each side's amount is in its own account's currency.
@@ -289,122 +339,50 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
           )}
 
           {/* Date */}
-          <div>
-            <label htmlFor={`${fieldId}-date`} className="block text-sm font-medium text-text mb-1">
-              Date *
-            </label>
-            <input
-              id={`${fieldId}-date`}
-              aria-label="Date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputClass}
-            />
-          </div>
+          <DatePicker
+            id={`${fieldId}-date`}
+            label="Date"
+            value={date}
+            onChange={setDate}
+            isRequired
+          />
 
           {/* Account */}
           <div>
-            {/* Not a <label>: the picker is a button named by the account it shows */}
-            <span className="block text-sm font-medium text-text mb-1">{accountLabel} *</span>
-            <div ref={accountRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setShowAccountPicker(!showAccountPicker)}
-                className={`${inputClass} text-left flex items-center justify-between cursor-pointer`}
-              >
-                <span className="flex items-center gap-2 truncate">
-                  {selectedAccount ? (
-                    <>
-                      <AccountIcon
-                        name={selectedAccount.name}
-                        type={selectedAccount.type}
-                        logo={selectedAccount.logo}
-                      />
-                      <span className="text-text">{selectedAccount.name}</span>
-                    </>
-                  ) : (
-                    <span className="text-text-tertiary">Select account...</span>
-                  )}
-                </span>
-                <ChevronDown size={14} className="text-text-tertiary shrink-0" />
-              </button>
-              {showAccountPicker && (
-                <div
-                  className="absolute z-50 top-full left-0 right-0 mt-1 bg-surface border border-border rounded-lg shadow-lg overflow-hidden max-h-56 overflow-y-auto origin-top animate-menu-in"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {onBudgetAccounts.length > 0 && (
-                    <>
-                      <div className="px-3 py-1.5 text-xs font-medium text-text-tertiary bg-surface-alt">
-                        On budget
-                      </div>
-                      {onBudgetAccounts.map((a) => (
-                        <button
-                          key={a.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            chooseAccount(a.id);
-                          }}
-                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 hover:bg-hover cursor-pointer ${
-                            accountId === a.id ? 'bg-brand-50 text-brand-700' : 'text-text'
-                          }`}
-                        >
-                          <AccountIcon name={a.name} type={a.type} logo={a.logo} />
-                          <span className="truncate flex-1">{a.name}</span>
-                          <span
-                            className={`text-xs tabular-nums shrink-0 ${a.balance >= 0 || hideBalances ? 'text-text-tertiary' : 'text-negative'}`}
-                          >
-                            <Private>{formatMoney(a.balance, a.currency)}</Private>
-                          </span>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {offBudgetAccounts.length > 0 && (
-                    <>
-                      <div className="px-3 py-1.5 text-xs font-medium text-text-tertiary bg-surface-alt">
-                        Off budget
-                      </div>
-                      {offBudgetAccounts.map((a) => (
-                        <button
-                          key={a.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            chooseAccount(a.id);
-                          }}
-                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 hover:bg-hover cursor-pointer ${
-                            accountId === a.id ? 'bg-brand-50 text-brand-700' : 'text-text'
-                          }`}
-                        >
-                          <AccountIcon name={a.name} type={a.type} logo={a.logo} />
-                          <span className="truncate flex-1">{a.name}</span>
-                          <span
-                            className={`text-xs tabular-nums shrink-0 ${a.balance >= 0 || hideBalances ? 'text-text-tertiary' : 'text-negative'}`}
-                          >
-                            <Private>{formatMoney(a.balance, a.currency)}</Private>
-                          </span>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {!cashAccount && !transferToId && canSave && (
+            <label
+              htmlFor={`${fieldId}-account`}
+              className="block text-sm font-medium text-text mb-1"
+            >
+              {accountLabel} *
+            </label>
+            <div ref={setAccountListHost} className="relative">
+              <Combobox
+                id={`${fieldId}-account`}
+                aria-label={accountLabel}
+                placeholder="Select account..."
+                items={accountGroups}
+                value={accountId}
+                // The field is never emptied: text that matches no account returns to the chosen one
+                onChange={(id) => {
+                  if (id) chooseAccount(id);
+                }}
+                menuTrigger="focus"
+                footer={
+                  !cashAccount && !transferToId && canSave ? (
                     <button
                       type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setShowAccountPicker(false);
-                        void chooseCash();
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-brand-600 hover:bg-hover cursor-pointer border-t border-border-light"
+                      // Focus stays in the field, so the list is still the field's own
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => void chooseCash()}
+                      disabled={switching}
+                      className="w-full text-left px-3 py-2 text-sm text-brand-600 hover:bg-hover cursor-pointer disabled:cursor-default disabled:text-text-disabled disabled:hover:bg-transparent"
                     >
                       Cash (create)
                     </button>
-                  )}
-                </div>
-              )}
+                  ) : undefined
+                }
+                portalContainer={accountListHost ?? undefined}
+              />
             </div>
             {bankFed && (
               <p
@@ -418,7 +396,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
                 <button
                   type="button"
                   onClick={() => void chooseCash()}
-                  disabled={!canSave && !cashAccount}
+                  disabled={switching || (!canSave && !cashAccount)}
                   className="underline font-medium cursor-pointer disabled:opacity-50"
                 >
                   {cashAccount ? 'Use Cash instead' : 'Use a new Cash account instead'}
@@ -446,6 +424,7 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
               onChange={setCategoryId}
               position="above"
               transferAccounts={transferAccounts}
+              phoneDrawer
             />
           </div>
 
@@ -457,13 +436,12 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
             >
               Notes
             </label>
-            <input
+            <Input
               id={`${fieldId}-notes`}
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add a note..."
-              className={inputClass}
             />
           </div>
 

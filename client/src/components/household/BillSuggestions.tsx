@@ -61,12 +61,12 @@ export function BillSuggestions({ groupId, currency }: Props) {
           {error}
         </p>
       )}
-      <ul className="mt-2 grid gap-2" aria-labelledby={`bill-suggestions-${groupId}`}>
+      <ul className="mt-2 grid gap-2 max-w-2xl" aria-labelledby={`bill-suggestions-${groupId}`}>
         {suggestions.map((s) => (
           <li
             key={s.id}
             aria-label={s.payeeName}
-            className="flex flex-wrap items-center justify-between gap-2"
+            className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
           >
             <div className="min-w-0">
               <p className="text-sm text-text">{s.payeeName}</p>
@@ -81,7 +81,7 @@ export function BillSuggestions({ groupId, currency }: Props) {
               </p>
             </div>
             <div className="flex gap-1">
-              <Button size="sm" disabled={busy} onClick={() => add.mutate(s)}>
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => add.mutate(s)}>
                 Add as household bill
               </Button>
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => dismiss.mutate(s)}>

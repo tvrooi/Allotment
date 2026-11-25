@@ -107,21 +107,22 @@ export function useDeleteGoal() {
       qc.invalidateQueries({ queryKey: ['goals'] });
       if (!snapshot) return;
       let restoredId: string | undefined;
-      const undoStore = useUndoStore.getState();
-      undoStore.push({
-        description: `Delete goal "${snapshot.name}"`,
-        undo: async () => {
-          restoredId = (await recreateGoal(snapshot)).id;
-          qc.invalidateQueries({ queryKey: ['goals'] });
+      // The confirmation promises Undo, so the toast offers it where a phone can reach it too,
+      // not only as Ctrl/⌘+Z (UX audit AU-009)
+      useUndoStore.getState().push(
+        {
+          description: `Delete goal "${snapshot.name}"`,
+          undo: async () => {
+            restoredId = (await recreateGoal(snapshot)).id;
+            qc.invalidateQueries({ queryKey: ['goals'] });
+          },
+          redo: async () => {
+            if (restoredId) await goalsApi.deleteGoal(restoredId);
+            qc.invalidateQueries({ queryKey: ['goals'] });
+          },
         },
-        redo: async () => {
-          if (restoredId) await goalsApi.deleteGoal(restoredId);
-          qc.invalidateQueries({ queryKey: ['goals'] });
-        },
-      });
-      // The confirmation promises Undo, so offer it where a phone can reach it too, not only
-      // as Ctrl/⌘+Z (UX audit AU-009)
-      undoStore.announce(`Deleted goal "${snapshot.name}".`, true);
+        { message: `Deleted goal "${snapshot.name}".` },
+      );
     },
   });
 }

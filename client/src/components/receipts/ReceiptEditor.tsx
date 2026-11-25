@@ -18,13 +18,19 @@ import {
   useUpdateReceipt,
 } from '../../hooks/useTax';
 import { useAccounts } from '../../hooks/useAccounts';
+import { useCanSave } from '../../hooks/useConnection';
 import { useCategories } from '../../hooks/useCategories';
+import { useFileSrc } from '../../hooks/useFileSrc';
 import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
-import { CategorySelect } from '../transactions/CategorySelect';
+import { newClientId } from '../../utils/offline';
+import { SavingPausedHint } from '../connection/SavingPausedHint';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { Button } from '../ui/Button';
+import { Combobox } from '../ui/Combobox';
 import { CurrencyInput } from '../ui/CurrencyInput';
-import { Input, Select } from '../ui/Input';
+import { DatePicker } from '../ui/DatePicker';
+import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 
 /** What matching did to the transaction, in words */
@@ -39,6 +45,35 @@ export function outcomeText(o: AttachOutcome | null | undefined): string | null 
   const said = done.length ? `Matched: ${done.join(', ')}.` : 'Matched.';
   return o.skipped ? `${said} ${o.skipped}.` : said;
 }
+
+/** A line item row in the editor, with a key of its own (not its place in the list) */
+export type ItemRow = LineItem & { key: string };
+
+/**
+ * The editor's rows for a receipt's saved items, keyed by each item's id, so removing a row never
+ * hands its draft amount or open category picker to the row after it
+ */
+export const itemRows = (items: ReceiptDetail['lineItems']): ItemRow[] =>
+  items.map(({ id, description, amount, categoryId }) => ({
+    key: id,
+    description,
+    amount,
+    categoryId,
+  }));
+
+/** A new empty row, with a fresh key */
+export const blankItemRow = (): ItemRow => ({
+  key: newClientId(),
+  description: '',
+  amount: 0,
+  categoryId: null,
+});
+
+/** What is saved: rows with a description, without their keys */
+export const savedItems = (rows: readonly ItemRow[]): LineItem[] =>
+  rows
+    .filter((i) => i.description.trim())
+    .map(({ description, amount, categoryId }) => ({ description, amount, categoryId }));
 
 const HOW: Record<string, string> = {
   auto: 'matched automatically',
@@ -115,7 +150,9 @@ function Editor({
 }) {
   const update = useUpdateReceipt();
   const remove = useDeleteReceipt();
+  const canSave = useCanSave();
   const { data: groups = [] } = useCategories();
+  const fileSrc = useFileSrc(receipt.hasFile ? receiptFileUrl(receipt.id) : undefined);
   const [merchant, setMerchant] = useState(receipt.merchant ?? '');
   const [date, setDate] = useState(receipt.receiptDate ?? '');
   const [total, setTotal] = useState(receipt.total ?? 0);
@@ -123,13 +160,7 @@ function Editor({
   const [tax, setTax] = useState(receipt.tax ?? 0);
   const [tip, setTip] = useState(receipt.tip ?? 0);
   const [notes, setNotes] = useState(receipt.notes ?? '');
-  const [items, setItems] = useState<LineItem[]>(
-    receipt.lineItems.map(({ description, amount, categoryId }) => ({
-      description,
-      amount,
-      categoryId,
-    })),
-  );
+  const [items, setItems] = useState(() => itemRows(receipt.lineItems));
   const [error, setError] = useState<string | null>(null);
 
   const itemsTotal = items.reduce((s, i) => s + i.amount, 0);
@@ -141,7 +172,7 @@ function Editor({
     tax: tax || null,
     tip: tip || null,
     notes: notes.trim() || null,
-    lineItems: items.filter((i) => i.description.trim()),
+    lineItems: savedItems(items),
   };
 
   async function save(extra: Parameters<typeof update.mutateAsync>[0]['change'] = {}) {
@@ -163,14 +194,14 @@ function Editor({
     <div className="grid gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <div className="space-y-2">
         <a
-          href={receipt.hasFile ? receiptFileUrl(receipt.id) : undefined}
+          href={fileSrc}
           target="_blank"
           rel="noreferrer"
           className="block rounded-md border border-border-light bg-surface-alt overflow-hidden"
         >
           {photo ? (
             <img
-              src={receiptFileUrl(receipt.id)}
+              src={fileSrc}
               alt={receipt.fileName}
               className="w-full max-h-[28rem] object-contain"
             />
@@ -185,6 +216,8 @@ function Editor({
       </div>
 
       <div className="space-y-4 min-w-0">
+        {/* Every button below writes (save, read, match, split, create, delete) */}
+        <SavingPausedHint />
         <ReadBar receipt={receipt} onMessage={setMessage} onSave={() => save()} />
         {/* While the model reads it, typing would be lost when its details arrive */}
         <fieldset disabled={reading} className="space-y-4 min-w-0 disabled:opacity-60">
@@ -197,15 +230,14 @@ function Editor({
                 onChange={(e) => setMerchant(e.target.value)}
               />
             </label>
-            <label className="text-xs font-medium text-text-secondary space-y-1">
-              <span className="block">Date</span>
-              <Input
-                aria-label="Date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </label>
+            {/* The fieldset disables native fields only; React Aria's segments need it said */}
+            <DatePicker
+              label="Date"
+              value={date}
+              onChange={setDate}
+              optional
+              isDisabled={reading}
+            />
             <label className="text-xs font-medium text-text-secondary space-y-1">
               <span className="block">Amount (total paid)</span>
               <CurrencyInput aria-label="Amount" value={total} onChange={setTotal} />
@@ -235,7 +267,7 @@ function Editor({
             </div>
             {items.map((item, i) => (
               <div
-                key={i}
+                key={item.key}
                 className="grid grid-cols-[minmax(0,2fr)_7rem_minmax(0,2fr)_auto] gap-2 items-center"
               >
                 <Input
@@ -255,16 +287,17 @@ function Editor({
                     setItems(items.map((x, j) => (j === i ? { ...x, amount } : x)))
                   }
                 />
-                <div className="rounded-lg border border-border px-2 py-2">
-                  <CategorySelect
-                    label={`Item ${i + 1} category`}
-                    value={item.categoryId}
-                    groups={groups}
-                    onChange={(categoryId) =>
-                      setItems(items.map((x, j) => (j === i ? { ...x, categoryId } : x)))
-                    }
-                  />
-                </div>
+                <CategorySelectButton
+                  label={`Item ${i + 1} category`}
+                  value={item.categoryId}
+                  groups={groups}
+                  allowNone
+                  allowCreate={false}
+                  includeHidden
+                  onChange={(categoryId) =>
+                    setItems(items.map((x, j) => (j === i ? { ...x, categoryId } : x)))
+                  }
+                />
                 <button
                   type="button"
                   aria-label={`Remove item ${i + 1}`}
@@ -275,11 +308,7 @@ function Editor({
                 </button>
               </div>
             ))}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setItems([...items, { description: '', amount: 0, categoryId: null }])}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setItems([...items, blankItemRow()])}>
               <Plus size={13} /> Add item
             </Button>
             <p className="text-xs text-text-tertiary">
@@ -299,11 +328,12 @@ function Editor({
           </label>
 
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => save()} disabled={update.isPending}>
+            <Button onClick={() => save()} disabled={!canSave || update.isPending}>
               Save
             </Button>
             <Button
               variant="ghost"
+              disabled={!canSave || remove.isPending}
               onClick={async () => {
                 await remove.mutateAsync(receipt.id);
                 onClose();
@@ -351,6 +381,7 @@ function ReadBar({
 }) {
   const { data: reader } = useReaderSettings();
   const read = useReadReceipt();
+  const canSave = useCanSave();
   if (receipt.readStatus === 'pending')
     return (
       <p role="status" className="text-sm text-text-secondary flex items-center gap-2">
@@ -364,7 +395,7 @@ function ReadBar({
       <Button
         size="sm"
         variant="secondary"
-        disabled={read.isPending}
+        disabled={!canSave || read.isPending}
         onClick={async () => {
           onMessage(null);
           try {
@@ -403,6 +434,7 @@ function MatchSection({
 }) {
   const [mode, setMode] = useState<'find' | 'add' | null>(null);
   const split = useSplitByItems();
+  const canSave = useCanSave();
   const categories = new Set(receipt.lineItems.map((i) => i.categoryId).filter(Boolean));
   if (receipt.transactionId) {
     return (
@@ -426,7 +458,7 @@ function MatchSection({
             <Button
               size="sm"
               variant="secondary"
-              disabled={split.isPending}
+              disabled={!canSave || split.isPending}
               onClick={async () => {
                 onMessage(null);
                 try {
@@ -445,7 +477,12 @@ function MatchSection({
               Split by items
             </Button>
           )}
-          <Button size="sm" variant="secondary" onClick={() => onSave({ transactionId: null })}>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!canSave}
+            onClick={() => onSave({ transactionId: null })}
+          >
             Unmatch
           </Button>
         </div>
@@ -498,6 +535,7 @@ function FindMatch({ receipt, onPick }: { receipt: ReceiptDetail; onPick: (id: s
     return () => clearTimeout(t);
   }, [q]);
   const { data: matches = [], isFetching } = useReceiptSearch(receipt.id, query);
+  const canSave = useCanSave();
   return (
     <div className="space-y-2">
       <Input
@@ -519,7 +557,7 @@ function FindMatch({ receipt, onPick }: { receipt: ReceiptDetail; onPick: (id: s
               {m.exactAmount && <span className="ml-1 text-xs text-positive">same amount</span>}
             </span>
             <span className="tabular-nums">{formatCurrency(-m.amount)}</span>
-            <Button size="sm" variant="secondary" onClick={() => onPick(m.id)}>
+            <Button size="sm" variant="secondary" disabled={!canSave} onClick={() => onPick(m.id)}>
               Match
             </Button>
           </li>
@@ -543,6 +581,7 @@ function AddFromReceipt({
   const open = accounts.filter((a) => !a.closedAt);
   const [accountId, setAccountId] = useState('');
   const create = useCreateTransactionFromReceipt();
+  const canSave = useCanSave();
   return (
     <div className="space-y-2">
       <p className="text-xs text-text-tertiary">
@@ -551,21 +590,17 @@ function AddFromReceipt({
         or you'll have it twice.
       </p>
       <div className="flex flex-wrap gap-2 items-center">
-        <Select
+        <Combobox
           aria-label="Account"
+          placeholder="Choose an account…"
+          className="w-auto min-w-48 flex-1"
+          items={open.map((a) => ({ value: a.id, label: a.name }))}
           value={accountId}
-          onChange={(e) => setAccountId(e.target.value)}
-        >
-          <option value="">Choose an account…</option>
-          {open.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </Select>
+          onChange={setAccountId}
+        />
         <Button
           size="sm"
-          disabled={!accountId || create.isPending}
+          disabled={!canSave || !accountId || create.isPending}
           onClick={async () => {
             onMessage(null);
             try {

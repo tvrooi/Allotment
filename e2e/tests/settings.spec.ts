@@ -1,8 +1,18 @@
 import type { Page } from '@playwright/test';
 import fs from 'fs';
-import { test, expect, open, isoDay } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  fillMonth,
+  categoryOption,
+  setToggle,
+  fillDate,
+} from './fixtures';
 
-// Settings: managing categories and groups, and preferences.
+// Settings: preferences and the other sections. Categories and groups are managed on the Budget
+// area's Categories page (/budget/categories, #244); its tests live here with the rest.
 
 async function pickIcon(page: Page, name: string) {
   const picker = page.getByRole('dialog', { name: 'Choose an icon' });
@@ -10,10 +20,69 @@ async function pickIcon(page: Page, name: string) {
   await expect(picker).toBeHidden();
 }
 
+test.describe('where Settings sections live (#244)', () => {
+  test('Settings has eight tabs and opens on Accounts', async ({ page, api }) => {
+    await api.createAccount('Checking', 0);
+    await open(page, '/settings');
+    const list = page.getByRole('tablist', { name: 'Settings sections' });
+    await expect(list.getByRole('tab')).toHaveText([
+      'Accounts',
+      'Budget',
+      'Tags',
+      'Currencies',
+      'Priorities',
+      'Data',
+      'Preferences',
+      'Server',
+    ]);
+    await expect(list.getByRole('tab', { name: 'Accounts' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    // A tab Settings does not have opens the first one
+    await open(page, '/settings?tab=nonsense');
+    await expect(list.getByRole('tab', { name: 'Accounts' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  test('old links to Connected banks and Categories open their new pages, keep their parameters and leave no trace in history', async ({
+    page,
+    api,
+  }) => {
+    await api.createAccount('Checking', 0);
+    await open(page, '/accounts');
+    await open(page, '/settings?tab=connections&from=test');
+    await expect(page).toHaveURL(/#\/accounts\/connections\?from=test$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Connected banks' })).toBeVisible();
+    await expect(
+      page
+        .getByRole('group', { name: 'Bank connection provider' })
+        .getByRole('button', { name: 'Up', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    // Up's own panel (Connect Up, or the connection when one is left from another test)
+    await expect(page.getByRole('link', { name: 'How connecting Up works' })).toBeVisible();
+    // The redirect replaced the old address, so Back skips it
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/accounts$/);
+
+    await open(page, '/budget');
+    await open(page, '/settings?tab=categories&from=test');
+    await expect(page).toHaveURL(/#\/budget\/categories\?from=test$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit Groceries' })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/budget$/);
+  });
+});
+
+// The category manager is the Budget area's Categories page (#244)
 test.describe('categories', () => {
   test.beforeEach(async ({ api, page }) => {
     await api.createAccount('Checking', 0);
-    await open(page, '/settings');
+    await open(page, '/budget/categories');
   });
 
   test('creates a group and a category in it', async ({ page, api }) => {
@@ -74,7 +143,7 @@ test.describe('categories', () => {
     const dialog = page.getByRole('dialog', { name: 'Edit category' });
     const keep = dialog.getByRole('checkbox', { name: /Keep overspending/ });
     await expect(keep).not.toBeChecked();
-    await keep.check();
+    await setToggle(keep, true);
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toBeHidden();
     await expect.poll(async () => (await api.category('Parking'))?.keepOverspending).toBe(1);
@@ -82,7 +151,7 @@ test.describe('categories', () => {
     // It is still on when the dialog is opened again, and can be turned off
     await page.getByRole('button', { name: 'Edit Parking' }).click();
     await expect(keep).toBeChecked();
-    await keep.uncheck();
+    await setToggle(keep, false);
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect.poll(async () => (await api.category('Parking'))?.keepOverspending).toBe(0);
 
@@ -99,6 +168,89 @@ test.describe('categories', () => {
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('button', { name: 'Edit Parking & Tolls' })).toBeVisible();
     await expect.poll(() => api.category('Parking & Tolls')).toBeTruthy();
+  });
+
+  test('renames a group inline and edits group, budget type and accounts in the editor', async ({
+    page,
+    api,
+  }) => {
+    const saver = await api.createAccount('Holiday Saver', 0, 'savings');
+    const pool = await api.createAccount('Bills Pool', 0, 'checking');
+    await api.call('PUT', `/accounts/${pool.id}`, { assignPool: 1 });
+    const motor = await api.call('POST', '/categories/groups', { name: 'Motor', isIncome: 0 });
+    await page.reload();
+
+    // Inline rename selects on focus, Escape cancels, and Enter commits
+    const motorCard = page
+      .locator('div')
+      .filter({ has: page.getByText('Motor', { exact: true }) })
+      .filter({ has: page.getByRole('button', { name: 'Delete group Motor' }) })
+      .last();
+    await motorCard.getByRole('button', { name: 'Edit', exact: true }).click();
+    const rename = page.getByRole('textbox', { name: 'Group name' });
+    await expect(rename).toBeFocused();
+    await page.keyboard.type('Cancelled Name');
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('Motor', { exact: true })).toBeVisible();
+
+    await motorCard.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.keyboard.type('Transport & Auto');
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Transport & Auto', { exact: true })).toBeVisible();
+
+    // Edit category uses shared Comboboxes and RadioGroup
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Edit category' });
+
+    const groupBox = dialog.getByRole('combobox', { name: 'Group' });
+    await groupBox.fill('Transport');
+    await page.getByRole('listbox').getByRole('option', { name: 'Transport & Auto' }).click();
+
+    const budgetType = dialog.getByRole('radiogroup', { name: 'Budget type' });
+    await setToggle(budgetType.getByRole('radio', { name: /^Fixed\b/ }), true);
+
+    const follows = dialog.getByRole('combobox', { name: 'Follows the account' });
+    await expect(follows).toHaveValue('No account');
+    await follows.fill('Holiday');
+    await page.getByRole('listbox').getByRole('option', { name: 'Holiday Saver' }).click();
+
+    const poolBox = dialog.getByRole('combobox', { name: 'Ready to assign from' });
+    await expect(poolBox).toHaveValue('The main Ready to assign');
+
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(async () => await api.category('Parking'))
+      .toMatchObject({
+        groupId: motor.id,
+        budgetType: 'fixed',
+        linkedAccountId: saver.id,
+        poolAccountId: null,
+      });
+
+    // Clear linked account back to "No account" first, then fund from the pool account
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    await follows.fill('No acc');
+    await page.getByRole('listbox').getByRole('option', { name: 'No account' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(async () => await api.category('Parking'))
+      .toMatchObject({
+        linkedAccountId: null,
+      });
+
+    await page.getByRole('button', { name: 'Edit Parking' }).click();
+    await poolBox.fill('Bills');
+    await page.getByRole('listbox').getByRole('option', { name: 'Bills Pool’s own' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(async () => await api.category('Parking'))
+      .toMatchObject({
+        linkedAccountId: null,
+        poolAccountId: pool.id,
+      });
   });
 
   test('deleting a used category moves its transactions first', async ({ page, api }) => {
@@ -121,7 +273,12 @@ test.describe('categories', () => {
     const dialog = page.getByRole('dialog', { name: 'Merge into another category' });
     await expect(dialog).toContainText('Parking has 1 transaction');
     await expect(dialog.getByRole('button', { name: 'Merge & remove' })).toBeDisabled();
-    await dialog.getByRole('combobox', { name: 'Merge into' }).selectOption(transit.id);
+    await dialog.getByRole('button', { name: 'Merge into: Select a category…' }).click();
+    const list = page.getByRole('listbox', { name: 'Search categories' });
+    await expect(categoryOption(list, 'Transit')).toBeVisible();
+    await expect(categoryOption(list, 'Parking', { exact: true })).toHaveCount(0);
+    await expect(categoryOption(list, 'Paychecks', { exact: true })).toHaveCount(0);
+    await categoryOption(list, 'Transit').click();
     await dialog.getByRole('button', { name: 'Merge & remove' }).click();
 
     await expect(page.getByRole('button', { name: 'Edit Parking' })).toBeHidden();
@@ -225,7 +382,9 @@ test.describe('preferences', () => {
     ] as const) {
       await page.getByRole('button', { name: 'Add Transaction' }).click();
       const form = page.getByRole('form', { name: 'New transaction' });
-      await form.getByRole('textbox', { name: 'Payee' }).fill(`Bäckerei ${typed}`);
+      await form.getByRole('combobox', { name: 'Payee' }).fill(`Bäckerei ${typed}`);
+      // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+      await form.getByRole('combobox', { name: 'Payee' }).press('Tab');
       await form.getByRole('textbox', { name: 'Outflow' }).fill(typed);
       await form.getByRole('button', { name: 'Save' }).click();
       await expect(register).toContainText(`Bäckerei ${typed}`);
@@ -285,9 +444,11 @@ test.describe('goals', () => {
     await dialog.getByRole('textbox', { name: 'Name' }).fill('Emergency Fund');
     await dialog.getByRole('textbox', { name: 'Target', exact: true }).fill('10000');
     await dialog.getByRole('textbox', { name: 'Saved so far' }).fill('2500');
-    await dialog
-      .getByRole('combobox', { name: 'Linked account' })
-      .selectOption({ label: 'Savings' });
+    // The shared Combobox (G3): typing opens its filtered list, then the row is picked
+    const linked = dialog.getByRole('combobox', { name: 'Linked account' });
+    await linked.fill('Sav');
+    await page.getByRole('option', { name: 'Savings', exact: true }).click();
+    await expect(linked).toHaveValue('Savings');
     await dialog.getByRole('button', { name: 'Life Buoy' }).click();
     await expect(dialog.getByRole('button', { name: 'Life Buoy' })).toHaveAttribute(
       'aria-pressed',
@@ -368,7 +529,7 @@ test('the budget start keeps older history out of the envelopes', async ({ page,
 
   await open(page, '/settings?tab=budget');
   await expect(page.getByText('Envelopes count all history.')).toBeVisible();
-  await page.getByLabel('Start month').fill(thisMonth);
+  await fillMonth(page, 'Start month', thisMonth);
   await page.getByRole('button', { name: 'Start budget here' }).click();
   await expect(page.getByText(/^Envelopes start in /)).toBeVisible();
   expect(await summary()).toMatchObject({ uncategorized: 0, budgetStartMonth: thisMonth });
@@ -378,4 +539,18 @@ test('the budget start keeps older history out of the envelopes', async ({ page,
   await page.getByRole('button', { name: 'Count all history' }).click();
   await expect(page.getByText('Envelopes count all history.')).toBeVisible();
   expect((await summary()).uncategorized).toBe(478_000);
+});
+
+// G4 review: a half-typed From or To still downloaded the CSV with the old range
+test('a half-typed export date holds Download CSV', async ({ page }) => {
+  await open(page, '/settings');
+  await page.getByRole('tab', { name: 'Data' }).click();
+  const download = page.getByRole('button', { name: 'Download CSV' });
+  await fillDate(page, 'From', '2026-10-01');
+  await expect(download).toBeEnabled();
+  const day = page.getByRole('group', { name: 'From', exact: true }).locator('[data-type="day"]');
+  await day.click();
+  for (let i = 0; i < 2; i++) await page.keyboard.press('Backspace');
+  await expect(day).toHaveAttribute('data-placeholder');
+  await expect(download).toBeDisabled();
 });

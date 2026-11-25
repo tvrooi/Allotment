@@ -127,7 +127,9 @@ export default function WidgetCard({ widget, report, pages, dashboardRange, edit
               {formatDateRange(range)}
             </p>
           </div>
-          <Isolate className={`${oneLine ? '@4xl:order-last @4xl:self-start' : ''}`}>
+          {/* Phones: the ⋮ target is 44px, but overlaps the card's padding (-my) so the header
+              keeps its desktop height and a two-row Summary still fits its figures */}
+          <Isolate className={`max-md:-my-1 ${oneLine ? '@4xl:order-last @4xl:self-start' : ''}`}>
             <RowMenu items={menu} />
           </Isolate>
         </div>

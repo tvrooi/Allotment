@@ -36,7 +36,7 @@ only the page reverses them.
 
 With a household account, **Bills coverage** sits at the top of the page, like the dial in Up's
 Essentials. It compares what the household accounts hold now with the bills they will pay in the
-next 30 days (`COVERAGE_DAYS`): "A$150 of A$1,320 needed by 8 Dec", a meter, and what is still to
+next 30 days (`COVERAGE_DAYS`): "$150 of $1,320 needed by 8 Dec", a meter, and what is still to
 be paid in. The bills it counts are:
 
 - every expected date of a shared recurring bill paid from a household account
@@ -61,11 +61,14 @@ be removed while no household entry links one of their transactions.
 
 The **default split** (equal, percentages in basis points, or weights) is what quick sharing
 uses. **Share with household** records a payment as an expense with that split: paid by you
-when it left a personal account, or by the household account when it left a pool account. From the register it shares every payment in the current
-list, each checked on its own, so one refusal doesn't stop the rest; **Undo** removes the
-entries it made. **Pick to share** in the register puts a checkbox on each payment
-(money out that isn't a transfer); tick the ones you share, or **Pick all shown**, then
-**Share _N_ picked with household**. Without a default split, sharing splits equally, so a
+when it left a personal account, or by the household account when it left a pool account. From the
+register it shares each selected payment, each checked on its own, so one refusal doesn't stop the
+rest; **Undo** removes the entries it made. **Select** in the register lets you click
+transactions (or tap cards) to select them, and each selected one turns the selected colour; or use
+**Select all _N_** for the whole list, then
+**Share _N_ selected with household** (only money out that isn't a transfer can be shared; the
+others are left out and counted in the button's hint). Right-clicking a selected payment opens the
+selection's menu, which also has **Share _N_ selected with ▸**. Without a default split, sharing splits equally, so a
 two-person household is 50/50. A rule action, **Share with household**, does the same for matching payments
 as they import (or when the rule is applied to existing transactions), and never fails an
 import: a payment the household checks refuse is left unshared.
@@ -92,8 +95,9 @@ press it, or tap ⋯ on a phone card) for its menu (`components/ui/ContextMenu.t
 
 - **Share with ▸** lists each household with its picture and split; choosing one shares the
   payment at once with that household's default split, and the toast offers **Undo**.
-  **Custom split…** opens the Household page's form for it. While payments are picked, right-
-  clicking one of them shares all of the picked ones (**Share _N_ picked with ▸**).
+  **Custom split…** opens the Household page's form for it. While transactions are selected,
+  right-clicking one of them opens the selection's menu instead (`SelectionMenu.tsx`), where
+  **Share _N_ selected with ▸** shares all of the selected payments.
 - A payment that can't be shared (money in, a transfer, a split as a whole, a balance
   correction) shows the item greyed out with the reason. With no household yet, the item opens
   the Household page.
@@ -219,6 +223,24 @@ people, entries and balances stay as they are. **Open this household first** mak
 sidebar's Household link open it unless the address names another (`?household=`). Only one
 household is the default; with none, the first one opens. Both are owner-only settings, so access
 tokens can't change them; `list_households` shows which one is the default.
+
+### Mode and bills
+
+A household is either **Shared account** (it has a pool account) or **Split as you go** (people pay
+and settle up); the Household page says which, from the pool accounts, at the top. Whether it
+**includes bills** is a separate, stored choice (`{ includeBills }`, the `include_bills` column,
+kept in backups; existing households and new ones default to on). Off hides the Bills tab, coverage
+and unshared-payment prompts, for a household such as a partner split of groceries and outings;
+nothing is deleted, and turning it back on restores them. Set it when creating the household or in
+Settings → Bills.
+
+A Split as you go household (no pool account) opens its Overview with **Add a shared expense**: what
+for, amount and who paid, dated today and split with the household's default split (shown as
+"50/50" for two people sharing equally, with a link to change it in Settings). It records the same
+`expense` entry as **Record something else**, which stays for other dates, repayments and unequal
+splits.
+Under it, **Recent** lists the last four shared expenses with who paid and each person's share;
+**All activity** opens the Activity tab.
 
 ## Where the balances come from, and reconciling them
 

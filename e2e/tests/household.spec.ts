@@ -1,4 +1,32 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import type { Locator, Page } from '@playwright/test';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  typeAmount,
+  chooseOption,
+  setToggle,
+  fillDate,
+} from './fixtures';
+
+/**
+ * The page groups its sections in tabs (da18c99): Overview (balances, recording), Bills,
+ * Activity (statement, breakdown, every entry, the log) and Settings (bills, sharing). The
+ * Bills tab's name can carry a count of unshared payments, so names match from the start.
+ */
+/**
+ * Narrows the window to a phone's width and waits for the phone layout. The app switches layout
+ * on the media query's change event, a frame after the resize: measuring before that sees the
+ * desktop sidebar squeezed into 390px.
+ */
+async function phoneWidth(page: Page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('phone-header')).toBeVisible();
+}
+
+const openTab = (page: Page, name: 'Overview' | 'Bills' | 'Activity' | 'Settings') =>
+  page.getByRole('tab', { name: new RegExp(`^${name}`) }).click();
 
 test('records shared expenses, exports personal scope and keeps the bank debit intact', async ({
   page,
@@ -12,28 +40,33 @@ test('records shared expenses, exports personal scope and keeps the bank debit i
     payeeName: 'Dinner',
   });
   await open(page, '/household');
+  await page.getByRole('button', { name: 'Set up a household', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Home');
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
-  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  await page.getByRole('button', { name: 'Expense or repayment' }).click();
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Shared dinner');
-  await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
-  await event.getByLabel('Amount (AUD)').fill('120.00');
-  await event.getByLabel('Paid by').selectOption({ label: 'Me' });
-  await event.getByLabel('Existing bank payment (optional)').selectOption(payment.id);
+  await fillDate(event, 'Date', '2026-10-21');
+  await typeAmount(event.getByLabel('Amount (AUD)'), '120.00');
+  await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
+  const paymentField = event.getByRole('combobox', { name: 'Existing bank payment (optional)' });
+  await paymentField.evaluate((field) => field.scrollIntoView({ block: 'center' }));
+  await paymentField.fill('Dinner');
+  await page.getByRole('option', { name: /Dinner/ }).click();
   await event.getByRole('button', { name: 'Save event' }).click();
+  await openTab(page, 'Activity');
   await expect(page.getByRole('heading', { name: /My expense shares:.*60/ })).toBeVisible();
-  await page.getByLabel('Report scope').selectOption('household');
+  await chooseOption(page.getByRole('button', { name: /Report scope/ }), 'Household');
   await expect(page.getByRole('heading', { name: /Household spending:.*120/ })).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel('Report scope')).toHaveValue('household');
+  await expect(page.getByRole('button', { name: /Report scope/ })).toContainText('Household');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export this statement' }).click();
   expect((await download).suggestedFilename()).toBe('household-household-statement.json');
   expect((await api.transactions()).find((t) => t.id === payment.id).amount).toBe(-12000);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -98,8 +131,9 @@ test('shares a payment with the household in one step, with the default split', 
     selfIndex: 0,
   });
   await open(page, '/household');
+  await openTab(page, 'Settings');
   const sharing = page.getByRole('region', { name: 'Sharing' });
-  await sharing.getByLabel('Split').selectOption('percentage');
+  await chooseOption(sharing.getByRole('button', { name: /Split/ }), 'Percentages');
   await sharing.getByLabel("Me's percentage").fill('40');
   await sharing.getByLabel("Juno's percentage").fill('30');
   await sharing.getByLabel("Zephyr's percentage").fill('30');
@@ -110,7 +144,8 @@ test('shares a payment with the household in one step, with the default split', 
   await page.getByText('Groceries run').first().click();
   // Sharing the whole list waits for "Select all"
   await page.getByRole('button', { name: 'Select all 1' }).click();
-  await page.getByRole('button', { name: 'Share with household' }).click();
+  // The list's own Share (a row click opens the details, which have one for that payment, #243)
+  await page.getByTitle('Record the payments in this list as shared household expenses').click();
   const dialog = page.getByRole('dialog', { name: 'Share with household' });
   await dialog.getByRole('button', { name: 'Share', exact: true }).click();
   await expect(dialog.getByRole('status')).toHaveText('Shared 1.');
@@ -143,6 +178,7 @@ test('a household picture shows on the payments shared with it', async ({ page, 
 
   // Upload a picture in Household → Sharing (a 1×1 PNG, resized to a small square)
   await open(page, '/household');
+  await openTab(page, 'Settings');
   const sharing = page.getByRole('region', { name: 'Sharing' });
   await sharing.getByTestId('household-logo-input').setInputFiles({
     name: 'flat.png',
@@ -180,6 +216,7 @@ test('a household picture shows on the payments shared with it', async ({ page, 
   await expect(page.getByRole('heading', { name: 'People & balances' })).toBeVisible();
 
   // Without a picture, the household's initial shows instead
+  await openTab(page, 'Settings');
   await page
     .getByRole('region', { name: 'Sharing' })
     .getByRole('button', { name: 'Remove the picture for Flat' })
@@ -354,7 +391,7 @@ test('a payment to someone is marked as paid ahead towards a shared expense', as
   await row.click();
   await page.getByRole('button', { name: 'Paid ahead for a shared expense' }).click();
   const dialog = page.getByRole('dialog', { name: 'Paid ahead for a shared expense' });
-  await dialog.getByRole('combobox', { name: 'Paid to' }).selectOption({ label: 'Juno' });
+  await chooseOption(dialog.getByRole('combobox', { name: 'Paid to' }), 'Juno');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(toast).toContainText('Paid ahead to Juno.');
@@ -448,16 +485,16 @@ test('right-clicking one of several picked payments shares all of them', async (
     selfIndex: 0,
   });
   await open(page, `/accounts/${account.id}`);
-  await page.getByRole('button', { name: 'Pick to share' }).click();
-  await page.getByRole('checkbox', { name: /^Pick Mock Fuel/ }).check();
-  await page.getByRole('checkbox', { name: /^Pick Mock Dinner/ }).check();
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await page.getByRole('checkbox', { name: /^Select Mock Fuel/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Mock Dinner/ }).check();
   await page
     .getByTestId('transaction-row')
     .filter({ hasText: 'Mock Fuel' })
     .click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Share 2 picked with' }).hover();
+  await page.getByRole('menuitem', { name: 'Share 2 selected with' }).hover();
   await page
-    .getByRole('menu', { name: 'Share 2 picked with' })
+    .getByRole('menu', { name: 'Share 2 selected with' })
     .getByRole('menuitem', { name: /^Flat/ })
     .click();
   await expect(page.getByTestId('undo-toast')).toContainText('Shared 2 with Flat.');
@@ -465,6 +502,46 @@ test('right-clicking one of several picked payments shares all of them', async (
   expect(state.events.map((e: { transactionId: string }) => e.transactionId).sort()).toEqual(
     [ids[0], ids[1]].sort(),
   );
+});
+
+test('a selected payment already shared is not offered for sharing again', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday', 20000);
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -6000,
+    payeeName: 'Mock Fuel',
+  });
+  const dinner = await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -8000,
+    payeeName: 'Mock Dinner',
+  });
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    accountId: null,
+    people: ['Me', 'Juno'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/share`, { transactionIds: [dinner.id] });
+  await open(page, `/accounts/${account.id}`);
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await page.getByRole('checkbox', { name: /^Select Mock Fuel/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Mock Dinner/ }).check();
+  const bar = page.getByRole('region', { name: 'Selected transactions' });
+  await expect(bar).toContainText('2 selected');
+  // Only the payment not yet shared counts, in the bar and in the selection's menu
+  await expect(bar.getByRole('button', { name: 'Share 1 selected with household' })).toBeVisible();
+  await page
+    .getByTestId('transaction-row')
+    .filter({ hasText: 'Mock Fuel' })
+    .click({ button: 'right' });
+  await expect(page.getByRole('menuitem', { name: /^Share 1 selected with/ })).toBeVisible();
 });
 
 test('picks payments in the register and shares just those, split equally', async ({
@@ -499,18 +576,18 @@ test('picks payments in the register and shares just those, split equally', asyn
   });
 
   await open(page, `/accounts/${account.id}`);
-  await page.getByRole('button', { name: 'Pick to share' }).click();
-  const bar = page.getByRole('region', { name: 'Picked payments' });
-  await page.getByLabel(/^Pick Dinner for two/).check();
-  await page.getByLabel(/^Pick Road trip fuel/).check();
-  await expect(bar).toContainText('2 picked');
-  await bar.getByRole('button', { name: 'Share 2 picked with household' }).click();
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  const bar = page.getByRole('region', { name: 'Selected transactions' });
+  await page.getByRole('checkbox', { name: /^Select Dinner for two/ }).check();
+  await page.getByRole('checkbox', { name: /^Select Road trip fuel/ }).check();
+  await expect(bar).toContainText('2 selected');
+  await bar.getByRole('button', { name: 'Share 2 selected with household' }).click();
   const dialog = page.getByRole('dialog', { name: 'Share with household' });
   await expect(dialog).toContainText('split equally');
   await dialog.getByRole('button', { name: 'Share', exact: true }).click();
   await expect(dialog.getByRole('status')).toHaveText('Shared 2.');
   await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
-  await expect(bar).toContainText('0 picked');
+  await expect(bar).toContainText('0 selected');
 
   const state = await api.call('GET', `/households/${group.group.id}`);
   const shared = state.events.map((e: { transactionId: string }) => e.transactionId).sort();
@@ -528,8 +605,6 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const bills = [
     ['Electricity (OVO)', 'OVO Energy', -18450],
     ['Internet (Superloop)', 'Superloop', -8999],
@@ -537,7 +612,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   for (const [name, payeeName, amount] of bills) {
     const paid = await api.createTransaction({
       accountId: account.id,
-      date: day(-5),
+      date: isoDay(-5),
       amount,
       payeeName,
     });
@@ -546,7 +621,7 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
       amount,
       recurrenceType: 'monthly',
       recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-      startDate: day(-5),
+      startDate: isoDay(-5),
       accountId: account.id,
       payeeId: paid.payeeId,
     });
@@ -559,13 +634,14 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
     selfIndex: 0,
   });
   await open(page, '/household');
+  await openTab(page, 'Bills');
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   await expect(recurring).toContainText('No recurring bills shared yet');
   // No household account: the pool figures stay out of the way
   await expect(page.getByText('Household account figures')).toHaveCount(0);
   await recurring.getByRole('button', { name: 'Add recurring bills' }).click();
-  await recurring.getByLabel('Electricity (OVO)').check();
-  await recurring.getByLabel('Internet (Superloop)').check();
+  await setToggle(recurring.getByRole('checkbox', { name: 'Electricity (OVO)' }));
+  await setToggle(recurring.getByRole('checkbox', { name: 'Internet (Superloop)' }));
   await recurring.getByRole('button', { name: 'Share 2 with household' }).click();
   await expect(recurring.getByRole('listitem')).toHaveCount(2);
   const power = recurring.getByRole('listitem').filter({ hasText: 'Electricity (OVO)' });
@@ -573,10 +649,14 @@ test('lists recurring bills shared with housemates, with shares and one-click sh
   await expect(power).toContainText('1 payment not shared yet');
   await power.getByRole('button', { name: 'Share payment' }).click();
   await expect(power).toContainText('Last payment shared');
+  await openTab(page, 'Activity');
   await expect(page.getByRole('heading', { name: /My expense shares:.*61\.50/ })).toBeVisible();
-  await expect(page.getByText(/^owes A?\$61\.50$/)).toHaveCount(2);
-  await expect(page.getByText(/^is owed A?\$123$/)).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  // People & balances lists everyone; the band above the tabs repeats the others' figures
+  await openTab(page, 'Overview');
+  const people = page.getByRole('tabpanel', { name: 'Overview' });
+  await expect(people.getByText(/^owes A?\$61\.50$/)).toHaveCount(2);
+  await expect(people.getByText(/^is owed A?\$123$/)).toBeVisible();
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -587,11 +667,9 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const paid = await api.createTransaction({
     accountId: account.id,
-    date: day(-5),
+    date: isoDay(-5),
     amount: -10000,
     payeeName: 'Superloop',
   });
@@ -600,7 +678,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
     amount: -10000,
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-    startDate: day(-5),
+    startDate: isoDay(-5),
     accountId: account.id,
     payeeId: paid.payeeId,
   });
@@ -616,7 +694,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   });
   await api.call('POST', `/households/${group.group.id}/bills`, {
     description: 'Council rates',
-    dueDate: day(30),
+    dueDate: isoDay(30),
     amount: 30000,
   });
   await open(page, '/household');
@@ -632,11 +710,12 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   await expect(page.getByRole('button', { name: 'Rename Samantha' })).toBeVisible();
 
   // A split of its own for the internet bill, then share its payment with it
+  await openTab(page, 'Bills');
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   const net = recurring.getByRole('listitem').filter({ hasText: 'Internet (Superloop)' });
   await expect(net).toContainText("household's default split");
   await net.getByRole('button', { name: 'Change split' }).click();
-  await net.getByLabel('Split').selectOption('percentage');
+  await chooseOption(net.getByRole('button', { name: /Split/ }), 'Percentages');
   await net.getByLabel("Me's percentage").fill('50');
   await net.getByLabel("Samantha's percentage").fill('25');
   await net.getByLabel("Jo's percentage").fill('25');
@@ -650,12 +729,12 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   expect(entry.shares.map((s: any) => s.amount)).toEqual([5000, 2500, 2500]);
 
   // Automatic sharing of new payments
-  await net.getByLabel('Share new payments automatically').click();
+  await setToggle(net.getByRole('checkbox', { name: 'Share new payments automatically' }));
   await expect(net.getByLabel('Share new payments automatically')).toBeChecked();
   await expect(net).toContainText('(from ');
   const next = await api.createTransaction({
     accountId: account.id,
-    date: day(0),
+    date: isoDay(0),
     amount: -10000,
     payeeName: 'Superloop',
   });
@@ -666,7 +745,7 @@ test('bill splits, automatic sharing, people and one-off bills can all be change
   const bills = page.getByRole('heading', { name: 'One-off bills' }).locator('..');
   await bills.getByRole('button', { name: 'Edit Council rates' }).click();
   await bills.getByLabel('Bill name').first().fill('Council rates Q2');
-  await bills.getByLabel('Total', { exact: true }).fill('310.00');
+  await typeAmount(bills.getByLabel('Total', { exact: true }), '310.00');
   await bills.getByRole('button', { name: 'Save bill' }).click();
   await expect(bills).toContainText('Council rates Q2');
   await expect(bills).toContainText(/A?\$310/);
@@ -681,11 +760,9 @@ test('a rent with fixed amounts from the household account shows what each owes 
 }) => {
   const joint = await api.createAccount('2Up Bills', 0);
   const mine = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const rent = await api.createTransaction({
     accountId: joint.id,
-    date: day(-3),
+    date: isoDay(-3),
     amount: -300000,
     payeeName: 'Ray White',
   });
@@ -694,7 +771,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
     amount: -300000,
     recurrenceType: 'monthly',
     recurrenceRule: { type: 'monthly', interval: 1, anchorDay: 1 },
-    startDate: day(-3),
+    startDate: isoDay(-3),
     accountId: joint.id,
     payeeId: rent.payeeId,
   });
@@ -710,15 +787,21 @@ test('a rent with fixed amounts from the household account shows what each owes 
   });
   await open(page, '/household');
 
+  await openTab(page, 'Bills');
   const recurring = page.getByRole('region', { name: 'Recurring bills' });
   const bill = recurring.getByRole('listitem').filter({ hasText: 'Rent' });
   await bill.getByRole('button', { name: 'Change split' }).click();
-  await bill.getByLabel('Split').selectOption('exact');
-  await bill.getByLabel("Me's amount").fill('1200');
-  await bill.getByLabel("Juno's amount").fill('1000');
-  await bill.getByLabel("Zephyr's amount").fill('700');
+  await chooseOption(
+    bill.getByRole('button', { name: /Split/ }),
+    "Fixed amounts (for example each person's rent)",
+  );
+  const myAmount = bill.getByLabel("Me's amount");
+  await typeAmount(myAmount, '1200');
+  await expect(myAmount).toHaveValue(/1,200/);
+  await typeAmount(bill.getByLabel("Juno's amount"), '1000');
+  await typeAmount(bill.getByLabel("Zephyr's amount"), '700');
   await expect(bill).toContainText(/expected to be A?\$3,000/);
-  await bill.getByLabel("Zephyr's amount").fill('800');
+  await typeAmount(bill.getByLabel("Zephyr's amount"), '800');
   await expect(bill).toContainText(/Adds up to A?\$3,000\./);
   await bill.getByRole('button', { name: 'Save split' }).click();
   await expect(bill).toContainText(/Me A?\$1,200, Juno A?\$1,000, Zephyr A?\$800/);
@@ -726,6 +809,7 @@ test('a rent with fixed amounts from the household account shows what each owes 
   // The household account paid before anyone put their part in: each owes the account
   await bill.getByRole('button', { name: 'Share payment' }).click();
   await expect(bill).toContainText('Last payment shared');
+  await openTab(page, 'Overview');
   await expect(page.getByText(/^owes the household account A?\$1,200$/)).toBeVisible();
   await expect(page.getByText(/^owes the household account A?\$800$/)).toBeVisible();
 
@@ -735,11 +819,13 @@ test('a rent with fixed amounts from the household account shows what each owes 
     toAccountId: joint.id,
     amount: 120000,
     toAmount: 120000,
-    date: day(-1),
+    date: isoDay(-1),
   });
   await page.reload();
+  await openTab(page, 'Settings');
   const sharing = page.getByRole('region', { name: 'Sharing' });
   await sharing.getByRole('button', { name: 'Record your contribution' }).click();
+  await openTab(page, 'Overview');
   await expect(page.getByText(/^owes the household account A?\$1,200$/)).toHaveCount(0);
 });
 
@@ -767,16 +853,16 @@ test('lists who should pay whom and records a suggested repayment in one click',
   });
   await open(page, '/household');
   const list = page.getByRole('list', { name: 'Suggested repayments' });
-  await expect(list.getByText('You pay Alex A$30')).toBeVisible();
-  await expect(list.getByText('Sam pays Alex A$30')).toBeVisible();
-  await page.getByRole('button', { name: 'Record: Sam pays Alex A$30' }).click();
-  await expect(list.getByText('Sam pays Alex A$30')).toHaveCount(0);
-  await expect(list.getByText('You pay Alex A$30')).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(list.getByText('You pay Alex $30')).toBeVisible();
+  await expect(list.getByText('Sam pays Alex $30')).toBeVisible();
+  await page.getByRole('button', { name: 'Record: Sam pays Alex $30' }).click();
+  await expect(list.getByText('Sam pays Alex $30')).toHaveCount(0);
+  await expect(list.getByText('You pay Alex $30')).toBeVisible();
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
-  await page.getByRole('button', { name: 'Record: You pay Alex A$30' }).click();
+  await page.getByRole('button', { name: 'Record: You pay Alex $30' }).click();
   await expect(page.getByRole('list', { name: 'Suggested repayments' })).toHaveCount(0);
 });
 
@@ -799,18 +885,19 @@ test('edits an entry in place, and the activity log keeps what was changed and r
     shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
   });
   await open(page, '/household');
+  await openTab(page, 'Activity');
   await page.getByRole('button', { name: /^All contributions, payments & repayments/ }).click();
   await page.getByRole('button', { name: 'Edit Groceries' }).click();
   const dialog = page.getByRole('dialog', { name: 'Edit entry' });
   await dialog.getByLabel('Description').fill('Groceries and bread');
   await typeAmount(dialog.getByLabel('Amount', { exact: true }), '96.00');
-  await dialog.getByLabel('Split', { exact: true }).selectOption('equal');
+  await chooseOption(dialog.getByRole('button', { name: /Split/ }), 'Equal');
   await dialog.getByRole('button', { name: 'Save changes' }).click();
   await expect(dialog).toHaveCount(0);
   const history = page
     .getByRole('row', { name: /Groceries and bread/ })
     .filter({ has: page.getByRole('button', { name: 'Remove entry' }) });
-  await expect(history).toContainText('A$96');
+  await expect(history).toContainText('$96');
 
   await page.getByRole('button', { name: 'Remove entry' }).click();
   await expect(history).toHaveCount(0);
@@ -819,7 +906,7 @@ test('edits an entry in place, and the activity log keeps what was changed and r
   await expect(log.getByText(/^Removed “Groceries and bread”/)).toBeVisible();
   await expect(log.getByText(/^Changed “Groceries and bread” \(description, amount/)).toBeVisible();
   await expect(log.getByText(/^Shared “Groceries”/)).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -869,24 +956,25 @@ test('breaks household spending down by month, person and category', async ({ pa
   });
 
   await open(page, '/household');
+  await openTab(page, 'Activity');
   await page.getByRole('button', { name: 'Spending by month, person and category' }).click();
   const section = page.locator('section', {
     has: page.getByRole('button', { name: 'Spending by month, person and category' }),
   });
   const month = (name: string) => section.getByRole('row', { name: new RegExp(name) });
-  await expect(month('Sep 26')).toContainText('A$90');
-  await expect(month('Oct 26')).toContainText('A$60');
+  await expect(month('Sep 26')).toContainText('$90');
+  await expect(month('Oct 26')).toContainText('$60');
   // Me paid $90 of $150 and owes a third of it: $40 more than their share
-  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$90');
-  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$50');
-  await expect(section.getByRole('row', { name: /^Me / })).toContainText('A$40');
-  await expect(section.getByRole('row', { name: /^Groceries / })).toContainText('A$90');
-  await expect(section.getByRole('row', { name: /^Uncategorised / })).toContainText('A$60');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('$90');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('$50');
+  await expect(section.getByRole('row', { name: /^Me / })).toContainText('$40');
+  await expect(section.getByRole('row', { name: /^Groceries / })).toContainText('$90');
+  await expect(section.getByRole('row', { name: /^Uncategorised / })).toContainText('$60');
   // A date range narrows all three
-  await page.getByLabel('From').fill('2026-10-01');
+  await fillDate(page, 'From', '2026-10-01');
   await expect(section.getByRole('row', { name: /^Groceries / })).toHaveCount(0);
   await expect(month('Sep 26')).toHaveCount(0);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -894,6 +982,7 @@ test('breaks household spending down by month, person and category', async ({ pa
 
 test('renames a household and chooses which one opens first', async ({ page }) => {
   await open(page, '/household');
+  await page.getByRole('button', { name: 'Set up a household', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Home');
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
@@ -905,34 +994,37 @@ test('renames a household and chooses which one opens first', async ({ page }) =
   await create.getByLabel('People, one per line; put yourself first').fill('Me\nSam');
   await create.getByRole('button', { name: 'Create household', exact: true }).click();
   const picker = page.getByRole('combobox', { name: 'Household', exact: true });
-  await expect(picker.locator('option:checked')).toHaveText('Beach house');
+  await expect(picker).toHaveValue('Beach house');
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit household', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Edit household' });
   await edit.getByLabel('Name').fill('Coast house');
-  await edit.getByLabel('Open this household first').check();
+  await setToggle(edit.getByRole('checkbox', { name: 'Open this household first' }));
   await edit.getByRole('button', { name: 'Save' }).click();
   await expect(edit).toBeHidden();
 
   await open(page, '/household');
-  await expect(picker.locator('option:checked')).toHaveText('Coast house');
+  await expect(picker).toHaveValue('Coast house');
 });
 
 test('reconciles household balances to zero, and removing the adjustments undoes it', async ({
   page,
 }) => {
   await open(page, '/household');
+  await page.getByRole('button', { name: 'Set up a household', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Home');
   await page.getByLabel('People, one per line; put yourself first').fill('Me\nAlex');
   await page.getByRole('button', { name: 'Create household', exact: true }).click();
-  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  await page.getByRole('button', { name: 'Expense or repayment' }).click();
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   await event.getByLabel('Description', { exact: true }).fill('Groceries');
-  await event.getByLabel('Date', { exact: true }).fill('2026-10-21');
-  await event.getByLabel('Amount (AUD)').fill('80.00');
-  await event.getByLabel('Paid by').selectOption({ label: 'Me' });
+  await fillDate(event, 'Date', '2026-10-21');
+  await typeAmount(event.getByLabel('Amount (AUD)'), '80.00');
+  await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
   await event.getByRole('button', { name: 'Save event' }).click();
-  await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
+  // People & balances; the band above the tabs repeats the figure
+  const people = page.getByRole('tabpanel', { name: 'Overview' });
+  await expect(people.getByText('owes A$40', { exact: true })).toBeVisible();
 
   await page.getByText('Where these figures come from').click();
   await page.getByRole('button', { name: 'Reconcile balances' }).click();
@@ -941,10 +1033,12 @@ test('reconciles household balances to zero, and removing the adjustments undoes
   await expect(dialog).toBeHidden();
   await expect(page.getByText('owes A$40', { exact: true })).toHaveCount(0);
 
+  await openTab(page, 'Activity');
   await page.getByRole('button', { name: /All contributions, payments & repayments/ }).click();
   await expect(page.getByText('Balances agreed (between people)')).toBeVisible();
   await page.getByRole('button', { name: 'Remove entry' }).last().click();
-  await expect(page.getByText('owes A$40', { exact: true })).toBeVisible();
+  await openTab(page, 'Overview');
+  await expect(people.getByText('owes A$40', { exact: true })).toBeVisible();
 });
 
 test('lists recent entries newest first, with older months a click away', async ({ page, api }) => {
@@ -969,6 +1063,7 @@ test('lists recent entries newest first, with older months a click away', async 
       shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
     });
   await open(page, '/household');
+  await openTab(page, 'Activity');
   const statement = page.getByRole('heading', { name: /My expense shares/ }).locator('../..');
   // The total still covers every expense; the rows open on the newest two months
   await expect(statement.getByRole('heading', { name: /My expense shares:.*150/ })).toBeVisible();
@@ -994,14 +1089,12 @@ test('a gauge shows whether the household account covers the next 30 days of bil
   api,
 }) => {
   const pool = await api.createAccount('2Up Essentials', 10000, 'savings', { currency: 'AUD' });
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   const schedule = await api.call('POST', '/schedules', {
     name: 'Internet',
     amount: -10500,
     recurrenceType: 'monthly',
-    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(3).slice(8)) },
-    startDate: day(3),
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(isoDay(3).slice(8)) },
+    startDate: isoDay(3),
     accountId: pool.id,
   });
   const group = await api.call('POST', '/households', {
@@ -1020,13 +1113,13 @@ test('a gauge shows whether the household account covers the next 30 days of bil
     'aria-valuenow',
     '95',
   );
-  await expect(gauge).toContainText(/A\$100\s*of A\$105 needed by/);
-  await expect(gauge).toContainText('A$5 still to be paid in');
+  await expect(gauge).toContainText(/\$100\s*of \$105 needed by/);
+  await expect(gauge).toContainText('$5 still to be paid in');
   await expect(gauge.getByRole('listitem').filter({ hasText: 'Internet' })).toContainText('105');
   await expect(
     gauge.getByRole('list', { name: "Each person's part" }).getByRole('listitem').nth(1),
-  ).toContainText(/Alex.*A\$35 of these bills · paid in A\$0/);
-  await page.setViewportSize({ width: 390, height: 844 });
+  ).toContainText(/Alex.*\$35 of these bills · paid in \$0/);
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -1037,8 +1130,6 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
   api,
 }) => {
   const account = await api.createAccount('Up Spending', 100000);
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   let payeeId = '';
   for (const [offset, amount] of [
     [-70, -8000],
@@ -1047,7 +1138,7 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
   ] as const) {
     const paid = await api.createTransaction({
       accountId: account.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Brightside Energy',
     });
@@ -1058,8 +1149,8 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     amount: -12000,
     amountType: 'variable',
     recurrenceType: 'monthly',
-    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(day(20).slice(8)) },
-    startDate: day(20),
+    recurrenceRule: { type: 'monthly', interval: 1, anchorDay: Number(isoDay(20).slice(8)) },
+    startDate: isoDay(20),
     accountId: account.id,
     payeeId,
   });
@@ -1074,6 +1165,7 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
     scheduleIds: [schedule.id],
   });
   await open(page, '/household');
+  await openTab(page, 'Bills');
   const tile = page
     .getByRole('region', { name: 'Recurring bills' })
     .getByRole('listitem', { name: 'Electricity (Brightside)' });
@@ -1100,8 +1192,6 @@ test('a bill whose payments changed offers its new amount, and its amount edits 
 
 test('suggests bills the household account pays, to add or dismiss', async ({ page, api }) => {
   const pool = await api.createAccount('2Up Essentials', 500000, 'savings', { currency: 'AUD' });
-  const day = (offset: number) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
   for (const [offset, amount] of [
     [-190, -24110],
     [-128, -26340],
@@ -1110,7 +1200,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Northwind Power',
     });
@@ -1120,7 +1210,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   ] as const)
     await api.createTransaction({
       accountId: pool.id,
-      date: day(offset),
+      date: isoDay(offset),
       amount,
       payeeName: 'Riverbend Water',
     });
@@ -1132,6 +1222,7 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
     selfIndex: 0,
   });
   await open(page, '/household');
+  await openTab(page, 'Bills');
   const suggestions = page.getByRole('list', { name: 'Looks like a bill' });
   const water = suggestions.getByRole('listitem', { name: 'Riverbend Water' });
   await expect(water).toContainText('quarterly · 2 payments');
@@ -1139,16 +1230,215 @@ test('suggests bills the household account pays, to add or dismiss', async ({ pa
   await expect(water).toHaveCount(0);
 
   const power = suggestions.getByRole('listitem', { name: 'Northwind Power' });
-  await expect(power).toContainText('every 2 months · 4 payments, A$241.10–A$498.75');
+  await expect(power).toContainText('every 2 months · 4 payments, $241.10–$498.75');
   await power.getByRole('button', { name: 'Add as household bill' }).click();
   const tile = page
     .getByRole('region', { name: 'Recurring bills' })
     .getByRole('listitem', { name: 'Northwind Power' });
-  await expect(tile).toContainText('A$270.20');
+  await expect(tile).toContainText('$270.20');
   await expect(tile).toContainText('paid from the household account');
   await expect(page.getByRole('list', { name: 'Looks like a bill' })).toHaveCount(0);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await phoneWidth(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+});
+
+for (const width of [1280, 390])
+  test('Wave D: empty state at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/household');
+    const main = page.getByRole('main');
+    await expect(
+      main.getByRole('heading', { name: 'Share costs with your household', exact: true }),
+    ).toBeVisible();
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    await expect(main.getByText('Example', { exact: true })).toBeVisible();
+    await expect(
+      main.locator('[aria-hidden="true"]').filter({ hasText: '$' }).first(),
+    ).toBeVisible();
+    await page.keyboard.press('Alt+Shift+H');
+    const action = main.getByRole('button', { name: 'Set up a household', exact: true });
+    await expect(action).toHaveCount(1);
+    await expect(action).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(main.getByLabel('People, one per line; put yourself first')).toHaveCount(0);
+    await action.click();
+    await expect(page.getByRole('dialog', { name: 'New household' })).toBeVisible();
+  });
+
+test('Fix round 1: all examples use the budget currency', async ({ page, api }) => {
+  await api.call('PUT', '/currency', { currency: 'EUR' });
+  for (const [route, heading] of [
+    ['/files', 'Keep your files together'],
+    ['/forecast', 'See where your plans could take you'],
+    ['/forecast?tab=cash', 'See how long your cash could last'],
+    ['/household', 'Share costs with your household'],
+  ]) {
+    await open(page, route);
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    const example = page.getByRole('main').getByText('Example', { exact: true }).locator('..');
+    await expect(example).toContainText('€');
+    await expect(example).not.toContainText('A$');
+  }
+});
+
+test('the record form saves a formatted expense in cents', async ({ page, api }) => {
+  const household = await api.call('POST', '/households', {
+    name: 'Home',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  await page.getByRole('button', { name: 'Expense or repayment' }).click();
+  const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
+  await event.getByLabel('Description', { exact: true }).fill('Appliance');
+  const amount = event.getByRole('textbox', { name: 'Amount (AUD)' });
+  await typeAmount(amount, '-12.34');
+  await event.getByRole('button', { name: 'Save event' }).click();
+  await expect(page.getByText('Enter amounts with at most two decimal places')).toBeVisible();
+  expect((await api.call('GET', `/households/${household.group.id}`)).events).toHaveLength(0);
+
+  await typeAmount(amount, '1234.56');
+  await expect(amount).toHaveValue(/1,234\.56/);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith(`/households/${household.group.id}/events`),
+  );
+  await event.getByRole('button', { name: 'Save event' }).click();
+  expect((await saved).status()).toBe(201);
+  const state = await api.call('GET', `/households/${household.group.id}`);
+  expect(state.events).toEqual(
+    expect.arrayContaining([expect.objectContaining({ description: 'Appliance', amount: 123456 })]),
+  );
+});
+
+test('adding a bill saves the formatted total in cents', async ({ page, api }) => {
+  const pool = await api.createAccount('Joint');
+  const household = await api.call('POST', '/households', {
+    name: 'Home',
+    currency: 'AUD',
+    accountId: pool.id,
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  await openTab(page, 'Bills');
+  const form = page.getByRole('heading', { name: 'Add a bill' }).locator('..');
+  await form.getByLabel('Bill name').fill('Council rates');
+  await fillDate(form, 'Due date', isoDay());
+  const total = form.getByRole('textbox', { name: 'Estimated / billed total' });
+  await typeAmount(total, '1234.56');
+  await expect(total).toHaveValue(/1,234\.56/);
+  await form.getByRole('button', { name: 'Add bill', exact: true }).click();
+  await expect(page.getByText('Council rates', { exact: true })).toBeVisible();
+  const state = await api.call('GET', `/households/${household.group.id}`);
+  expect(state.bills).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ description: 'Council rates', amount: 123456 }),
+    ]),
+  );
+});
+
+/** Empties one part of a DatePicker, leaving a half-typed date */
+async function emptyDay(page: Page, scope: Locator, name: string) {
+  const segment = scope.getByRole('group', { name, exact: true }).locator('[data-type="day"]');
+  await segment.click();
+  for (let i = 0; i < 2; i++) await page.keyboard.press('Backspace');
+  await expect(segment).toHaveAttribute('data-placeholder');
+}
+
+// G4 review: a contribution's Save changes ignored a half-typed date and silently did nothing
+test('editing a repayment holds Save changes while its date is half-typed', async ({
+  page,
+  api,
+}) => {
+  const group = await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'expense',
+    date: '2026-10-20',
+    description: 'Groceries',
+    amount: 10000,
+    payerId: group.people[0].id,
+    shares: group.people.map((p: any) => ({ personId: p.id, value: 1 })),
+  });
+  await api.call('POST', `/households/${group.group.id}/events`, {
+    kind: 'settlement',
+    date: '2026-10-21',
+    description: 'Paid back',
+    amount: 5000,
+    payerId: group.people[1].id,
+    recipientId: group.people[0].id,
+  });
+  await open(page, '/household');
+  await openTab(page, 'Activity');
+  await page.getByRole('button', { name: /^All contributions, payments & repayments/ }).click();
+  await page.getByRole('button', { name: 'Edit Paid back' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit entry' });
+  const save = dialog.getByRole('button', { name: 'Save changes' });
+  await expect(save).toBeEnabled();
+  await emptyDay(page, dialog, 'Date');
+  await expect(save).toBeDisabled();
+  await fillDate(dialog, 'Date', '2026-10-22');
+  await expect(save).toBeEnabled();
+});
+
+// G4 review: Paid by kept the pool's empty choice after the event became an advance, which needs
+// a person; the native select used to fall back to the first person
+test('Paid by falls back to a person when a pool expense becomes an advance', async ({
+  page,
+  api,
+}) => {
+  const pool = await api.createAccount('Pool', 0);
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+    accountId: pool.id,
+  });
+  await open(page, '/household');
+  await page.getByRole('button', { name: 'Expense, advance or repayment' }).click();
+  const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
+  const paidBy = event.getByRole('combobox', { name: 'Paid by' });
+  await paidBy.fill('');
+  // Clearing opens the suggestions, and React Aria hides everything else from assistive technology
+  // while they are open, the heading that `event` is found by included: press the focused field
+  // directly, as a locator lookup through the hidden heading fails whenever the list opens first
+  await page.keyboard.press('Tab');
+  await expect(paidBy).toHaveValue('');
+  await chooseOption(event.getByRole('button', { name: /Event$/ }), 'Advance into pool');
+  await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
+});
+
+// G4 review: the statement's dates had no Clear, and a half-typed one still exported
+test('the statement dates clear, and a half-typed one holds the export', async ({ page, api }) => {
+  await api.call('POST', '/households', {
+    name: 'Flat',
+    currency: 'AUD',
+    people: ['Me', 'Alex'],
+    selfIndex: 0,
+  });
+  await open(page, '/household');
+  await openTab(page, 'Activity');
+  const exportButton = page.getByRole('button', { name: 'Export this statement' });
+  await fillDate(page, 'From', '2026-10-01');
+  await page.getByRole('button', { name: 'Clear From' }).click();
+  await expect(
+    page.getByRole('group', { name: 'From', exact: true }).locator('[data-type="day"]'),
+  ).toHaveAttribute('data-placeholder');
+  await fillDate(page, 'To', '2026-10-31');
+  await expect(exportButton).toBeEnabled();
+  await emptyDay(page, page.getByRole('main'), 'To');
+  await expect(exportButton).toBeDisabled();
 });

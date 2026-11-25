@@ -1,18 +1,15 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
+import { CurrencyInput } from '../ui/CurrencyInput';
+import { Label } from '../ui/Label';
 import { BulkPreview } from './BulkPreview';
 import { useCategoryHistory, useSetCategoryNote } from '../../hooks/useBudget';
 import { useCanSave } from '../../hooks/useConnection';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
-import {
-  centsToInput,
-  formatCurrency,
-  amountPlaceholder,
-  UNREADABLE_AMOUNT,
-} from '../../utils/currency';
-import { assignmentToInput, readAmountExpression } from '../../utils/amountExpression';
+import { formatCurrency, UNREADABLE_AMOUNT } from '../../utils/currency';
 import { NoteField } from './NoteField';
 import type { BudgetCategory } from '../../types';
 
@@ -70,14 +67,19 @@ function SheetBody({
   onSave,
   onApplyBulk,
 }: Omit<Props, 'category'> & { category: BudgetCategory }) {
-  const [raw, setRaw] = useState(assignmentToInput(category.budgeted));
+  const [cents, setCents] = useState(category.budgeted);
+  // Live parsed amount (or null while unreadable), so Enter submits without waiting for blur
+  const [draft, setDraft] = useState<number | null>(category.budgeted);
+  const [version, setVersion] = useState(0);
   const [allYear, setAllYear] = useState(false);
   const [review, setReview] = useState<number | null>(null);
-  // Shown after Save with text that isn't an amount, until the text changes
-  const [invalid, setInvalid] = useState(false);
   // The sheet closes once the server has saved; a refused amount stays here with its reason
   const [saving, setSaving] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+  // Shown when Enter submits unreadable text while focused (CurrencyInput shows its own alert on blur)
+  const [invalidSubmit, setInvalidSubmit] = useState(false);
+  const [blurredInvalid, setBlurredInvalid] = useState(false);
+  const amountId = useId();
   const { data: history } = useCategoryHistory(category.id, month);
   const canSave = useCanSave();
   const setNote = useSetCategoryNote();
@@ -85,17 +87,15 @@ function SheetBody({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!canSave || saving) return;
-    // A sum (100+50) is worked out; a minus sign means what it does on a desktop (BUD-05)
-    const cents = readAmountExpression(raw);
-    if (cents === null) {
-      setInvalid(true);
+    if (draft === null) {
+      if (!blurredInvalid) setInvalidSubmit(true);
       return;
     }
     // Twelve months are only overwritten after their preview is reviewed below.
-    if (allYear) return setReview(cents);
+    if (allYear) return setReview(draft);
     setSaving(true);
     setRefused(null);
-    const reason = await onSave(category.id, cents);
+    const reason = await onSave(category.id, draft);
     setSaving(false);
     if (reason === null) onClose();
     else setRefused(reason);
@@ -107,39 +107,44 @@ function SheetBody({
   ].filter((s): s is { label: string; cents: number } => !!s.cents);
 
   return (
-    <form onSubmit={save} className="grid gap-4">
+    <form onSubmit={save} noValidate className="grid gap-4">
       <p className="text-sm text-text-secondary">{format(parseISO(`${month}-01`), 'MMMM yyyy')}</p>
-      <label className="grid gap-1">
-        <span className="text-sm font-medium text-text-secondary">
-          {isIncome ? 'Expected' : 'Assigned'}
-        </span>
-        <input
-          autoFocus
-          type="text"
-          inputMode="decimal"
-          aria-label={`Planned for ${category.name}`}
-          value={raw}
-          onChange={(e) => {
-            setRaw(e.target.value);
-            setInvalid(false);
+      <div className="grid gap-1">
+        <Label htmlFor={amountId}>{isIncome ? 'Expected' : 'Assigned'}</Label>
+        <CurrencyInput
+          key={version}
+          id={amountId}
+          value={cents}
+          onChange={(next) => {
+            setCents(next);
+            setDraft(next);
+            setInvalidSubmit(false);
+            setBlurredInvalid(false);
+          }}
+          onTextChange={(next) => {
+            setDraft(next);
+            setInvalidSubmit(false);
+            if (next !== null) setBlurredInvalid(false);
             setRefused(null);
           }}
+          onBlur={() => {
+            setBlurredInvalid(draft === null);
+            if (draft === null) setInvalidSubmit(false);
+          }}
+          expression
+          allowNegative
+          autoFocus={version === 0}
           readOnly={saving}
-          placeholder={amountPlaceholder()}
-          aria-invalid={invalid || undefined}
-          aria-describedby={invalid ? 'planned-amount-hint' : undefined}
-          className={`w-full rounded-md border bg-surface px-3 py-2.5 text-right tabular-nums text-text focus:outline-none focus:ring-1 ${
-            invalid
-              ? 'border-negative focus:border-negative focus:ring-negative'
-              : 'border-border focus:border-brand-600 focus:ring-brand-600'
-          }`}
+          aria-busy={saving || undefined}
+          aria-label={`Assigned to ${category.name}`}
+          className="text-right tabular-nums max-md:text-base"
         />
-        {invalid && (
-          <span id="planned-amount-hint" role="alert" className="text-xs text-negative">
+        {invalidSubmit && (
+          <p role="alert" className="text-xs text-negative">
             {UNREADABLE_AMOUNT}
-          </span>
+          </p>
         )}
-      </label>
+      </div>
 
       {suggestions.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
@@ -147,7 +152,14 @@ function SheetBody({
             <button
               key={s.label}
               type="button"
-              onClick={() => setRaw(centsToInput(s.cents))}
+              onClick={() => {
+                setCents(s.cents);
+                setDraft(s.cents);
+                setVersion((v) => v + 1);
+                setInvalidSubmit(false);
+                setBlurredInvalid(false);
+                setRefused(null);
+              }}
               className="min-h-11 rounded-lg bg-surface-alt px-3 py-2 text-left"
             >
               <span className="block text-sm font-semibold tabular-nums text-text">
@@ -159,18 +171,16 @@ function SheetBody({
         </div>
       )}
 
-      <label className="flex min-h-11 items-center gap-3 text-sm text-text">
-        <input
-          type="checkbox"
-          checked={allYear}
-          onChange={(e) => {
-            setAllYear(e.target.checked);
-            setReview(null);
-          }}
-          className="h-5 w-5 accent-brand-600"
-        />
+      <Checkbox
+        checked={allYear}
+        onCheckedChange={(checked) => {
+          setAllYear(checked);
+          setReview(null);
+        }}
+        className="gap-3"
+      >
         Use this amount for the next 12 months
-      </label>
+      </Checkbox>
 
       {review !== null && (
         <BulkPreview

@@ -26,9 +26,12 @@ async function household(api: Api) {
       startDate: start,
       accountId,
     });
-  // Juno pays in a day before the owner's pay, so a sign-only rule would take it as pay
-  const juno = await weekly('Juno rent', 80_000, pool.id, thisMonth());
-  const pay = await weekly('ACME pay', 300_000, spending.id, thisMonth(1));
+  // Juno pays in a day before the owner's pay, so a sign-only rule would take it as pay. Both
+  // start this month but at most one payment back (four days ago, or the 1st early in the
+  // month): two missed in a row would make them "possibly ended", which lists them by name
+  const start = Math.max(0, dayOfMonth - 5);
+  const juno = await weekly('Juno rent', 80_000, pool.id, thisMonth(start));
+  const pay = await weekly('ACME pay', 300_000, spending.id, thisMonth(start + 1));
   await api.call('POST', '/schedules', {
     name: 'Rent',
     amount: -240_000,
@@ -64,7 +67,7 @@ test("housemates' deposits aren't income, and a shared bill counts at my share",
   await expect(main.getByText('Juno rent')).toHaveCount(0);
   // Income received counts the owner's pay only
   const month = isoDay().slice(0, 7);
-  // Amounts show as A$ in a budget whose currency is AUD
+  // A budget in AUD writes its amounts as plain $ (older builds wrote A$ on American devices)
   const money = (cents: number) => `A?\\$${(cents / 100).toLocaleString('en-AU')}`;
   const payTotal = occurrences
     .filter((o) => o.scheduleId === pay.id && o.expectedDate.startsWith(month))

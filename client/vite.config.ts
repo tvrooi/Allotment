@@ -28,8 +28,13 @@ function demoServerModules(): Plugin {
     async resolveId(source, importer, options) {
       if (!importer || !normalizePath(importer).startsWith(file(''))) return null;
       if (source === 'express') return file('browser/expressShim.ts');
-      if (source === 'path') return file('browser/path.ts');
+      if (source === 'path' || source === 'node:path') return file('browser/path.ts');
       if (source === 'crypto' || source === 'node:crypto') return file('browser/crypto.ts');
+      // Receipts and Files (fileStore.ts, fileText.ts): only their on-disk and archive paths,
+      // which the demo refuses, need these
+      if (source === 'node:fs') return file('browser/fs.ts');
+      if (source === 'node:os') return file('browser/os.ts');
+      if (source === 'node:zlib') return file('browser/zlib.ts');
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
       const swap = resolved && swaps[normalizePath(resolved.id)];
       return swap ?? null;
@@ -106,11 +111,34 @@ function withoutDemoWorker(): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => ({
+/**
+ * Every build except the gallery build (`vite build --mode gallery`, which the e2e gallery
+ * project tests): swap the development-only controls gallery for an empty stub, so no build
+ * people install or open has the gallery, its /dev/controls page or its specimens. The dev
+ * server keeps the real page.
+ */
+function withoutDevGallery(): Plugin {
+  const real = normalizePath(path.resolve(import.meta.dirname, 'src/pages/DevControlsGallery.tsx'));
+  const stub = normalizePath(
+    path.resolve(import.meta.dirname, 'src/pages/DevControlsGallery.stub.ts'),
+  );
+  return {
+    name: 'flybudget-without-dev-gallery',
+    enforce: 'pre',
+    async resolveId(source, importer, options) {
+      if (!source.endsWith('DevControlsGallery')) return null;
+      const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+      return resolved && normalizePath(resolved.id) === real ? stub : null;
+    },
+  };
+}
+
+export default defineConfig(({ command, mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     ...(mode === 'demo' ? [demoServerModules(), demoPage()] : [withoutDemoWorker()]),
+    ...(command === 'build' && mode !== 'gallery' ? [withoutDevGallery()] : []),
   ],
   // The desktop app loads files from disk and the demo lives under /demo/ on its host,
   // so both use relative paths

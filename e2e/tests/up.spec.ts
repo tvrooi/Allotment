@@ -1,4 +1,4 @@
-import { test, expect, open } from './fixtures';
+import { test, expect, open, chooseOption } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -8,14 +8,14 @@ test('connects Up, imports settled history, resyncs and disconnects', async ({ p
   // Banks are intentionally retained by backup restore, so clear this connection explicitly.
   await freshUpWindow(page, api, 8);
   await api.createAccount('Manual account');
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
   await dialog.screenshot({ path: test.info().outputPath('up-connect.png') });
   await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-  await expect(dialog.getByLabel('Set up Up Everyday')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /Set up Up Everyday/ })).toBeVisible();
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText('Imported 3 transactions.')).toBeVisible();
   // Two payees have no category yet, so the first-import step offers to sort them (or skip)
@@ -32,8 +32,12 @@ test('connects Up, imports settled history, resyncs and disconnects', async ({ p
   await page.getByRole('button', { name: 'Reconnect / choose accounts' }).click();
   await dialog.getByLabel('Up personal access token').fill(UP_TEST_TOKEN);
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-  await expect(dialog.getByLabel('Set up Up Everyday')).toHaveValue('link');
-  await expect(dialog.getByLabel('Link Up Everyday to account')).toHaveValue(everyday.id);
+  await expect(dialog.getByRole('button', { name: /Set up Up Everyday/ })).toContainText(
+    'Link an existing account',
+  );
+  await expect(dialog.getByRole('combobox', { name: 'Link Up Everyday to account' })).toHaveValue(
+    everyday.name,
+  );
   await dialog.getByRole('button', { name: 'Save & Sync' }).click();
   await expect(dialog.getByText('Imported 0 transactions.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Done' }).click();
@@ -52,7 +56,7 @@ test('shows an invalid Up token without saving a connection', async ({ page, api
     .annotations.push({ type: 'allow-page-errors', description: 'Expected rejected credentials' });
   await freshUpWindow(page, api, 4);
   await api.createAccount('Manual account');
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
@@ -78,10 +82,10 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   });
   await api.call('POST', '/up/sync');
   const before = await api.transactions();
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
-  await expect(page.getByLabel('Background sync')).toHaveValue('0');
-  await page.getByLabel('Background sync').selectOption('15');
+  await expect(page.getByRole('button', { name: /Background sync/ })).toContainText('Off');
+  await chooseOption(page.getByRole('button', { name: /Background sync/ }), 'Every 15 minutes');
   await expect(page.getByText('Next background attempt:', { exact: false })).toBeVisible();
   expect(
     ((await api.call('GET', '/up/connection')) as { pollIntervalMinutes: number })
@@ -92,20 +96,23 @@ test('sets background sync, reviews imports, and expands daily round-up details 
   await expect(review.getByRole('heading')).toHaveText('Needs review (0)');
   await expect(review.getByText('Nothing needs review.')).toBeVisible();
   const rounds = page.getByRole('region', { name: 'Daily Up round-ups', exact: true });
-  await rounds.getByText('A$2.40 reported', { exact: false }).click();
-  await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();
+  await rounds.getByText('$2.40 reported', { exact: false }).click();
+  await expect(rounds.getByText('Includes $2 in boosts.')).toBeVisible();
   await expect(
-    rounds.getByText('purchase · purchase -A$17.60 · round-up A$2.40', { exact: true }),
+    rounds.getByText('purchase · purchase -$17.60 · round-up $2.40', { exact: true }),
   ).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('up-review-desktop.png') });
   expect(await api.transactions()).toEqual(before);
-  await page.getByLabel('Background sync').selectOption('0');
+  await chooseOption(
+    page.getByRole('button', { name: /Background sync/ }),
+    'Off · startup and manual only',
+  );
   await expect(page.getByText('Next background attempt:', { exact: false })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await rounds.scrollIntoViewIfNeeded();
-  await rounds.getByText('A$2.40 reported', { exact: false }).click();
-  await expect(rounds.getByText('Includes A$2 in boosts.')).toBeVisible();
+  await rounds.getByText('$2.40 reported', { exact: false }).click();
+  await expect(rounds.getByText('Includes $2 in boosts.')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -127,12 +134,12 @@ test('adds balance-proven round-up debits only after an explicit choice', async 
   await mode('implicit-round-ups');
   await api.call('POST', '/up/sync');
   expect(await api.transactions()).toHaveLength(2);
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   const check = page.getByRole('region', { name: 'Round-up accounting check', exact: true });
   await expect(check).toContainText('higher than Up by exactly the round-ups');
-  await expect(check).toContainText('Difference -A$2.40');
-  await check.getByRole('button', { name: 'Add 1 round-up debit (-A$2.40)' }).click();
+  await expect(check).toContainText('Difference -$2.40');
+  await check.getByRole('button', { name: 'Add 1 round-up debit (-$2.40)' }).click();
   await expect(check).toContainText('The register matches Up’s settled balance.');
   await expect(check.getByRole('button', { name: 'Stop adding round-up debits' })).toBeVisible();
   // The ledger has the debit; the register folds it into its purchase
@@ -172,7 +179,9 @@ test('a deleted Up transaction stays deleted until it is restored from Up review
   // The mock's history has fixed dates; the register opens on this month
   await page.getByRole('button', { name: 'All time' }).click();
   await page.getByTestId('transaction-row').filter({ hasText: victim.payeeName }).click();
-  await page.getByRole('button', { name: 'Delete transaction' }).click();
+  const details = page.getByRole('complementary', { name: 'Transaction details' });
+  await details.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Delete transaction' }).click();
   const confirm = page.getByRole('dialog');
   await expect(confirm.getByText('Up still has it, so it stays deleted')).toBeVisible();
   await confirm.getByRole('button', { name: 'Delete' }).click();
@@ -182,7 +191,7 @@ test('a deleted Up transaction stays deleted until it is restored from Up review
   await api.call('POST', '/up/sync');
   expect((await upRows()).some((t) => t.importedId === victim.importedId)).toBe(false);
 
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   const deleted = page.getByRole('region', { name: 'Deleted here, still at Up' });
   await expect(deleted.getByText(victim.payeeName)).toBeVisible();

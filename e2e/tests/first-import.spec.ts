@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, type Api } from './fixtures';
+import { setToggle, test, expect, open, isoDay, categoryOption, type Api } from './fixtures';
 import { UP_TEST_TOKEN } from '../mockUp';
 import { UP_MOCK_PORT } from '../ports';
 import { freshUpWindow } from './upWindow';
@@ -30,7 +30,7 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   await mock('rich');
   await freshUpWindow(page, api);
   await api.createAccount('Manual account');
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });
@@ -88,7 +88,7 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   await expect(page.getByRole('textbox', { name: 'Search categories' })).toHaveCount(0);
   await expect(dialog).toBeVisible();
   await sort.getByLabel('Category for ATM Withdrawal Westpac').click();
-  await page.getByRole('button', { name: 'Miscellaneous' }).click();
+  await categoryOption(page, 'Miscellaneous').click();
   await expect(sort.getByLabel('Category for ATM Withdrawal Westpac')).toHaveCount(0);
   const atm = (await api.transactions()).filter((t) => t.payeeName === 'ATM Withdrawal Westpac');
   expect(atm.length).toBeGreaterThan(0);
@@ -109,7 +109,7 @@ test('the first Up import arrives categorised, and the rest is sorted a payee at
   ).toBeNull();
 
   // Without "future", only the existing rows move
-  await sort.getByLabel('Also apply to future transactions').uncheck();
+  await setToggle(sort.getByRole('checkbox', { name: 'Also apply to future transactions' }), false);
   // From the keyboard: type to narrow, Enter picks the first match
   await sort.getByLabel('Category for Service Victoria').click();
   await page.keyboard.type('Miscellan');
@@ -142,8 +142,19 @@ test('pre-fills a payday plan from the detected pay, and marks a deposit as pay 
   await expect(
     page.getByRole('status').filter({ hasText: 'Filled in from your pay' }),
   ).toBeVisible();
-  await expect(page.getByLabel('Anchor payday')).toHaveValue(salary.latestDate);
-  await expect(page.getByLabel('Expected take-home pay')).toHaveValue(/^3,?200(\.00)?$/);
+  // The shared DatePicker: its year, month and day segments hold the detected pay's date
+  const anchor = page.getByRole('group', { name: 'Anchor payday', exact: true });
+  const [year, month, day] = salary.latestDate.split('-').map(Number);
+  for (const [type, value] of [
+    ['year', year],
+    ['month', month],
+    ['day', day],
+  ] as const)
+    await expect(anchor.locator(`[data-type="${type}"]`)).toHaveAttribute(
+      'aria-valuenow',
+      String(value),
+    );
+  await expect(page.getByLabel('Expected take-home pay')).toHaveValue('$3,200');
   // Zero typed fields
   await page.getByRole('button', { name: 'Save payday plan' }).click();
 
@@ -242,7 +253,7 @@ test('connecting Up starts a new budget today, and the whole month is one click 
   test.slow();
   await mock('rich');
   await freshUpWindow(page, api);
-  await open(page, '/settings?tab=connections');
+  await open(page, '/accounts/connections');
   await page.getByRole('button', { name: 'Up', exact: true }).click();
   await page.getByRole('button', { name: 'Connect Up', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Connect Up' });

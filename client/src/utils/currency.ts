@@ -182,6 +182,25 @@ export function currencySymbol(currency: string): string {
   return found;
 }
 
+const plainSymbols = new Map<string, string>();
+const plainSymbol = (currency: string) => {
+  let found = plainSymbols.get(currency);
+  if (!found) plainSymbols.set(currency, (found = symbolIn(currency, 'narrowSymbol')));
+  return found;
+};
+
+/**
+ * The symbol amounts in a currency show in a budget kept in another (or none). The budget's
+ * own currency needs nothing to tell it apart, so it is written plainly on any device ($ for an
+ * Australian budget, not A$). Another currency that would then look the same is written as its
+ * code (USD beside an Australian $), since a US device calls its own dollar plain $ too.
+ */
+function displaySymbol(currency: string, budgetCurrency: string | null): string {
+  if (currency === budgetCurrency) return plainSymbol(currency);
+  const symbol = currencySymbol(currency);
+  return budgetCurrency && symbol === plainSymbol(budgetCurrency) ? currency : symbol;
+}
+
 /** A currency's name in the device's language ("Polish zloty"), or its code */
 export function currencyName(currency: string): string {
   try {
@@ -231,15 +250,18 @@ export function currencyAmountStyle(
     own?.position ??
     (code === budgetCurrency && prefs.symbolPosition !== 'auto' ? prefs.symbolPosition : null);
   const position = chosen ?? convention.position;
-  const symbol = own?.symbol || currencySymbol(code);
+  const symbol = own?.symbol || displaySymbol(code, budgetCurrency);
   return {
     format,
     position,
     symbol,
     minor: minorUnits(code),
-    // Its own convention's spacing; on a side chosen by hand, a space after letters (CHF 12)
+    // Its own convention's spacing; on a side chosen by hand or written as its code, a space
+    // after letters (CHF 12, USD 12)
     space:
-      position === convention.position && !own?.symbol ? convention.space : /\p{L}$/u.test(symbol),
+      position === convention.position && !own?.symbol && symbol !== code
+        ? convention.space
+        : /\p{L}$/u.test(symbol),
   };
 }
 
@@ -341,14 +363,24 @@ function withSymbol(number: string, negative: boolean, style: AmountStyle): stri
 }
 
 /** An amount as this device writes it: "$1,234.56", "1.234,56 €"; whole amounts without cents */
-export function formatAmount(cents: number, style: AmountStyle): string {
-  if (hidesAllAmounts()) return HIDDEN_AMOUNT;
+export function formatAmount(
+  cents: number,
+  style: AmountStyle,
+  { example = false }: { example?: boolean } = {},
+): string {
+  if (!example && hidesAllAmounts()) return HIDDEN_AMOUNT;
   const { group, decimal } = SEPARATORS[style.format];
   const unit = 10 ** decimalsOf(style);
   const abs = Math.abs(cents);
   let number = groupDigits(String(Math.floor(abs / unit)), group);
   if (abs % unit !== 0) number += decimal + String(abs % unit).padStart(decimalsOf(style), '0');
   return withSymbol(number, cents < 0, style);
+}
+
+/** An amount rounded to the whole unit, half away from zero: "$1,082,794" for a projection decades out */
+export function formatWholeAmount(cents: number, style: AmountStyle): string {
+  const unit = 10 ** decimalsOf(style);
+  return formatAmount(Math.sign(cents) * Math.round(Math.abs(cents) / unit) * unit, style);
 }
 
 /** Short axis label: "$950", "$12.5k", "-1,2M €". Thresholds sit where rounding would reach the next unit. */
@@ -372,11 +404,16 @@ export function formatAxisAmount(cents: number, style: AmountStyle): string {
 export const centsToInput = (cents: number) => amountToInput(cents, amountStyle());
 export const parseCents = (s: string) => parseAmount(s, amountStyle());
 export const formatCurrency = (cents: number) => formatAmount(cents, amountStyle());
+export const formatWholeCurrency = (cents: number) => formatWholeAmount(cents, amountStyle());
 export const formatCentsAxis = (cents: number) => formatAxisAmount(cents, amountStyle());
 
 /** An amount in a currency (an account's own): "12,50 zł", "¥1,500"; null = the budget's */
 export const formatMoney = (amount: number, currency: string | null | undefined) =>
   formatAmount(amount, currencyAmountStyle(currency));
+
+/** Labelled illustrative values only, never amounts read from the person's budget. */
+export const formatExampleMoney = (cents: number, currency?: string) =>
+  formatAmount(cents, currencyAmountStyle(currency), { example: true });
 
 /** Symbols people typed as their currency before Allotment knew currencies */
 const SYMBOL_CURRENCIES: Record<string, string> = {

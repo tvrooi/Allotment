@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay, thisMonth } from './fixtures';
+import { test, expect, open, isoDay, thisMonth, typeAmount } from './fixtures';
 
 for (const phone of [false, true])
   test(`review card setup, funded purchases, repayments and debt funding${phone ? ' on phone' : ''}`, async ({
@@ -181,4 +181,152 @@ test('debt funding waits for the selected month before reading its existing assi
   } finally {
     release();
   }
+});
+
+test('card payment amount fields format and mark unreadable text on blur', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Cash', 100_000);
+  const card = await api.createAccount('Daily card', -50_000, 'credit');
+  await open(page, '/budget');
+
+  // Initial card payment funding in setup modal
+  await page.getByRole('button', { name: 'Review Daily card setup' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Review card payment funding' });
+  const initial = dialog.getByRole('textbox', { name: 'Initial card payment funding' });
+  await typeAmount(initial, '200');
+  await expect(initial).toHaveValue('$200');
+
+  await typeAmount(initial, 'abc');
+  await expect(initial).toHaveValue('abc');
+  await expect(initial).toHaveAttribute('aria-invalid', 'true');
+  await expect(dialog.getByRole('alert')).toContainText("That isn't an amount.");
+  await dialog.getByRole('button', { name: 'Preview card setup' }).click();
+  await expect(dialog.getByRole('status')).toHaveCount(0);
+
+  await typeAmount(initial, '200');
+  await expect(initial).toHaveValue('$200');
+  await dialog.getByRole('button', { name: 'Preview card setup' }).click();
+  await expect(dialog.getByRole('status')).toContainText('Payment reserve: $200');
+  await dialog.getByRole('button', { name: 'Enable payment funding' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Additional payment funding in Fund debt form
+  const position = page.getByTestId('card-payment').filter({ hasText: 'Daily card' });
+  await position.getByRole('button', { name: 'Fund debt' }).click();
+  const extra = position.getByRole('textbox', { name: 'Additional funding for Daily card' });
+  await typeAmount(extra, '50');
+  await expect(extra).toHaveValue('$50');
+
+  await typeAmount(extra, 'abc');
+  await expect(extra).toHaveValue('abc');
+  await expect(extra).toHaveAttribute('aria-invalid', 'true');
+  await expect(position.getByRole('alert')).toContainText("That isn't an amount.");
+  await position.getByRole('button', { name: 'Preview funding' }).click();
+  await expect(position.getByRole('status')).toHaveCount(0);
+
+  await typeAmount(extra, '50');
+  await position.getByRole('button', { name: 'Preview funding' }).click();
+  await expect(position.getByRole('status')).toContainText(
+    'Payment availability after assignment: $250',
+  );
+  await position.getByRole('button', { name: 'Assign payment funds' }).click();
+  await expect(position).toContainText('Available for payment: $250');
+  const groups = await api.call('GET', `/budget/${thisMonth()}`);
+  const paymentCat = (await api.call('GET', `/budget/${thisMonth()}/summary`)).cards.find(
+    (c: { accountId: string }) => c.accountId === card.id,
+  );
+  expect(
+    groups
+      .flatMap((g: { categories: { id: string; budgeted: number }[] }) => g.categories)
+      .find((c: { id: string }) => c.id === paymentCat.categoryId).budgeted,
+  ).toBe(25_000);
+});
+
+test('negative card payment amounts are refused in setup and debt funding', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Cash', 100_000);
+  await api.createAccount('Daily card', -50_000, 'credit');
+  const budgetPuts: string[] = [];
+  page.on('request', (req) => {
+    if (req.method() === 'PUT' && req.url().includes('/api/budget/')) budgetPuts.push(req.url());
+  });
+  await open(page, '/budget');
+
+  // Setup modal: -50 must be refused rather than flipped to +$50
+  await page.getByRole('button', { name: 'Review Daily card setup' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Review card payment funding' });
+  const initial = dialog.getByRole('textbox', { name: 'Initial card payment funding' });
+  await typeAmount(initial, '-50');
+  await expect(initial).toHaveValue('-$50');
+  await dialog.getByRole('button', { name: 'Preview card setup' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Enter a nonnegative amount');
+  await expect(dialog.getByRole('status')).toHaveCount(0);
+
+  // Enable setup with 0 so the Fund debt form is available
+  await typeAmount(initial, '0');
+  await dialog.getByRole('button', { name: 'Preview card setup' }).click();
+  await expect(dialog.getByRole('status')).toContainText('Existing debt: $500');
+  await dialog.getByRole('button', { name: 'Enable payment funding' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Fund debt form: -50 must be refused rather than flipped to +$50
+  const position = page.getByTestId('card-payment').filter({ hasText: 'Daily card' });
+  await position.getByRole('button', { name: 'Fund debt' }).click();
+  const extra = position.getByRole('textbox', { name: 'Additional funding for Daily card' });
+  await typeAmount(extra, '-50');
+  await expect(extra).toHaveValue('-$50');
+  await position.getByRole('button', { name: 'Preview funding' }).click();
+  await expect(
+    page
+      .getByRole('region', { name: 'Card payment funding' })
+      .getByRole('alert')
+      .filter({ hasText: 'Enter a nonnegative amount' }),
+  ).toBeVisible();
+  await expect(position.getByRole('status')).toHaveCount(0);
+  expect(budgetPuts).toEqual([]);
+});
+
+test('pressing Enter on unreadable card payment text shows an error without blurring', async ({
+  page,
+  api,
+}) => {
+  await api.createAccount('Cash', 100_000);
+  await api.createAccount('Daily card', -50_000, 'credit');
+  await open(page, '/budget');
+
+  // Setup modal: Enter on 'abc' without blurring shows 'Enter a valid amount'
+  await page.getByRole('button', { name: 'Review Daily card setup' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Review card payment funding' });
+  const initial = dialog.getByRole('textbox', { name: 'Initial card payment funding' });
+  await initial.click();
+  await expect(initial).toBeFocused();
+  await page.keyboard.type('abc');
+  await initial.press('Enter');
+  await expect(dialog.getByRole('alert')).toContainText('Enter a valid amount');
+
+  // Enable setup with 0 so Fund debt form is available
+  await typeAmount(initial, '0');
+  await dialog.getByRole('button', { name: 'Preview card setup' }).click();
+  await expect(dialog.getByRole('status')).toContainText('Existing debt: $500');
+  await dialog.getByRole('button', { name: 'Enable payment funding' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Fund debt form: Enter on 'abc' without blurring shows 'Enter a valid amount'
+  const position = page.getByTestId('card-payment').filter({ hasText: 'Daily card' });
+  await position.getByRole('button', { name: 'Fund debt' }).click();
+  const extra = position.getByRole('textbox', { name: 'Additional funding for Daily card' });
+  await extra.click();
+  await expect(extra).toBeFocused();
+  await page.keyboard.type('abc');
+  await extra.press('Enter');
+  await expect(
+    page
+      .getByRole('region', { name: 'Card payment funding' })
+      .getByRole('alert')
+      .filter({ hasText: 'Enter a valid amount' }),
+  ).toBeVisible();
 });

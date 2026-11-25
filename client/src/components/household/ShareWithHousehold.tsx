@@ -12,12 +12,12 @@ import { useUndoStore } from '../../store/undoStore';
 import { inBatches } from '../../utils/batches';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { Select } from '../ui/Input';
+import { Combobox } from '../ui/Combobox';
 import type { TransactionQueryParams } from '../../types';
 
 // "Share with household": records payments as shared household expenses with the household's
 // default split (Household → Sharing), in one step instead of a form per payment. For one
-// transaction, the payments picked in the register, or every payment in its current list.
+// transaction, the payments selected in the register, or every payment in its current list.
 // Undo removes the entries.
 
 /** The share endpoint takes at most this many ids, so a larger selection goes in batches */
@@ -79,16 +79,24 @@ export function useShareWithHousehold() {
     }: {
       groupId: string;
       ids: string[] | (() => Promise<string[]>);
+      /** Named in the toast that says what was shared */
+      householdName?: string;
     }) => ({
       groupId,
       result: await shareAll(groupId, typeof ids === 'function' ? await ids() : ids),
     }),
-    onSuccess: ({ groupId, result }) => {
+    onSuccess: ({ groupId, result }, { householdName }) => {
       void qc.invalidateQueries({ queryKey: ['households'] });
       void qc.invalidateQueries({ queryKey: ['transactions'] });
       const shared = result.results.filter((r) => r.ok && r.eventId).map((r) => r.transactionId);
-      if (shared.length)
-        useUndoStore.getState().push({
+      const message = describeShare(result, householdName);
+      // Nothing shared: say why, with no Undo and no command to undo
+      if (!shared.length) {
+        useUndoStore.getState().announce(message, false);
+        return;
+      }
+      useUndoStore.getState().push(
+        {
           description: `Share ${shared.length} with the household`,
           // By payment, not entry id: the entries may have been removed and recorded again
           // since (Stop sharing, then Undo), with new ids
@@ -102,13 +110,15 @@ export function useShareWithHousehold() {
             void qc.invalidateQueries({ queryKey: ['households'] });
             void qc.invalidateQueries({ queryKey: ['transactions'] });
           },
-        });
+        },
+        { message },
+      );
     },
   });
 }
 
 interface Props {
-  /** One transaction, the payments picked in the register, or the register's list */
+  /** One transaction, the payments selected in the register, or the register's list */
   transactionId?: string;
   transactionIds?: string[];
   params?: TransactionQueryParams;
@@ -135,6 +145,7 @@ export function ShareWithHousehold({
     share.mutate(
       {
         groupId: id,
+        householdName: groups.find((g) => g.id === id)?.name,
         ids: transactionId
           ? [transactionId]
           : (transactionIds ??
@@ -156,7 +167,7 @@ export function ShareWithHousehold({
   const label = transactionId
     ? 'Share with household'
     : transactionIds
-      ? `Share ${transactionIds.length.toLocaleString()} picked with household`
+      ? `Share ${transactionIds.length.toLocaleString()} selected with household`
       : `Share ${count === undefined ? '' : `${count.toLocaleString()} `}with household`;
 
   return (
@@ -168,7 +179,7 @@ export function ShareWithHousehold({
             setOutcome(null);
             setOpen(true);
           }}
-          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-8"
+          className="inline-flex items-center gap-1 text-text-secondary hover:text-text max-md:min-h-11"
           title="Record the payments in this list as shared household expenses"
         >
           <Users size={12} /> {label}
@@ -199,23 +210,19 @@ export function ShareWithHousehold({
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Share with household" size="sm">
         <div className="space-y-3 text-sm">
           {groups.length > 1 && (
-            <Select
+            <Combobox
               aria-label="Household"
               value={chosen.id}
-              onChange={(e) => setGroupId(e.target.value)}
-            >
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </Select>
+              onChange={setGroupId}
+              menuTrigger="focus"
+              items={groups.map((group) => ({ value: group.id, label: group.name }))}
+            />
           )}
           <p className="text-text-secondary">
             {transactionId
               ? 'This payment'
               : transactionIds
-                ? `Each of the ${transactionIds.length.toLocaleString()} picked payments`
+                ? `Each of the ${transactionIds.length.toLocaleString()} selected payments`
                 : 'Each payment (money out) in this list'}{' '}
             becomes a shared {chosen.name} expense, {splitText(chosen)}. Change the split in
             Household → Sharing. Payments already shared are skipped.

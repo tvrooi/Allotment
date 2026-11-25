@@ -16,7 +16,7 @@ export const TIPS = {
   },
   reviewComplete: {
     id: 'review.mark-complete',
-    text: 'Done for now? Mark review complete, and next time Review shows what changed since.',
+    text: 'Done for now? Record today’s review to compare figures next time. Unresolved items stay open.',
   },
   findRecurring: {
     id: 'recurring.find',

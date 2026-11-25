@@ -35,7 +35,7 @@ card debt it nets off), so `cash + otherDebt = resources`; `cardDebt` (`total`, 
 `unreserved` the payment shortfall; `linked` (each linked envelope with its account's name and
 amount) and `everydayEnvelopes`, which add up to `envelopes`; and `setAside` (later assignments,
 holds and separate pools). So `cash + otherDebt − envelopes − setAside = unassigned`. Budget's
-"How this is worked out" and Review show it with `CashBridge`. Ready to assign does not subtract
+"How Ready to assign is worked out" and Review show it with `CashBridge`. Ready to assign does not subtract
 unreserved card debt; the bridge shows it apart, with net cash `resources − unreserved`.
 
 ### The overspending rule
@@ -83,7 +83,7 @@ Ready to assign, in the current month only (`PUT /budget/:month/hold`, `setHold`
 `services/budgetHolds.ts`, table `budget_holds` with one row per month, owner only: no access
 token reaches it). A hold is not an assignment: it touches no envelope and no account. In the month
 it was held in and every month before it, `fundingState` subtracts it from Ready to assign
-(`held`, on top of `laterDeduction`), so that month can reach $0 and read fully budgeted; from the
+(`held`, on top of `laterDeduction`), so that month can reach $0 and read "Every dollar has a job"; from the
 next month it no longer applies, so the money is ready to assign again there. While held it can't
 be assigned, even to a later month's envelope: `assignable` in `budgetMoves.ts` checks every month
 against `unassignedBeforeLater − futureAssigned − held`, so the one funded-write guard refuses it.
@@ -163,7 +163,7 @@ category's own activity is `transferred` (`mirrorSteps` and `currentTransferred`
 - A reviewed card's refund adjustment to a linked envelope is ignored (`budgetService.assessment`):
   the mirror already settled it.
 - Targets, goals and the annual overview count `transferred` with `budgeted`; the Budget page
-  shows "Move A$X more to <account>" for a linked envelope's target.
+  shows "Move $X more to <account>" for a linked envelope's target.
 - One envelope per account (a unique index), only expense envelopes (not income or card
   payment), and only open checking, savings or cash accounts in the personal budget. Nothing is
   stored: unlinking or deleting the account (`ON DELETE SET NULL`) returns the envelope to plain
@@ -276,7 +276,9 @@ The desktop table's Assigned editor and the phone sheet read what is typed with
   sections, inactive rows, the filter's misses) are skipped, because the neighbour is read from the
   rendered rows (`tr[data-budget-row]`). An unchanged amount isn't saved again (no empty undo step).
   A refused save keeps the editor open with its reason and doesn't move. With no row that way, an
-  arrow saves and closes and Tab saves and leaves the table.
+  arrow saves and closes and Tab saves and leaves the table. Clicking away cancels (the typed amount
+  is dropped, nothing is saved); the History popover counts as part of the editor, and the window
+  losing focus leaves the editor as it was.
 
 Not built: one typed amount applied to several selected envelopes at once (a batch write needs its
 own reviewed endpoint); Fund targets from a selection covers the common case.
@@ -286,11 +288,20 @@ own reviewed endpoint); Fund targets from a selection covers the common case.
 `BudgetInspector.tsx` sits at the top of the sidebar (after Ready to assign on a phone). Ticking
 envelopes changes no money.
 
-- **Nothing ticked:** the month, with every expense envelope's Carried in, Assigned, Activity and
-  Available (`selectionFigures` in `utils/budgetFigures.ts`, so Assigned and Activity match the
-  Total expenses row), and the month's note.
-- **One ticked:** that envelope's figures, its availability caption and target, its note, Fund
-  target when it is short, and a link to its history and transactions.
+- **Nothing ticked:** the month, with every expense envelope's total up front as **In envelopes**
+  (quieter than Ready to assign, and not the table's Available column), split into
+  spending envelopes and saved (envelopes with the Savings budget type, `savedSplit`), and
+  From last month, Assigned and Activity folded under "What makes up In envelopes"
+  (`selectionFigures` in `utils/budgetFigures.ts`, so Assigned and Activity match the Total
+  expenses row), and the month's note.
+- **One ticked:** that envelope's figures (plus **After expected bills** when recurring debits are
+  still to come), its availability caption and target, its note, Fund target when it is short,
+  and a link to its history and transactions.
+- **Uncovered bills.** `availability()` reports `uncovered` (amber, "$25 short for Food bank", or
+  "short of expected bills" for several) when `expected` exceeds a non-negative balance. The server's
+  `expected` leaves out matched, paid and skipped occurrences, so a posted bill is in the balance
+  and not counted twice. The rail's primary is "Put $X in an envelope…", or **Fund targets (n)**
+  when a target is short.
 - **Several ticked:** only their sums, their names, and **Fund N targets**, which opens Fund targets
   with only those ticked (`useScopedPlan.load(fetch, only)`; the others stay listed, unticked).
   Card payment rows have no tick.
@@ -308,7 +319,8 @@ The demo budget has one of each. The older, unused `budget_months.notes` column 
 
 ## Moves, coverage and undo
 
-Move money / Cover overspending works on desktop and phone. Choose two distinct
+Move money works on desktop and phone. Its button reads Cover overspending while an
+envelope is overspent, and Move between envelopes otherwise. Choose two distinct
 expense categories and a positive amount, preview their resulting availability,
 then apply. The source must have availability through every affected month, including
 later spending when editing a historical month. Future-month moves are not enabled.
@@ -418,3 +430,35 @@ actual receipt; it does not auto-create another deposit. A legacy generated inco
 must be reviewed against its bank receipt before reconciliation can make it received cash.
 Schedules never auto-create entries in closed accounts. Existing transactions survive the
 upgrade unchanged; these safeguards do not perform a live budget repair automatically.
+
+### Expected bill details
+
+The funding note above the category bar opens a read-only popover (`ExpectedNote`) on desktop and
+phones. It lists the remaining recurring bills with dates, shows how much their envelope
+covers, and gives the balance after those bills. Enter opens it; Escape or Close dismisses
+it. The phone Activity link remains separate. Displayed dates follow the date preference.
+
+Each bill name links to `/recurring?schedule=<id>`, opening its existing recurring editor.
+The page waits for schedules to load and consumes the parameter so reload does not reopen
+the editor. A missing schedule leaves the recurring page open without creating a new item.
+
+The note reads "$X needed by the 10th" for the first day whose remaining bills exceed
+what is available, combining bills due that day. It shows only that first gap, not later
+funding needs; the popover lists all remaining bills. Covered bills show "Funded".
+
+"Assign to [envelope]…" in the breakdown closes it and opens the existing desktop amount
+editor or phone planning sheet. It changes no money until the owner saves. The shortcut is
+omitted when offline, before the budget start, or for an account-linked envelope.
+
+The dated funding note replaces the repeated bill-shortfall caption beside Available.
+The amber Available figure, overspending and target warnings remain. If bill detail is
+missing, the shortfall caption stays as a fallback.
+
+A funding deadline before the current local calendar day turns the deadline text and
+Available bubble red, without a visible overdue suffix. The original due day stays visible,
+and the accessible label names the overdue state. Due today and funded envelopes are not overdue.
+
+The breakdown explains the next funding gap with bills due by that date, the amount already
+covered, and what is still needed. Its bill list separates everything due by that deadline
+(including earlier bills) from later bills, so the gap is not confused with the whole-month
+shortfall. The overall coverage and balance after all expected bills remain visible.

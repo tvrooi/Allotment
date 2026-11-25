@@ -3,8 +3,14 @@ import { format } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { Checkbox } from '../ui/Checkbox';
+import { Combobox } from '../ui/Combobox';
 import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { helpClass } from '../ui/fieldClasses';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
+import { Select } from '../ui/Select';
 import { CurrencySelect } from '../currency/CurrencySelect';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useCanSave } from '../../hooks/useConnection';
@@ -42,8 +48,8 @@ export const KIND_LABEL: Record<SecurityKind, string> = {
 };
 
 const today = () => format(new Date(), 'yyyy-MM-dd');
-const labelClass = 'block text-sm font-medium text-text-secondary mb-1';
 
+/** A bare Input or CurrencyInput with the shared label above it and an optional hint below */
 export function Field({
   label,
   htmlFor,
@@ -56,12 +62,10 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <label htmlFor={htmlFor} className={labelClass}>
-        {label}
-      </label>
+    <div className="grid gap-1">
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {hint && <p className="mt-1 text-xs text-text-tertiary">{hint}</p>}
+      {hint && <p className={helpClass}>{hint}</p>}
     </div>
   );
 }
@@ -165,23 +169,14 @@ export function SecurityModal({
             required
           />
         </Field>
-        <Field
+        <Select
           label="Type"
-          htmlFor="sec-kind"
-          hint="What the instrument is, not what a fund holds."
-        >
-          <Select
-            id="sec-kind"
-            value={kind}
-            onChange={(e) => setKind(e.target.value as SecurityKind)}
-          >
-            {SECURITY_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {KIND_LABEL[k]}
-              </option>
-            ))}
-          </Select>
-        </Field>
+          id="sec-kind"
+          value={kind}
+          onChange={(v) => setKind(v as SecurityKind)}
+          options={SECURITY_KINDS.map((k) => ({ value: k, label: KIND_LABEL[k] }))}
+          description="What the instrument is, not what a fund holds."
+        />
         <Field
           label="Priced in"
           htmlFor="sec-currency"
@@ -232,18 +227,17 @@ export function PriceModal({ security, onClose }: { security: Security; onClose:
           price already entered for that day.
         </p>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Date" htmlFor="price-date">
-            <Input
-              id="price-date"
-              type="date"
-              value={date}
-              max={today()}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </Field>
+          <DatePicker
+            label="Date"
+            id="price-date"
+            value={date}
+            onChange={setDate}
+            maxValue={today()}
+            isRequired
+          />
           <Field label="Price per unit" htmlFor="price-value">
             <CurrencyInput
+              id="price-value"
               currency={security.currency}
               value={value}
               onChange={setPrice}
@@ -301,7 +295,7 @@ export function UnitsInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder="0"
-      aria-invalid={value.trim() !== '' && parseUnits(value) === null}
+      isInvalid={value.trim() !== '' && parseUnits(value) === null}
       required
     />
   );
@@ -356,23 +350,30 @@ export function HoldingModal({
       <form onSubmit={submit} className="space-y-4">
         {!holding && (
           <>
-            <Field label="Account" htmlFor="holding-account">
-              <Select
-                id="holding-account"
-                value={account}
-                onChange={(e) => setAccount(e.target.value)}
-              >
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field
-              label="Security"
-              htmlFor="holding-security"
-              hint={
+            <Combobox
+              label="Account"
+              id="holding-account"
+              items={accounts.map((a) => ({ value: a.id, label: a.name }))}
+              value={account}
+              // Text that matches no account returns to the chosen one; it is never emptied
+              onChange={(v) => {
+                if (v) setAccount(v);
+              }}
+            />
+            <div className="grid gap-1">
+              <Combobox
+                label="Security"
+                id="holding-security"
+                items={securities.map((s) => ({
+                  value: s.id,
+                  label: `${s.symbol} · ${s.name} (${s.currency})`,
+                }))}
+                value={securityId}
+                onChange={(v) => {
+                  if (v) setSecurityId(v);
+                }}
+              />
+              <p className={helpClass}>
                 <button
                   type="button"
                   onClick={onAddSecurity}
@@ -380,21 +381,8 @@ export function HoldingModal({
                 >
                   Add a security that isn't listed
                 </button>
-              }
-            >
-              <Select
-                id="holding-security"
-                value={securityId}
-                onChange={(e) => setSecurityId(e.target.value)}
-                required
-              >
-                {securities.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.symbol} · {s.name} ({s.currency})
-                  </option>
-                ))}
-              </Select>
-            </Field>
+              </p>
+            </div>
           </>
         )}
         <Field
@@ -583,16 +571,14 @@ export function LotsModal({ holding, onClose }: { holding: Holding; onClose: () 
       <form onSubmit={submit} className="space-y-3">
         <h3 className="text-sm font-medium text-text">Add a purchase</h3>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Bought on" htmlFor="lot-date">
-            <Input
-              id="lot-date"
-              type="date"
-              value={date}
-              max={today()}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </Field>
+          <DatePicker
+            label="Bought on"
+            id="lot-date"
+            value={date}
+            onChange={setDate}
+            maxValue={today()}
+            isRequired
+          />
           <Field label="Units" htmlFor="lot-units">
             <UnitsInput id="lot-units" value={units} onChange={setUnits} />
           </Field>
@@ -600,6 +586,7 @@ export function LotsModal({ holding, onClose }: { holding: Holding; onClose: () 
         <Field label="Total cost" htmlFor="lot-cost">
           {costKnown ? (
             <CurrencyInput
+              id="lot-cost"
               currency={currency}
               value={cost}
               onChange={setCost}
@@ -609,19 +596,15 @@ export function LotsModal({ holding, onClose }: { holding: Holding; onClose: () 
             <p className="text-sm text-text-tertiary py-2">Unknown</p>
           )}
         </Field>
-        <label className="flex items-center gap-2 text-sm text-text-secondary">
-          <input
-            type="checkbox"
-            checked={!costKnown}
-            onChange={(e) => setCostKnown(!e.target.checked)}
-          />
+        <Checkbox checked={!costKnown} onCheckedChange={(unknown) => setCostKnown(!unknown)}>
           I don't know what these units cost
-        </label>
+        </Checkbox>
         <ErrorText error={add.error} />
         <Actions
           onClose={onClose}
           pending={add.isPending}
-          disabled={!quantity}
+          // The date field no longer blocks the form natively, so an empty date holds it here
+          disabled={!quantity || !date}
           label="Add purchase"
         />
       </form>

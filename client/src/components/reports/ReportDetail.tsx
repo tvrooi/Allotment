@@ -5,6 +5,7 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { Check, ChevronDown, Download, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { Checkbox } from '../ui/Checkbox';
 import { StatCard as StatTile, StatGrid } from '../ui/StatCard';
 import {
   MAX_TREND_CATEGORIES,
@@ -24,6 +25,7 @@ import { useTransactions } from '../../hooks/useTransactions';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { formatCurrency } from '../../utils/currency';
 import { downloadCsv } from '../../utils/exportCsv';
+import { expenseFigure } from '../../utils/reportSummary';
 import { dayBounds, monthCount } from '../../utils/dateRange';
 import { CALENDAR_MONTHS_MAX } from '../../utils/calendarLayout';
 import { PayeeIcon } from '../payees/PayeeIcon';
@@ -430,7 +432,8 @@ function IncomeExpensesDetail({ from, to }: DetailProps) {
   const rate = (i: number, n: number) => (i > 0 ? `${Math.round((n / i) * 100)}%` : '—');
   const stats: StatCard[] = [
     { label: 'Income', value: formatCurrency(income), tone: 'positive' },
-    { label: 'Expenses', value: formatCurrency(expenses), tone: 'negative' },
+    // Plain, as on the Summary: red is kept for overspending
+    { label: 'Expenses', ...expenseFigure(-expenses) },
     { label: 'Net savings', value: formatCurrency(net), tone: toneOf(net) },
     { label: 'Savings rate', value: rate(income, net), tone: income > 0 ? toneOf(net) : undefined },
   ];
@@ -668,23 +671,17 @@ function TrendCategoryPicker({
                 const checked = value.includes(c.id);
                 const full = !checked && value.length >= MAX_TREND_CATEGORIES;
                 return (
-                  <label
+                  <Checkbox
                     key={c.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-sm ${
-                      full
-                        ? 'text-text-disabled cursor-not-allowed'
-                        : 'text-text-secondary hover:bg-hover cursor-pointer'
-                    }`}
+                    checked={checked}
+                    disabled={full}
+                    onCheckedChange={() => toggle(c.id)}
+                    className={`w-full px-3 py-1.5 ${full ? '' : 'hover:bg-hover'}`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={full}
-                      onChange={() => toggle(c.id)}
-                      className="accent-brand-600"
-                    />
-                    {categoryLabel(c, showIcons)}
-                  </label>
+                    <span className={full ? undefined : 'text-text-secondary'}>
+                      {categoryLabel(c, showIcons)}
+                    </span>
+                  </Checkbox>
                 );
               })}
             </div>

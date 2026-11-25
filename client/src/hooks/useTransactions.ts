@@ -87,39 +87,51 @@ export function useUpdateTransaction() {
     }: {
       id: string;
       data: Parameters<typeof txApi.updateTransaction>[1];
+      /** Known previous fields when editing outside the register; undo touches only these. */
+      undo?: { description: string; data: Parameters<typeof txApi.updateTransaction>[1] };
+      /** What the undo toast says, in place of the undo description */
+      message?: string;
     }) => txApi.updateTransaction(id, data),
     onMutate: async ({ id }) => {
       return { old: findTxInCache(qc, id) };
     },
-    onSuccess: (_, { id, data }, ctx) => {
+    onSuccess: (_, { id, data, undo, message }, ctx) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['review'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
-      if (!ctx?.old) return;
-      const snapshot = ctx.old;
-      useUndoStore.getState().push({
-        description: `Edit transaction`,
-        undo: async () => {
-          await txApi.updateTransaction(id, {
-            accountId: snapshot.accountId,
-            date: snapshot.date,
-            amount: snapshot.amount,
-            payeeId: snapshot.payeeId,
-            payeeName: snapshot.payeeName,
-            categoryId: snapshot.categoryId,
-            notes: snapshot.notes,
-          });
-          qc.invalidateQueries({ queryKey: ['transactions'] });
-          qc.invalidateQueries({ queryKey: ['review'] });
-          qc.invalidateQueries({ queryKey: ['accounts'] });
+      const snapshot = ctx?.old;
+      const previous =
+        undo?.data ??
+        (snapshot
+          ? {
+              accountId: snapshot.accountId,
+              date: snapshot.date,
+              amount: snapshot.amount,
+              payeeId: snapshot.payeeId,
+              payeeName: snapshot.payeeName,
+              categoryId: snapshot.categoryId,
+              notes: snapshot.notes,
+            }
+          : null);
+      if (!previous) return;
+      useUndoStore.getState().push(
+        {
+          description: undo?.description ?? 'Edit transaction',
+          undo: async () => {
+            await txApi.updateTransaction(id, previous);
+            qc.invalidateQueries({ queryKey: ['transactions'] });
+            qc.invalidateQueries({ queryKey: ['review'] });
+            qc.invalidateQueries({ queryKey: ['accounts'] });
+          },
+          redo: async () => {
+            await txApi.updateTransaction(id, data);
+            qc.invalidateQueries({ queryKey: ['transactions'] });
+            qc.invalidateQueries({ queryKey: ['review'] });
+            qc.invalidateQueries({ queryKey: ['accounts'] });
+          },
         },
-        redo: async () => {
-          await txApi.updateTransaction(id, data);
-          qc.invalidateQueries({ queryKey: ['transactions'] });
-          qc.invalidateQueries({ queryKey: ['review'] });
-          qc.invalidateQueries({ queryKey: ['accounts'] });
-        },
-      });
+        { message },
+      );
     },
   });
 }

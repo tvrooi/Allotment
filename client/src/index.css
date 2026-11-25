@@ -128,7 +128,40 @@
     }
   }
 
+  /* Good moments (#241): a goal's plant grows a stage and blooms once when reached. Each plays
+     once, from a visible end state, and is switched off under reduced motion (below). */
+  --animate-grow-in: grow-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-bloom: bloom 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-bloom-ring: bloom-ring 720ms ease-out both;
+
+  @keyframes grow-in {
+    from {
+      transform: scale(0.55);
+      opacity: 0.4;
+    }
+  }
+  @keyframes bloom {
+    from {
+      transform: scale(0) rotate(-35deg);
+    }
+  }
+  @keyframes bloom-ring {
+    from {
+      transform: scale(0.4);
+      opacity: 0.7;
+    }
+    to {
+      transform: scale(1.7);
+      opacity: 0;
+    }
+  }
+
   /* Chart */
+  --color-chart-account-investments: #637b9c;
+  --color-chart-account-property: #9a7a43;
+  --color-chart-account-other: #907565;
+  --color-chart-account-loans: #a66e50;
+  --color-chart-account-other-debt: #a86269;
   --color-chart-brand: #487a78;
   --color-chart-brand-light: #68908c;
   --color-chart-brand-subtle: #dceae6;
@@ -204,6 +237,11 @@
   --color-sidebar-text: #c9c3bb;
   --color-sidebar-text-hi: #f4f1ec;
 
+  --color-chart-account-investments: #9baec7;
+  --color-chart-account-property: #c3aa7a;
+  --color-chart-account-other: #bca99a;
+  --color-chart-account-loans: #c99574;
+  --color-chart-account-other-debt: #cf9ba1;
   --color-chart-brand: #92bdb4;
   --color-chart-brand-light: #b2d1c8;
   --color-chart-brand-subtle: #304540;
@@ -233,6 +271,10 @@
     --animate-menu-in: fade-in 110ms ease-out;
     --animate-sheet-in: fade-in 150ms ease-out;
     --animate-sheet-out: fade-out 120ms ease-in forwards;
+    /* The goal plant shows its end state still: the stage and the flower */
+    --animate-grow-in: none;
+    --animate-bloom: none;
+    --animate-bloom-ring: none;
   }
 }
 
@@ -304,6 +346,11 @@ body {
   font-weight: 500;
 }
 
+/* Safari paints system chrome from the root background; match the opaque app header. */
+html {
+  background: var(--color-sidebar-bg);
+}
+
 body {
   background: var(--color-page);
   color: var(--color-text);
@@ -312,10 +359,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Consistent keyboard focus without changing mouse or touch interactions. */
-:focus-visible {
-  outline: 2px solid var(--color-brand-600);
-  outline-offset: 3px;
+/* Consistent keyboard focus without changing mouse or touch interactions. In the base layer so
+   a component's own focus utility (a field's outline-none and 1px ring) wins and the field shows
+   one ring, not two; a control with no focus utility (a Button, a link) keeps this outline.
+   Two rules stay unlayered on purpose so they still beat utilities: `.scroll-row :focus-visible`
+   (a clipping tab row draws focus inside) and the chart rule below (no box after a click). */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 3px;
+  }
 }
 
 /* Scrollbar. In the base layer so a utility on one element (a tab row hiding its own
@@ -343,20 +396,8 @@ body {
 
 /* Charts: no focus box after a click or tap, but keyboard focus keeps the shared ring
    (UX audit AU-003). A blanket outline: none here hid where the keyboard was. */
-.recharts-wrapper:focus:not(:focus-visible),
-.recharts-wrapper *:focus:not(:focus-visible) {
+.allotment-chart .ts-chart:focus:not(:focus-visible) {
   outline: none;
-}
-
-.recharts-area-area,
-.recharts-area-curve,
-.recharts-line-curve,
-.recharts-bar-rectangle {
-  stroke-dasharray: none;
-}
-
-.recharts-active-dot circle {
-  stroke: none;
 }
 
 /* Report dashboards (react-grid-layout): brand-colored drop placeholder and resize handle */
@@ -391,4 +432,20 @@ body {
 .guide-prose b {
   color: var(--color-text);
   font-weight: 600;
+}
+
+/* Charts (TanStack Charts, shadcn look): palette, axis text and tooltip chrome follow the theme */
+.allotment-chart {
+  color: var(--color-chart-axis);
+  font-size: 11px;
+  --ts-chart-1: var(--color-chart-brand);
+  --ts-chart-2: var(--color-chart-positive-light);
+  --ts-chart-3: var(--color-chart-negative-light);
+  --ts-chart-tooltip-background: var(--color-surface);
+  --ts-chart-tooltip-color: var(--color-text);
+  --ts-chart-tooltip-border: 1px solid var(--color-border);
+  --ts-chart-tooltip-border-radius: 0.5rem;
+  --ts-chart-tooltip-padding: 0.5rem 0.75rem;
+  --ts-chart-tooltip-shadow: var(--shadow-hover, 0 8px 24px rgb(0 0 0 / 0.12));
+  --ts-chart-tooltip-font: 12px/1.45 inherit;
 }

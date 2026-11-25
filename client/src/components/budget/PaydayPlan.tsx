@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import * as api from '../../api/payday';
-import { formatCurrency, centsToInput, parseCents, isUnreadableAmount } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { formatDay } from '../../utils/dates';
-import { Input, Select } from '../ui/Input';
+import { Input } from '../ui/Input';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
+import { Combobox } from '../ui/Combobox';
+import { CurrencyInput } from '../ui/CurrencyInput';
+import { DatePicker } from '../ui/DatePicker';
+import { Label } from '../ui/Label';
+import { NumberField } from '../ui/NumberField';
+import { Select } from '../ui/Select';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
 import { GuideLink } from '../guide/GuideLink';
 import { HelpTip } from '../ui/HelpTip';
 import { useCanSave } from '../../hooks/useConnection';
+import { newClientId } from '../../utils/offline';
 import { useCategories } from '../../hooks/useCategories';
 import { useTransactions, useUpdateTransaction } from '../../hooks/useTransactions';
 import { useSalaryGuess } from '../../hooks/useReports';
@@ -26,32 +36,16 @@ const methods: Record<api.FundingMethod, string> = {
   remainder: 'Remainder',
 };
 const field = 'flex flex-col gap-1 text-sm text-text-secondary';
-function MoneyInput({
-  value,
-  onChange,
-  label,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-  label: string;
-}) {
-  const [raw, setRaw] = useState(centsToInput(value));
-  return (
-    <Input
-      aria-label={label}
-      inputMode="decimal"
-      value={raw}
-      aria-invalid={isUnreadableAmount(raw) || undefined}
-      onChange={(e) => {
-        setRaw(e.target.value);
-        if (!isUnreadableAmount(e.target.value)) onChange(parseCents(e.target.value));
-      }}
-      onBlur={() => {
-        if (isUnreadableAmount(raw)) setRaw(centsToInput(value));
-      }}
-    />
-  );
-}
+const WEEKEND_OPTIONS: { value: api.PaydayConfig['weekendAdjust']; label: string }[] = [
+  { value: 'none', label: 'Keep the date' },
+  { value: 'before', label: 'Previous weekday' },
+  { value: 'after', label: 'Next weekday' },
+  { value: 'closest', label: 'Closest weekday' },
+];
+const METHOD_OPTIONS = Object.entries(methods).map(([value, label]) => ({ value, label }));
+/** The server's bounds on a percentage rule (`percent` in server/src/services/paydayConfig.ts) */
+const PERCENT_MIN = 0;
+const PERCENT_MAX = 100;
 
 function PlanEditor({
   plan,
@@ -69,6 +63,10 @@ function PlanEditor({
     queryKey: ['payday-categories'],
     queryFn: api.getFundingCategories,
   });
+  // The rule's picker offers exactly the categories the server funds, in their groups
+  const fundableIds = useMemo(() => categories.map((c) => c.id), [categories]);
+  const { allValid, report } = useAmountValidity();
+  const fieldId = useId();
   const [config, setConfig] = useState<api.PaydayConfig>(
     plan ?? {
       name: 'My payday plan',
@@ -79,6 +77,9 @@ function PlanEditor({
       rules: [],
     },
   );
+  // Each rule row's own key, moved, removed and added with its rule, so a field's typed text
+  // stays with the rule it was typed for. Kept beside the rules, never in what is saved.
+  const [ruleKeys, setRuleKeys] = useState(() => config.rules.map(() => newClientId()));
   const save = useMutation({
     mutationFn: () => api.savePlan(config, plan?.id),
     onSuccess: (saved) => {
@@ -86,6 +87,10 @@ function PlanEditor({
       onDone(saved.id);
     },
   });
+  // The native required checks the date inputs had: a plan needs its anchor, a due rule its date
+  const datesSet =
+    config.anchorDate !== '' && config.rules.every((r) => r.method !== 'due' || !!r.dueDate);
+  const canSubmit = canSave && allValid && datesSet && !save.isPending;
   const update = (index: number, patch: Partial<api.FundingRule>) =>
     setConfig({
       ...config,
@@ -96,217 +101,219 @@ function PlanEditor({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        save.mutate();
+        if (canSubmit) save.mutate();
       }}
     >
-      <div className="grid sm:grid-cols-2 gap-3">
-        <label className={field}>
-          Plan name
-          <Input
-            required
-            maxLength={100}
-            value={config.name}
-            onChange={(e) => setConfig({ ...config, name: e.target.value })}
-          />
-        </label>
-        <div className={field}>
-          <span className="flex items-center gap-1">
-            <label htmlFor="payday-anchor">Anchor payday</label>
-            <HelpTip label="How to choose the payday date">
-              Pick any one day you were paid. Allotment counts every other payday from it, using
-              your pay rhythm (for example every 14 days), so it can tell when the next pay is due.
-            </HelpTip>
-          </span>
-          <Input
-            id="payday-anchor"
-            required
-            type="date"
-            value={config.anchorDate}
-            onChange={(e) => setConfig({ ...config, anchorDate: e.target.value })}
-          />
-          <span className="text-xs text-text-tertiary">
-            One day you were paid. Later paydays are counted from it.
-          </span>
-        </div>
-        <label className={field}>
-          Expected take-home pay
-          <MoneyInput
-            label="Expected take-home pay"
-            value={config.expectedIncome}
-            onChange={(expectedIncome) => setConfig({ ...config, expectedIncome })}
-          />
-        </label>
-        <label className={field}>
-          Weekend adjustment
+      <AmountFields report={report}>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className={field}>
+            Plan name
+            <Input
+              required
+              maxLength={100}
+              value={config.name}
+              onChange={(e) => setConfig({ ...config, name: e.target.value })}
+            />
+          </label>
+          <div className={field}>
+            {/* The visible label sits beside its help; the picker carries the same name itself */}
+            <span className="flex items-center gap-1">
+              <span aria-hidden="true">Anchor payday</span>
+              <HelpTip label="How to choose the payday date">
+                Pick any one day you were paid. Allotment counts every other payday from it, using
+                your pay rhythm (for example every 14 days), so it can tell when the next pay is
+                due.
+              </HelpTip>
+            </span>
+            <DatePicker
+              label="Anchor payday"
+              hideLabel
+              isRequired
+              value={config.anchorDate}
+              onChange={(anchorDate) => setConfig({ ...config, anchorDate })}
+              description="One day you were paid. Later paydays are counted from it."
+            />
+          </div>
+          <div className={field}>
+            <Label htmlFor={`${fieldId}-income`}>Expected take-home pay</Label>
+            <CurrencyInput
+              id={`${fieldId}-income`}
+              aria-label="Expected take-home pay"
+              // Signed, so a typed negative reaches the server's nonnegative check, never saved as positive
+              allowNegative
+              value={config.expectedIncome}
+              onChange={(expectedIncome) => setConfig({ ...config, expectedIncome })}
+              onTextChange={(cents) => {
+                if (cents !== null) setConfig({ ...config, expectedIncome: cents });
+              }}
+            />
+          </div>
           <Select
+            label="Weekend adjustment"
             value={config.weekendAdjust}
-            onChange={(e) =>
+            onChange={(value) =>
               setConfig({
                 ...config,
-                weekendAdjust: e.target.value as api.PaydayConfig['weekendAdjust'],
+                weekendAdjust: value as api.PaydayConfig['weekendAdjust'],
               })
             }
-          >
-            <option value="none">Keep the date</option>
-            <option value="before">Previous weekday</option>
-            <option value="after">Next weekday</option>
-            <option value="closest">Closest weekday</option>
-          </Select>
-        </label>
-        <label className={field}>
-          Time zone
-          <Input
-            required
-            value={config.timeZone}
-            onChange={(e) => setConfig({ ...config, timeZone: e.target.value })}
+            options={WEEKEND_OPTIONS}
           />
-        </label>
-      </div>
-      {!plan && prefill && (
-        <p role="status" className="text-sm text-text">
-          Filled in from your pay from {prefill.payeeName} ({formatDay(prefill.latestDate)},{' '}
-          {formatCurrency(prefill.latestAmount)}, {salaryCadence(prefill)}). Change anything that is
-          not right.
+          <label className={field}>
+            Time zone
+            <Input
+              required
+              value={config.timeZone}
+              onChange={(e) => setConfig({ ...config, timeZone: e.target.value })}
+            />
+          </label>
+        </div>
+        {!plan && prefill && (
+          <p role="status" className="text-sm text-text">
+            Filled in from your pay from {prefill.payeeName} ({formatDay(prefill.latestDate)},{' '}
+            {formatCurrency(prefill.latestAmount)}, {salaryCadence(prefill)}). Change anything that
+            is not right.
+          </p>
+        )}
+        <p className="text-sm text-text-secondary">
+          A funding rule says how much of each pay goes to one category.
+          <HelpTip label="What is a funding rule?">
+            Each rule is a category plus a way to work out an amount: a fixed sum, a percentage of
+            pay, what is needed by a due date, or whatever is left over. Rules are filled from the
+            top, so put the most important first.
+          </HelpTip>{' '}
+          Pay repeats every 14 days. Expected pay is for planning only. Scheduled bill categories
+          without a rule are funded first. Add category rules below in funding priority order; the
+          remainder runs last.
         </p>
-      )}
-      <p className="text-sm text-text-secondary">
-        A funding rule says how much of each pay goes to one category.
-        <HelpTip label="What is a funding rule?">
-          Each rule is a category plus a way to work out an amount: a fixed sum, a percentage of
-          pay, what is needed by a due date, or whatever is left over. Rules are filled from the
-          top, so put the most important first.
-        </HelpTip>{' '}
-        Pay repeats every 14 days. Expected pay is for planning only. Scheduled bill categories
-        without a rule are funded first. Add category rules below in funding priority order; the
-        remainder runs last.
-      </p>
-      {config.rules.map((rule, index) => (
-        <fieldset key={index} className="border border-border rounded-md p-3 space-y-2">
-          <legend className="px-1 text-sm">Priority {index + 1}</legend>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <label className={field}>
-              Category
-              <Select
-                aria-label={`Category ${index + 1}`}
-                value={rule.categoryId}
-                onChange={(e) => update(index, { categoryId: e.target.value })}
-              >
-                <option value="">Choose category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className={field}>
-              Funding method
-              <Select
-                aria-label={`Funding method ${index + 1}`}
-                value={rule.method}
-                onChange={(e) => update(index, { method: e.target.value as api.FundingMethod })}
-              >
-                {Object.entries(methods).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            {['fixed', 'due', 'monthly'].includes(rule.method) && (
-              <label className={field}>
-                {rule.method === 'due'
-                  ? 'Target balance'
-                  : rule.method === 'monthly'
-                    ? 'Monthly cost'
-                    : 'Amount per pay'}
-                <MoneyInput
-                  key={rule.categoryId}
-                  label={`Rule amount ${index + 1}`}
-                  value={rule.amount}
-                  onChange={(amount) => update(index, { amount })}
+        {config.rules.map((rule, index) => (
+          <fieldset key={ruleKeys[index]} className="border border-border rounded-md p-3 space-y-2">
+            <legend className="px-1 text-sm">Priority {index + 1}</legend>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className={field}>
+                <Label htmlFor={`${fieldId}-category-${index}`}>Category</Label>
+                <CategorySelectButton
+                  id={`${fieldId}-category-${index}`}
+                  label={`Category ${index + 1}`}
+                  placeholder="Choose category"
+                  value={rule.categoryId || null}
+                  onChange={(id) => update(index, { categoryId: id ?? '' })}
+                  categoryIds={fundableIds}
+                  allowNone={false}
+                  allowCreate={false}
+                  includeHidden
                 />
-              </label>
-            )}
-            {rule.method === 'due' && (
-              <label className={field}>
-                Due date
-                <Input
-                  type="date"
-                  required
+              </div>
+              <div className={field}>
+                <span aria-hidden="true">Funding method</span>
+                <Select
+                  aria-label={`Funding method ${index + 1}`}
+                  value={rule.method}
+                  onChange={(value) => update(index, { method: value as api.FundingMethod })}
+                  options={METHOD_OPTIONS}
+                />
+              </div>
+              {['fixed', 'due', 'monthly'].includes(rule.method) && (
+                <div className={field}>
+                  <Label htmlFor={`${fieldId}-amount-${index}`}>
+                    {rule.method === 'due'
+                      ? 'Target balance'
+                      : rule.method === 'monthly'
+                        ? 'Monthly cost'
+                        : 'Amount per pay'}
+                  </Label>
+                  <CurrencyInput
+                    id={`${fieldId}-amount-${index}`}
+                    aria-label={`Rule amount ${index + 1}`}
+                    // Signed, so a typed negative reaches the server's nonnegative check, never saved as positive
+                    allowNegative
+                    value={rule.amount}
+                    onChange={(amount) => update(index, { amount })}
+                    onTextChange={(cents) => {
+                      if (cents !== null) update(index, { amount: cents });
+                    }}
+                  />
+                </div>
+              )}
+              {rule.method === 'due' && (
+                <DatePicker
+                  label="Due date"
+                  isRequired
                   value={rule.dueDate ?? ''}
-                  onChange={(e) => update(index, { dueDate: e.target.value })}
+                  onChange={(dueDate) => update(index, { dueDate: dueDate || null })}
                 />
-              </label>
-            )}
-            {rule.method === 'percentage' && (
-              <label className={field}>
-                Percent
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  required
+              )}
+              {rule.method === 'percentage' && (
+                <NumberField
+                  label="Percent"
+                  min={PERCENT_MIN}
+                  max={PERCENT_MAX}
                   value={rule.percent}
-                  onChange={(e) => update(index, { percent: Number(e.target.value) })}
+                  onChange={(percent) => {
+                    if (percent !== null) update(index, { percent });
+                  }}
                 />
-              </label>
-            )}
-            {rule.method === 'target' && (
-              <p className="text-xs text-text-secondary sm:col-span-2">
-                Funds what the category's target still needs this month, shared between this and the
-                month's remaining paydays. Set the target on the category's page.
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={index === 0}
-              onClick={() => {
-                const rules = [...config.rules];
-                [rules[index - 1], rules[index]] = [rules[index], rules[index - 1]];
-                setConfig({ ...config, rules });
-              }}
-            >
-              Move up
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() =>
-                setConfig({ ...config, rules: config.rules.filter((_, i) => i !== index) })
-              }
-            >
-              Remove rule
-            </Button>
-          </div>
-        </fieldset>
-      ))}
-      <Button
-        variant="secondary"
-        disabled={config.rules.length >= 100}
-        onClick={() =>
-          setConfig({
-            ...config,
-            rules: [
-              ...config.rules,
-              { categoryId: '', method: 'fixed', amount: 0, dueDate: null, percent: 0 },
-            ],
-          })
-        }
-      >
-        Add funding rule
-      </Button>
+              )}
+              {rule.method === 'target' && (
+                <p className="text-xs text-text-secondary sm:col-span-2">
+                  Funds what the category's target still needs this month, shared between this and
+                  the month's remaining paydays. Set the target on the category's page.
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={index === 0}
+                onClick={() => {
+                  const rules = [...config.rules];
+                  [rules[index - 1], rules[index]] = [rules[index], rules[index - 1]];
+                  setConfig({ ...config, rules });
+                  const keys = [...ruleKeys];
+                  [keys[index - 1], keys[index]] = [keys[index], keys[index - 1]];
+                  setRuleKeys(keys);
+                }}
+              >
+                Move up
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setConfig({ ...config, rules: config.rules.filter((_, i) => i !== index) });
+                  setRuleKeys(ruleKeys.filter((_, i) => i !== index));
+                }}
+              >
+                Remove rule
+              </Button>
+            </div>
+          </fieldset>
+        ))}
+        <Button
+          variant="secondary"
+          disabled={config.rules.length >= 100}
+          onClick={() => {
+            setConfig({
+              ...config,
+              rules: [
+                ...config.rules,
+                { categoryId: '', method: 'fixed', amount: 0, dueDate: null, percent: 0 },
+              ],
+            });
+            setRuleKeys([...ruleKeys, newClientId()]);
+          }}
+        >
+          Add funding rule
+        </Button>
+      </AmountFields>
       {save.error && (
         <p role="alert" className="text-negative">
           {save.error.message}
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" disabled={!canSave || save.isPending}>
+        <Button type="submit" disabled={!canSubmit}>
           Save payday plan
         </Button>
         <Button variant="ghost" onClick={() => onDone()}>
@@ -400,6 +407,12 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
   const [needDeposit, setNeedDeposit] = useState(false);
   // The funding just applied, so Undo sits next to the confirmation
   const [justApplied, setJustApplied] = useState<string | null>(null);
+  // Whether the actual payday is a whole date: a half-typed one holds no day (the request would
+  // still carry the last whole one), so no preview is made or kept for it
+  const { allValid: actualWhole, report: reportActual } = useAmountValidity();
+  useEffect(() => {
+    if (!actualWhole) setPreview(null);
+  }, [actualWhole]);
   const data = context.data;
   const incomeIds = picked ?? (data?.suggestion ? [data.suggestion.id] : []);
   const setIncomeIds = (ids: string[]) => {
@@ -487,38 +500,34 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
         rollover.
       </p>
       <div className="grid sm:grid-cols-2 gap-3">
-        <label className={field}>
-          Payday
-          <Select
-            value={pay?.scheduledDate ?? ''}
-            onChange={(e) => {
-              setChosenDate(e.target.value);
-              setActualDate('');
-              setPreview(null);
-              setPicked(null);
-              setShowOthers(false);
-              setMessage('');
-            }}
-          >
-            {data!.paydays.map((p) => (
-              <option key={p.scheduledDate} value={p.scheduledDate}>
-                {formatDay(p.expectedDate)}
-                {data!.history.some((e) => e.scheduledDate === p.scheduledDate) ? ' · applied' : ''}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className={field}>
-          Actual or adjusted payday
-          <Input
-            type="date"
+        <Select
+          label="Payday"
+          value={pay?.scheduledDate ?? ''}
+          onChange={(value) => {
+            setChosenDate(value);
+            setActualDate('');
+            setPreview(null);
+            setPicked(null);
+            setShowOthers(false);
+            setMessage('');
+          }}
+          options={data!.paydays.map((p) => ({
+            value: p.scheduledDate,
+            label:
+              formatDay(p.expectedDate) +
+              (data!.history.some((e) => e.scheduledDate === p.scheduledDate) ? ' · applied' : ''),
+          }))}
+        />
+        <AmountFields report={reportActual}>
+          <DatePicker
+            label="Actual or adjusted payday"
             value={request.actualPayDate}
-            onChange={(e) => {
-              setActualDate(e.target.value);
+            onChange={(value) => {
+              setActualDate(value);
               setPreview(null);
             }}
           />
-        </label>
+        </AmountFields>
       </div>
       {alreadyApplied ? (
         <p role="status">
@@ -555,24 +564,21 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
             )}
             {(() => {
               const row = (income: api.PaydayContext['income'][number]) => (
-                <label key={income.id} className="flex items-center gap-3 text-sm min-h-11">
-                  <input
-                    type="checkbox"
-                    checked={incomeIds.includes(income.id)}
-                    onChange={(e) => {
-                      setIncomeIds(
-                        e.target.checked
-                          ? [...incomeIds, income.id]
-                          : incomeIds.filter((id) => id !== income.id),
-                      );
-                      setPreview(null);
-                    }}
-                  />
-                  <span>
-                    {formatDay(income.date)} · {income.name || 'Income'} ·{' '}
-                    {formatCurrency(income.amount)}
-                  </span>
-                </label>
+                <Checkbox
+                  key={income.id}
+                  className="min-h-11 items-center gap-3"
+                  checked={incomeIds.includes(income.id)}
+                  onCheckedChange={(checked) => {
+                    setIncomeIds(
+                      checked
+                        ? [...incomeIds, income.id]
+                        : incomeIds.filter((id) => id !== income.id),
+                    );
+                    setPreview(null);
+                  }}
+                >
+                  {`${formatDay(income.date)} · ${income.name || 'Income'} · ${formatCurrency(income.amount)}`}
+                </Checkbox>
               );
               const suggested = data!.income.filter((i) => i.id === data!.suggestion?.id);
               const others = data!.income.filter((i) => i.id !== data!.suggestion?.id);
@@ -603,7 +609,7 @@ function FundingPanel({ plan, onEdit }: { plan: api.PaydayPlan; onEdit: () => vo
           </fieldset>
           <Button
             variant="secondary"
-            disabled={!canSave || !pay || refresh.isPending || apply.isPending}
+            disabled={!canSave || !pay || !actualWhole || refresh.isPending || apply.isPending}
             onClick={() => {
               setPreview(null);
               if (!incomeIds.length) return setNeedDeposit(true);
@@ -851,17 +857,18 @@ export function PaydayPlan() {
             </p>
           )}
           {active.length > 0 && (
-            <label className={field}>
-              Plan
-              <Select value={selected?.id ?? ''} onChange={(e) => setSelectedId(e.target.value)}>
-                {active.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {p.archived ? ' · archived' : ''}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Combobox
+              label="Plan"
+              items={active.map((p) => ({
+                value: p.id,
+                label: p.name + (p.archived ? ' · archived' : ''),
+              }))}
+              value={selected?.id ?? ''}
+              // Emptying the text to search keeps the plan shown until another is picked
+              onChange={(id) => {
+                if (id) setSelectedId(id);
+              }}
+            />
           )}
           {selected &&
             (selected.archived ? (
@@ -870,14 +877,9 @@ export function PaydayPlan() {
               <FundingPanel key={selected.id} plan={selected} onEdit={() => setEditor('edit')} />
             ))}
           {plans.some((p) => p.archived) && (
-            <label className="flex gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-              />
+            <Checkbox checked={showArchived} onCheckedChange={setShowArchived}>
               Show archived plans
-            </label>
+            </Checkbox>
           )}
         </>
       )}

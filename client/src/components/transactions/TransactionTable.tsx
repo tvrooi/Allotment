@@ -1,14 +1,18 @@
 import { listedAmount } from './RoundUp';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Receipt, SearchX, Upload, Link2, ListChecks } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getHouseholds } from '../../api/households';
+import { Plus, Receipt, SearchX, Upload, Link2, MoreHorizontal } from 'lucide-react';
 import { ShareWithHousehold } from '../household/ShareWithHousehold';
 import { MenuTarget, type MenuPoint } from '../ui/ContextMenu';
-import { TransactionContextMenu } from './TransactionContextMenu';
+import { TransactionContextMenu, whyNotShareable } from './TransactionContextMenu';
+import { SelectionMenu } from './SelectionMenu';
 import { useTransactions } from '../../hooks/useTransactions';
-import { SelectionSummary } from './SelectionSummary';
+import {
+  SelectionSummary,
+  canSelectAll,
+  SELECT_ALL_TITLE,
+  selectAllLabel,
+} from './SelectionSummary';
 import { SaveViewModal } from './SavedViews';
 import { useCategories } from '../../hooks/useCategories';
 import { usePayees } from '../../hooks/usePayees';
@@ -17,12 +21,13 @@ import { TransactionFilters } from './TransactionFilters';
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
-  filtersToParams,
+  registerParams,
   type FilterState,
+  type ScopeDimension,
 } from '../../utils/transactionFilters';
 import { TransactionFormRow } from './TransactionFormRow';
 import { BankFedNotice } from './BankFedNotice';
-import { TransactionRow } from './TransactionRow';
+import { TransactionRow, type RowSelection } from './TransactionRow';
 import { TransactionCard } from './TransactionCard';
 import { WaitingTransactions } from './WaitingTransactions';
 import { TransferSuggestions } from './TransferSuggestions';
@@ -33,14 +38,28 @@ import { ImportModal } from './ImportModal';
 import { Button, ButtonLink } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { useOpenFromLink } from '../../hooks/useOpenFromLink';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { useAddTransaction } from '../../hooks/useOffline';
 import { formatCurrency } from '../../utils/currency';
 import { transactionValue } from '../../utils/accountMoney';
 import { formatMoney } from '../../utils/currency';
 import { useAccountCurrency, useBudgetCurrency } from '../../hooks/useCurrency';
 import type { CategoryGroup, Transaction } from '../../types';
+import { transferTargets } from '../../utils/addTransaction';
 import type { CreateTransactionData } from '../../api/transactions';
 import { formatDay, formatDayLong } from '../../utils/dates';
+import { connectedBanksLink } from '../../utils/movedSections';
+import {
+  emptySelection,
+  selectAll,
+  isSelected,
+  prune,
+  selectedIds,
+  selectionTarget,
+  selectRange,
+  toggle,
+  type RegisterSelection,
+} from '../../utils/registerSelection';
 
 /** Rows drawn at a time: every match is loaded, but drawing thousands at once is slow */
 const ROWS_PER_PAGE = 300;
@@ -68,6 +87,8 @@ interface Props {
   onAddTransaction?: () => void;
   /** Filters to start with (All Transactions reads them from its URL) */
   initialFilters?: FilterState;
+  /** A palette destination, consumed once when this register mounts */
+  initialDetailId?: string;
   /** Called whenever the filters change (All Transactions writes them to its URL) */
   onFiltersChange?: (filters: FilterState) => void;
   /** All Transactions: the filters can be saved as a view */
@@ -90,6 +111,7 @@ export function TransactionTable({
   overlayDetail,
   onAddTransaction,
   initialFilters,
+  initialDetailId,
   onFiltersChange,
   canSaveView,
 }: Props) {
@@ -97,8 +119,11 @@ export function TransactionTable({
     () =>
       initialFilters ?? {
         ...DEFAULT_FILTERS,
+        // A category's or payee's list shows all of its history
         datePreset:
-          categoryId || categoryIds?.length || categoryGroupId ? 'all' : DEFAULT_FILTERS.datePreset,
+          categoryId || categoryIds?.length || categoryGroupId || payeeIds?.length
+            ? 'all'
+            : DEFAULT_FILTERS.datePreset,
       },
   );
   // Report changes after render, so the URL follows the filters (and back/forward restore them)
@@ -113,52 +138,91 @@ export function TransactionTable({
   const [addTo, setAddTo] = useState<string | null>(null);
   const target = addTo ?? accountId;
   const [savingView, setSavingView] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(initialDetailId ?? null);
+  // Back and Forward return to where the list was (#245)
+  const scrollMemory = useScrollMemory('register');
   const [showImport, setShowImport] = useState(false);
-  // Picking payments to share with a household: null when not picking
-  const [picked, setPicked] = useState<Set<string> | null>(null);
+  // The rows selected to act on together: null when not selecting
+  const [selected, setSelected] = useState<RegisterSelection | null>(null);
+  const selectionBarRef = useRef<HTMLDivElement>(null);
+  const selectTriggerRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const focusBarOnSelect = useRef(false);
+  const restoreFocusOnDone = useRef(false);
+  const startSelecting = (next: RegisterSelection, trigger?: HTMLElement | null) => {
+    if (trigger !== undefined) returnFocusRef.current = trigger;
+    focusBarOnSelect.current = true;
+    setSelected(next);
+  };
+  const finishSelecting = () => {
+    restoreFocusOnDone.current = true;
+    setSelected(null);
+  };
+  useEffect(() => {
+    if (selected) {
+      if (focusBarOnSelect.current) {
+        focusBarOnSelect.current = false;
+        selectionBarRef.current?.focus();
+      }
+      return;
+    }
+    if (restoreFocusOnDone.current) {
+      restoreFocusOnDone.current = false;
+      const target =
+        returnFocusRef.current?.isConnected && !returnFocusRef.current.closest('[inert]')
+          ? returnFocusRef.current
+          : selectTriggerRef.current;
+      returnFocusRef.current = null;
+      target?.focus();
+    }
+  }, [selected]);
   // The right-click (long-press, Shift+F10, ⋯) menu: which transaction, and where
   const [menu, setMenu] = useState<{ tx: Transaction; at: MenuPoint } | null>(null);
-  const { data: households = [] } = useQuery({ queryKey: ['households'], queryFn: getHouseholds });
+  // The same gestures on a selected row (and the bar's More actions) open the selection's menu
+  const [selectionMenu, setSelectionMenu] = useState<{ at: MenuPoint } | null>(null);
 
   const showAccountCol = !accountId;
 
-  const params = useMemo(() => {
-    const base = filtersToParams(filters, accountId);
-    if (budgetReport) base.budgetReport = true;
-    if (categoryIds?.length) base.categoryIds = categoryIds;
-    else if (categoryId && !base.categoryIds?.length) base.categoryId = categoryId;
-    if (categoryGroupId) base.categoryGroupId = categoryGroupId;
-    if (uncategorized) {
-      delete base.categoryId;
-      delete base.categoryIds;
-      base.uncategorized = true;
-    }
-    if (payeeIds?.length) base.payeeIds = payeeIds;
-    if (payeeName !== undefined) base.payeeName = payeeName;
-    if (from) base.from = from;
-    if (to) base.to = to;
-    if (month) {
-      delete base.from;
-      delete base.to;
-      base.month = month;
-    }
-    return base;
-  }, [
-    budgetReport,
-    filters,
-    accountId,
-    categoryId,
-    categoryIds,
-    categoryGroupId,
-    uncategorized,
-    payeeIds,
-    payeeName,
-    from,
-    to,
-    month,
-  ]);
-  const { data: transactions = [], isLoading } = useTransactions(params);
+  // What this page fixes the register to: not offered as a filter
+  const scopes = useMemo(() => {
+    const fixed: ScopeDimension[] = [];
+    if (accountId) fixed.push('account');
+    if (categoryId || categoryIds?.length || categoryGroupId || uncategorized)
+      fixed.push('category');
+    if (payeeIds?.length || payeeName !== undefined) fixed.push('payee');
+    return fixed;
+  }, [accountId, categoryId, categoryIds, categoryGroupId, uncategorized, payeeIds, payeeName]);
+  const params = useMemo(
+    () =>
+      registerParams(filters, {
+        accountId,
+        budgetReport,
+        categoryId,
+        categoryIds,
+        categoryGroupId,
+        uncategorized,
+        payeeIds,
+        payeeName,
+        from,
+        to,
+        month,
+      }),
+    [
+      budgetReport,
+      filters,
+      accountId,
+      categoryId,
+      categoryIds,
+      categoryGroupId,
+      uncategorized,
+      payeeIds,
+      payeeName,
+      from,
+      to,
+      month,
+    ],
+  );
+  const { data: transactions = [], isLoading, isSuccess } = useTransactions(params);
   // Whether there are any transactions at all here, to tell "nothing yet" from "filtered out"
   const scoped = Boolean(
     categoryId ||
@@ -201,7 +265,7 @@ export function TransactionTable({
   }, [groups]);
 
   // Offered as "Transfer: name" when categorizing a transaction
-  const transferAccounts = useMemo(() => accounts.filter((a) => !a.closedAt), [accounts]);
+  const transferAccounts = useMemo(() => transferTargets(accounts), [accounts]);
 
   const accountInfoMap = useMemo(
     () => new Map(accounts.map((a) => [a.id, { name: a.name, type: a.type, logo: a.logo }])),
@@ -320,35 +384,68 @@ export function TransactionTable({
     setDetailId(null);
     if (id) rowElement(id)?.focus();
   };
-  // What sharing accepts: money out that isn't a transfer or a split's parent
-  const shareable = (t: (typeof transactions)[number]) =>
-    t.amount < 0 && !t.isParent && !t.transferTransactionId;
-  const togglePick = (id: string) =>
-    setPicked((p) => {
-      const next = new Set(p);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  const pickedIds = picked ? transactions.filter((t) => picked.has(t.id)).map((t) => t.id) : [];
-  const withPick = (tx: (typeof transactions)[number], row: React.ReactNode) =>
-    picked ? (
-      <div key={tx.id} className="flex items-stretch">
-        <label className="flex items-center pl-3 border-b border-border-light bg-surface">
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            aria-label={`Pick ${tx.payeeName ?? 'payment'} ${formatCurrency(Math.abs(tx.amount))}`}
-            disabled={!shareable(tx)}
-            checked={picked.has(tx.id)}
-            onChange={() => togglePick(tx.id)}
-          />
-        </label>
-        <div className="flex-1 min-w-0">{row}</div>
-      </div>
-    ) : (
-      row
+  // What sharing accepts, as the row's own menu decides (whyNotShareable), and not already
+  // linked to a household entry (the server leaves those alone)
+  const shareable = (t: (typeof transactions)[number]) => !whyNotShareable(t) && !t.household;
+  // The listed rows' ids, in the register's order: what a selection is read against
+  const listedIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
+  // A filter, a refresh or an edit that moves rows out of the list drops them from the selection,
+  // so a row that isn't listed is never acted on (prune hands back the same selection if nothing
+  // went, so this settles). Not while the list is still loading: it is empty then.
+  useEffect(() => {
+    if (!isSuccess) return;
+    // Nothing is listed, so nothing can be selected: selecting ends
+    setSelected((p) => (p && listedIds.length > 0 ? prune(p, listedIds) : null));
+  }, [listedIds, isSuccess]);
+  // A whole-list selection is of the list as filtered when it was made: another list is chosen by
+  // another Select all, so a whole-list action never carries over to rows the owner has not
+  // seen. By value (a JSON key), so a re-render with equal params keeps it. Hand-picked rows stay,
+  // pruned to what is still listed.
+  const paramsKey = JSON.stringify(params);
+  useEffect(() => {
+    setSelected((p) => (p?.kind === 'all' ? emptySelection : p));
+  }, [paramsKey]);
+  // The selected rows, in the list's order (the order the bulk request carries them in)
+  const ticked = selected ? selectedIds(selected, listedIds) : [];
+  // Select all, with no row unticked since: the bar says so and shares the list by its filters
+  const wholeList = selected?.kind === 'all' && selected.except.size === 0;
+  const shareableTicked = selected
+    ? transactions.filter((t) => isSelected(selected, t.id) && shareable(t)).map((t) => t.id)
+    : [];
+  // A selected row opens the selection's menu; any other row opens its own
+  const openMenu = (tx: Transaction, at: MenuPoint) =>
+    selected && isSelected(selected, tx.id) ? setSelectionMenu({ at }) : setMenu({ tx, at });
+  // Cmd or Ctrl+click toggles a row, Shift+click selects the range from the last one toggled;
+  // neither opens the details (a plain click does outside select mode). Captured, so modifier
+  // gestures work before the row or card handles a click.
+  const modifierClick = (e: React.MouseEvent, id: string) => {
+    if (!e.shiftKey && !e.metaKey && !e.ctrlKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const range = e.shiftKey;
+    if (!selected) returnFocusRef.current = selectTriggerRef.current;
+    setSelected((p) =>
+      range ? selectRange(p ?? emptySelection, listedIds, id) : toggle(p ?? emptySelection, id),
     );
+  };
+  const rowSelection = (tx: Transaction): RowSelection | undefined =>
+    selected
+      ? {
+          selected: isSelected(selected, tx.id),
+          onToggle: () => setSelected((p) => toggle(p ?? emptySelection, tx.id)),
+        }
+      : undefined;
+  const withSelectGestures = (tx: (typeof transactions)[number], row: React.ReactNode) => (
+    <div
+      key={tx.id}
+      className="contents"
+      // A Shift press would also select text between the two rows
+      onMouseDownCapture={(e) => e.shiftKey && e.preventDefault()}
+      onClickCapture={(e) => modifierClick(e, tx.id)}
+    >
+      {row}
+    </div>
+  );
 
   function handleCreate(data: CreateTransactionData) {
     if (data.categoryId?.startsWith('transfer:') && target) {
@@ -381,101 +478,142 @@ export function TransactionTable({
           if (month && onClearMonth) onClearMonth();
           setFilters(f);
         }}
-        fixedAccount={Boolean(accountId)}
+        scopes={scopes}
         onSaveView={canSaveView ? () => setSavingView(true) : undefined}
         externalMonth={month}
         externalRange={from && to ? `${formatDay(from)} – ${formatDay(to)}` : undefined}
       />
       {savingView && <SaveViewModal filters={filters} onClose={() => setSavingView(false)} />}
-      <div className="px-4 py-2 border-b border-border-light bg-surface flex flex-wrap gap-2 justify-between items-center">
-        <SelectionSummary
-          params={params}
-          loadedCount={transactions.length}
-          fixedAccount={Boolean(accountId)}
-        />
-        {households.length > 0 && transactions.length > 0 && !picked && (
-          <Button variant="secondary" size="sm" onClick={() => setPicked(new Set())}>
-            <ListChecks size={13} /> Pick to share
-          </Button>
-        )}
-        {accountId && (
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
-              <Upload size={13} /> Import CSV
-            </Button>
-            <Button
-              size="sm"
-              disabled={!newTx.allowed}
-              title={
-                !newTx.allowed
-                  ? 'Saving is paused until Allotment reconnects'
-                  : newTx.onDevice
-                    ? 'Saved on this device and sent when Allotment reconnects'
-                    : undefined
+      <div className="relative">
+        <div
+          inert={Boolean(selected)}
+          className={`px-6 max-md:px-4 py-4 max-md:py-3 border-b border-border-light bg-page flex flex-wrap gap-2 justify-between items-center ${transactions.length > 0 || selected ? 'min-h-24 max-md:min-h-36' : ''} ${selected ? 'invisible' : ''}`}
+        >
+          <SelectionSummary
+            params={params}
+            loadedCount={transactions.length}
+            fixedAccount={Boolean(accountId)}
+            selectRef={selectTriggerRef}
+            onSelect={(trigger) => startSelecting(emptySelection, trigger)}
+            onSelectAll={(trigger) => startSelecting(selectAll(), trigger)}
+          />
+          {accountId && (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
+                <Upload size={13} /> Import CSV
+              </Button>
+              <Button size="sm" disabled={!newTx.allowed} title={newTx.hint} onClick={startAdd}>
+                <Plus size={13} /> Add Transaction
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {selected && (
+          <div
+            ref={selectionBarRef}
+            tabIndex={-1}
+            role="region"
+            aria-label="Selected transactions"
+            className="absolute inset-0 z-10 content-center overflow-y-auto px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
+          >
+            <span className="text-text-secondary max-md:w-full max-md:text-xs">
+              {isPhone
+                ? 'Tap transactions to select them.'
+                : 'Click transactions to select them, then right-click one of them to change them all. Shift+click to select a range.'}
+            </span>
+            <span
+              className="inline-grid font-medium text-text tabular-nums before:content-[attr(data-max)] before:col-start-1 before:row-start-1 before:invisible before:h-0 before:overflow-hidden"
+              data-max={
+                transactions.length > 0
+                  ? `All ${transactions.length.toLocaleString()} selected`
+                  : '0 selected'
               }
-              onClick={startAdd}
             >
-              <Plus size={13} /> Add Transaction
+              <span className="col-start-1 row-start-1">
+                {wholeList ? 'All ' : ''}
+                {ticked.length.toLocaleString()} selected
+              </span>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="More actions"
+              aria-haspopup="menu"
+              disabled={ticked.length === 0}
+              className="w-8 px-0 max-md:w-11"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setSelectionMenu({ at: { x: r.right - 240, y: r.bottom } });
+              }}
+            >
+              <MoreHorizontal size={16} />
+            </Button>
+            <div className="flex-1" />
+            {canSelectAll(transactions.length, wholeList) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                title={SELECT_ALL_TITLE}
+                onClick={() => startSelecting(selectAll())}
+              >
+                {selectAllLabel(transactions.length)}
+              </Button>
+            )}
+            <span className="max-md:order-last empty:hidden">
+              {wholeList ? (
+                <ShareWithHousehold params={params} variant="link" />
+              ) : (
+                <ShareWithHousehold
+                  transactionIds={shareableTicked}
+                  variant="compact"
+                  onShared={(sent) => {
+                    // What was sent is done; anything a failed batch didn't reach stays selected
+                    setSelected(
+                      (p) =>
+                        p && sent.reduce((s, id) => (isSelected(s, id) ? toggle(s, id) : s), p),
+                    );
+                  }}
+                />
+              )}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Clear selection"
+              className="max-md:order-last"
+              onClick={() => setSelected(emptySelection)}
+            >
+              Clear
+            </Button>
+            <Button variant="ghost" size="sm" onClick={finishSelecting}>
+              Done
             </Button>
           </div>
         )}
       </div>
-
-      {picked && (
-        <div
-          role="region"
-          aria-label="Picked payments"
-          className="px-4 py-2 border-b border-border-light bg-brand-50 flex flex-wrap gap-2 items-center text-sm"
-        >
-          <span className="text-text-secondary">
-            Tick the payments you share, then share them all at once.
-          </span>
-          <span className="font-medium text-text">{pickedIds.length.toLocaleString()} picked</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              setPicked(
-                new Set(visibleGroups.flatMap((g) => g.txs.filter(shareable).map((t) => t.id))),
-              )
-            }
-          >
-            Pick all shown
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
-            Clear
-          </Button>
-          <div className="flex-1" />
-          <ShareWithHousehold
-            transactionIds={pickedIds}
-            variant="compact"
-            onShared={(sent) => {
-              // What was sent is done; anything a failed batch didn't reach stays picked
-              const done = new Set(sent);
-              setPicked((p) => new Set([...(p ?? [])].filter((id) => !done.has(id))));
-            }}
-          />
-          <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
-            Done
-          </Button>
-        </div>
-      )}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          {/* Not in a category or month view: they may not belong there */}
-          {!categoryId && !categoryIds?.length && !categoryGroupId && !month && (
-            <>
-              <WaitingTransactions
-                accountId={accountId}
-                categoryName={(id) => categoryMap.get(id)?.name}
-                accountName={(id) => accountInfoMap.get(id)?.name}
-              />
-              <TransferSuggestions
-                accountId={accountId}
-                accountName={(id) => accountInfoMap.get(id)?.name}
-              />
-            </>
-          )}
+      {/* Short Safari viewports can scroll the surrounding page instead of collapsing the ledger. */}
+      <div className="flex-1 flex overflow-hidden min-h-40">
+        <div ref={scrollMemory} className="flex-1 overflow-y-auto">
+          {/* Not in a category, payee or month view: they may not belong there */}
+          {!categoryId &&
+            !categoryIds?.length &&
+            !categoryGroupId &&
+            !payeeIds?.length &&
+            payeeName === undefined &&
+            !month && (
+              <>
+                <WaitingTransactions
+                  accountId={accountId}
+                  categoryName={(id) => categoryMap.get(id)?.name}
+                  accountName={(id) => accountInfoMap.get(id)?.name}
+                />
+                <TransferSuggestions
+                  accountId={accountId}
+                  accountName={(id) => accountInfoMap.get(id)?.name}
+                />
+              </>
+            )}
           {showAdd && accountId && !isPhone && (
             <>
               <BankFedNotice
@@ -519,7 +657,7 @@ export function TransactionTable({
                     </>
                   ) : (
                     <>
-                      <ButtonLink variant="secondary" to="/settings?tab=connections">
+                      <ButtonLink variant="secondary" to={connectedBanksLink()}>
                         <Link2 size={14} /> Connect a bank
                       </ButtonLink>
                       {onAddTransaction && (
@@ -560,18 +698,19 @@ export function TransactionTable({
             <>
               {visibleGroups.map((group) => (
                 <div key={group.date}>
-                  <div className="flex items-center justify-between px-4 py-2 bg-surface-alt border-b border-border-light">
+                  <div className="flex items-center justify-between gap-3 px-4 py-2 bg-surface-alt border-b border-border-light">
                     <span className="text-sm font-medium text-text-secondary">
                       {formatDayLong(group.date)}
                     </span>
                     <span
-                      className="text-sm font-medium text-text-secondary tabular-nums"
+                      className="text-xs font-medium text-text-secondary tabular-nums whitespace-nowrap"
                       title={
                         !accountId && budgetCurrency
                           ? `In ${budgetCurrency}, at each day's rate`
                           : undefined
                       }
                     >
+                      <span className="mr-2 font-normal">Total moved</span>
                       {accountId
                         ? formatMoney(group.total, ownCurrency)
                         : formatCurrency(group.total)}
@@ -579,8 +718,8 @@ export function TransactionTable({
                   </div>
 
                   {group.txs.map((tx) => (
-                    <MenuTarget key={tx.id} onOpen={(at) => setMenu({ tx, at })}>
-                      {withPick(
+                    <MenuTarget key={tx.id} onOpen={(at) => openMenu(tx, at)}>
+                      {withSelectGestures(
                         tx,
                         isPhone ? (
                           <TransactionCard
@@ -594,8 +733,9 @@ export function TransactionTable({
                               showAccountCol ? accountInfoMap.get(tx.accountId)?.name : undefined
                             }
                             isSelected={detailId === tx.id}
+                            selection={rowSelection(tx)}
                             onOpenDetail={setDetailId}
-                            onMenu={(at) => setMenu({ tx, at })}
+                            onMenu={(at) => openMenu(tx, at)}
                           />
                         ) : (
                           <TransactionRow
@@ -618,18 +758,8 @@ export function TransactionTable({
                             }
                             showAccountCol={showAccountCol}
                             isSelected={detailId === tx.id}
+                            selection={rowSelection(tx)}
                             onOpenDetail={setDetailId}
-                            onFilterCategory={(catId) =>
-                              setFilters((f) => ({
-                                ...f,
-                                categoryIds: [catId],
-                                uncategorized: false,
-                                datePreset: 'all',
-                              }))
-                            }
-                            onFilterSearch={(search) =>
-                              setFilters((f) => ({ ...f, search, datePreset: 'all' }))
-                            }
                             transferAccounts={transferAccounts}
                           />
                         ),
@@ -657,7 +787,9 @@ export function TransactionTable({
         </div>
 
         {panelMounted && panelTx && !overlay && (
-          <div className="w-96 shrink-0 overflow-hidden">
+          // overflow-clip, not hidden: a hidden box still scrolls, so focusing ⋮ mid-slide
+          // scrolled it and the slide's scroll events closed the ⋮ menu (as in the Sidebar)
+          <div className="w-96 shrink-0 overflow-clip">
             <div
               className={`h-full transition-transform duration-200 ease-out ${panelVisible ? 'translate-x-0' : 'translate-x-full'}`}
               onTransitionEnd={handlePanelTransitionEnd}
@@ -682,9 +814,16 @@ export function TransactionTable({
 
       <TransactionContextMenu
         menu={menu}
-        pickedIds={pickedIds}
         onOpenDetail={setDetailId}
         onClose={() => setMenu(null)}
+      />
+      <SelectionMenu
+        menu={selectionMenu}
+        target={selected ? selectionTarget(selected, params, listedIds) : null}
+        count={ticked.length}
+        shareableIds={shareableTicked}
+        onClose={() => setSelectionMenu(null)}
+        onClearSelection={() => setSelected(emptySelection)}
       />
 
       {/* Phones: the entry form in a sheet (splits and transfers included) */}

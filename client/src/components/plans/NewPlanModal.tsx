@@ -1,10 +1,16 @@
+import { Select } from '../ui/Select';
+import { Combobox } from '../ui/Combobox';
+import { Checkbox } from '../ui/Checkbox';
+import { DatePicker } from '../ui/DatePicker';
+import { NumberField } from '../ui/NumberField';
 import { useState, useId } from 'react';
 import { format } from 'date-fns';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Input, Select } from '../ui/Input';
+import { Input } from '../ui/Input';
 import { CurrencyInput } from '../ui/CurrencyInput';
-import { CategorySelect } from '../transactions/CategorySelect';
+import { CategorySelectButton } from '../transactions/CategorySelectButton';
+import { AmountFields, useAmountValidity } from '../ui/amountValidity';
 import { SavingPausedHint } from '../connection/SavingPausedHint';
 import { useCanSave } from '../../hooks/useConnection';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -44,6 +50,7 @@ interface Props {
  */
 export function NewPlanModal({ isOpen, onClose, provider, earlier, onCreated }: Props) {
   const fieldId = useId();
+  const { allValid, report } = useAmountValidity();
   const today = format(new Date(), 'yyyy-MM-dd');
   const { data: accounts = [] } = useAccounts();
   const { data: groups = [] } = useCategories();
@@ -84,11 +91,16 @@ export function NewPlanModal({ isOpen, onClose, provider, earlier, onCreated }: 
   const preview = splitTotal(form.total - paid, form.instalmentCount - linked.length);
   const firstDueDate = form.firstSameDay && !earlier ? form.purchaseDate : form.firstDueDate;
   const valid =
+    allValid &&
     form.accountId &&
     form.fundingAccountId &&
     form.merchant.trim() &&
     form.total > 0 &&
     form.instalmentCount >= Math.max(1, linked.length) &&
+    form.instalmentCount <= 60 &&
+    form.purchaseDate &&
+    form.purchaseDate <= today &&
+    firstDueDate &&
     firstDueDate >= form.purchaseDate;
 
   function submit(e: React.FormEvent) {
@@ -126,179 +138,159 @@ export function NewPlanModal({ isOpen, onClose, provider, earlier, onCreated }: 
       title={earlier ? 'Record an earlier purchase' : 'Add a purchase'}
       size="lg"
     >
-      <form onSubmit={submit} className="space-y-4">
-        {earlier && (
-          <div className="rounded-md bg-surface-alt px-3 py-2 text-sm text-text-secondary">
-            Links {linked.length} payment{linked.length === 1 ? '' : 's'} from {earlier.accountName}
-            :{' '}
-            {linked.map((t) => `${formatShortDay(t.date)} ${formatCurrency(-t.amount)}`).join(', ')}
-            . They become payments to this purchase instead of spending.
-          </div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className={label} htmlFor="plan-merchant">
-              Where you bought it
-            </label>
-            <Input
-              id="plan-merchant"
-              value={form.merchant}
-              onChange={(e) => set('merchant', e.target.value)}
-              placeholder="Bunnings"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className={label} htmlFor="plan-category">
-              What it was for
-            </label>
-            <div className="rounded-md border border-border px-3 py-2.5 bg-surface">
-              <CategorySelect
+      <AmountFields report={report}>
+        <form onSubmit={submit} className="space-y-4">
+          {earlier && (
+            <div className="rounded-md bg-surface-alt px-3 py-2 text-sm text-text-secondary">
+              Links {linked.length} payment{linked.length === 1 ? '' : 's'} from{' '}
+              {earlier.accountName}:{' '}
+              {linked
+                .map((t) => `${formatShortDay(t.date)} ${formatCurrency(-t.amount)}`)
+                .join(', ')}
+              . They become payments to this purchase instead of spending.
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className={label} htmlFor="plan-merchant">
+                Where you bought it
+              </label>
+              <Input
+                id="plan-merchant"
+                value={form.merchant}
+                onChange={(e) => set('merchant', e.target.value)}
+                placeholder="Bunnings"
+                autoFocus
+              />
+            </div>
+            <div>
+              <p className={label}>What it was for</p>
+              <CategorySelectButton
                 value={form.categoryId}
                 onChange={(id) => set('categoryId', id)}
                 groups={purchaseGroups(groups)}
+                includeHidden
+                allowCreate={false}
+                allowNone
                 label="What it was for"
               />
             </div>
-          </div>
-          <div>
-            <label htmlFor={`${fieldId}-price`} className={label}>
-              Price
-            </label>
-            <CurrencyInput
-              id={`${fieldId}-price`}
-              value={form.total}
-              onChange={(v) => set('total', v)}
-              aria-label="Price"
-            />
-          </div>
-          <div>
-            <label className={label} htmlFor="plan-date">
-              Bought on
-            </label>
-            <Input
-              id="plan-date"
-              type="date"
-              value={form.purchaseDate}
-              max={today}
-              onChange={(e) => set('purchaseDate', e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={label} htmlFor="plan-count">
-              Number of payments
-            </label>
-            <Input
-              id="plan-count"
-              type="number"
-              min={Math.max(1, linked.length)}
-              max={60}
-              value={form.instalmentCount}
-              onChange={(e) => set('instalmentCount', Math.max(1, Number(e.target.value) || 1))}
-            />
-          </div>
-          <div>
-            <label className={label} htmlFor="plan-frequency">
-              How often
-            </label>
-            <Select
-              id="plan-frequency"
-              value={form.frequency}
-              onChange={(e) => set('frequency', e.target.value as PlanFrequency)}
-            >
-              {(Object.keys(FREQUENCY_LABELS) as PlanFrequency[]).map((f) => (
-                <option key={f} value={f}>
-                  {FREQUENCY_LABELS[f]}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className={label} htmlFor="plan-account">
-              On account
-            </label>
-            <Select
-              id="plan-account"
-              value={form.accountId}
-              onChange={(e) => set('accountId', e.target.value)}
-            >
-              {plans.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className={label} htmlFor="plan-funding">
-              Payments come from
-            </label>
-            <Select
-              id="plan-funding"
-              value={form.fundingAccountId}
-              onChange={(e) => set('fundingAccountId', e.target.value)}
-              disabled={!!earlier}
-            >
-              {sources.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-        {!earlier && (
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm text-text-secondary">
-              <input
-                type="checkbox"
-                checked={form.firstSameDay}
-                onChange={(e) => set('firstSameDay', e.target.checked)}
+            <div>
+              <label htmlFor={`${fieldId}-price`} className={label}>
+                Price
+              </label>
+              <CurrencyInput
+                id={`${fieldId}-price`}
+                value={form.total}
+                onChange={(v) => set('total', v)}
+                aria-label="Price"
               />
-              The first payment was taken when I bought it
-            </label>
-            {!form.firstSameDay && (
-              <div className="max-w-xs">
-                <label className={label} htmlFor="plan-first">
-                  First payment
-                </label>
-                <Input
-                  id="plan-first"
-                  type="date"
-                  min={form.purchaseDate}
-                  value={form.firstDueDate}
-                  onChange={(e) => set('firstDueDate', e.target.value)}
-                />
-              </div>
-            )}
+            </div>
+            <div>
+              <DatePicker
+                id="plan-date"
+                label="Bought on"
+                value={form.purchaseDate}
+                maxValue={today}
+                onChange={(date) => set('purchaseDate', date)}
+              />
+            </div>
+            <div>
+              <NumberField
+                id="plan-count"
+                label="Number of payments"
+                min={Math.max(1, linked.length)}
+                max={60}
+                value={form.instalmentCount}
+                onChange={(count) => {
+                  if (count !== null) set('instalmentCount', count);
+                }}
+              />
+            </div>
+            <div>
+              <Select
+                id="plan-frequency"
+                label="How often"
+                value={form.frequency}
+                onChange={(value) => set('frequency', value as PlanFrequency)}
+                options={Object.entries(FREQUENCY_LABELS).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
+            </div>
+            <div>
+              <Combobox
+                id="plan-account"
+                label="On account"
+                value={form.accountId}
+                onChange={(id) => set('accountId', id)}
+                items={plans.map((account) => ({ value: account.id, label: account.name }))}
+                menuTrigger="focus"
+              />
+            </div>
+            <div>
+              <Combobox
+                id="plan-funding"
+                label="Payments come from"
+                value={form.fundingAccountId}
+                onChange={(id) => set('fundingAccountId', id)}
+                items={sources.map((account) => ({ value: account.id, label: account.name }))}
+                menuTrigger="focus"
+                isDisabled={!!earlier}
+              />
+            </div>
           </div>
-        )}
-        {preview.length > 0 && (
-          <p className="text-sm text-text-tertiary">
-            {linked.length ? `Then ${preview.length} more: ` : ''}
-            {preview.length === 1
-              ? formatCurrency(preview[0])
-              : preview[0] === preview[preview.length - 1]
-                ? `${preview.length} × ${formatCurrency(preview[0])}`
-                : `${formatCurrency(preview[0])}, then ${preview.length - 1} × ${formatCurrency(preview[1])}`}{' '}
-            {FREQUENCY_LABELS[form.frequency].toLowerCase()}. If {PROVIDER_NAMES[provider]}&apos;s
-            amounts differ, change them on the plan.
-          </p>
-        )}
-        {plans.length === 0 && (
-          <p className="text-sm text-caution">Set up a {PROVIDER_NAMES[provider]} account first.</p>
-        )}
-        {error && <p className="text-sm text-negative">{error}</p>}
-        <SavingPausedHint className="text-right" />
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!valid || !canSave || create.isPending}>
-            {earlier ? 'Record purchase' : 'Add purchase'}
-          </Button>
-        </div>
-      </form>
+          {!earlier && (
+            <div className="space-y-2">
+              <Checkbox
+                checked={form.firstSameDay}
+                onCheckedChange={(checked) => set('firstSameDay', checked)}
+              >
+                The first payment was taken when I bought it
+              </Checkbox>
+              {!form.firstSameDay && (
+                <div className="max-w-xs">
+                  <DatePicker
+                    id="plan-first"
+                    label="First payment"
+                    minValue={form.purchaseDate}
+                    value={form.firstDueDate}
+                    onChange={(date) => set('firstDueDate', date)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {preview.length > 0 && (
+            <p className="text-sm text-text-tertiary">
+              {linked.length ? `Then ${preview.length} more: ` : ''}
+              {preview.length === 1
+                ? formatCurrency(preview[0])
+                : preview[0] === preview[preview.length - 1]
+                  ? `${preview.length} × ${formatCurrency(preview[0])}`
+                  : `${formatCurrency(preview[0])}, then ${preview.length - 1} × ${formatCurrency(preview[1])}`}{' '}
+              {FREQUENCY_LABELS[form.frequency].toLowerCase()}. If {PROVIDER_NAMES[provider]}&apos;s
+              amounts differ, change them on the plan.
+            </p>
+          )}
+          {plans.length === 0 && (
+            <p className="text-sm text-caution">
+              Set up a {PROVIDER_NAMES[provider]} account first.
+            </p>
+          )}
+          {error && <p className="text-sm text-negative">{error}</p>}
+          <SavingPausedHint className="text-right" />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!valid || !canSave || create.isPending}>
+              {earlier ? 'Record purchase' : 'Add purchase'}
+            </Button>
+          </div>
+        </form>
+      </AmountFields>
     </Modal>
   );
 }

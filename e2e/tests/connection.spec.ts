@@ -53,7 +53,7 @@ test('mid-session the app keeps what it loaded, keeps new transactions, and reco
   const groceries = await api.category('Groceries');
   await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 50_000 });
   await open(page, '/budget');
-  const planned = page.getByRole('button', { name: /^Planned for Groceries:/ });
+  const planned = page.getByRole('button', { name: /^Assigned to Groceries:/ });
   await expect(planned).toBeEnabled();
   await open(page, `/accounts/${account.id}`);
   await expect(page.getByText('Corner Grocery')).toBeVisible();
@@ -82,7 +82,9 @@ test('mid-session the app keeps what it loaded, keeps new transactions, and reco
     // A new transaction is kept on this device until the server is back
     await page.getByRole('button', { name: 'Add Transaction' }).click();
     const form = page.getByRole('form', { name: 'New transaction' });
-    await form.getByRole('textbox', { name: 'Payee' }).fill('Coffee Cart');
+    await form.getByRole('combobox', { name: 'Payee' }).fill('Coffee Cart');
+    // React Aria hide-outside: Tab closes the list (02-19 checkpoint decision, option 1)
+    await form.getByRole('combobox', { name: 'Payee' }).press('Tab');
     await form.getByRole('textbox', { name: 'Outflow' }).fill('4.75');
     await form.getByRole('button', { name: 'Save' }).click();
     await expect(form).toBeHidden();
@@ -158,4 +160,89 @@ test('server details are only for the app itself', async ({ playwright, baseURL,
   expect((await stranger.get('/api/server/info')).status()).toBe(401);
   expect(await (await stranger.get('/api/health')).json()).toEqual({ status: 'ok' });
   await stranger.dispose();
+});
+
+test('while saving is paused, Payees offers no rename, logo or default-category change', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday Checking', 150_000);
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4_250,
+    payeeName: 'Corner Grocery',
+  });
+  await open(page, '/payees');
+  await expect(page.getByRole('button', { name: 'Rename Corner Grocery' })).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Upload an image for Corner Grocery' }),
+  ).toBeVisible();
+
+  await stopDesktopServer();
+  try {
+    const nav = page.getByRole('complementary');
+    await nav.getByRole('link', { name: 'Transactions', exact: true }).click();
+    await expect(page.getByRole('status', { name: 'Connection' })).toContainText(
+      "Can't reach Allotment",
+    );
+    await nav.getByRole('link', { name: 'Payees', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Rename Corner Grocery' })).toBeDisabled();
+    await expect(
+      page.getByRole('button', { name: 'Upload an image for Corner Grocery' }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: /^Default category for Corner Grocery/ }),
+    ).toBeDisabled();
+  } finally {
+    await startDesktopServer();
+  }
+});
+
+test('while saving is paused, Apply rules disables Apply and shows the hint, then re-enables on reconnect', async ({
+  page,
+  api,
+}) => {
+  const account = await api.createAccount('Everyday Checking', 150_000);
+  const groceries = await api.category('Groceries');
+  await api.createTransaction({
+    accountId: account.id,
+    date: isoDay(),
+    amount: -4_250,
+    payeeName: 'Corner Grocery',
+  });
+  await api.call('POST', '/rules', {
+    conditions: [{ field: 'payee_name', op: 'contains', value: 'Corner' }],
+    actions: [{ type: 'set_category', value: groceries.id }],
+  });
+
+  await open(page, '/rules');
+  await page.getByRole('button', { name: 'Run rules' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Run rules' });
+  const applyButton = dialog.getByRole('button', { name: 'Apply to 1 transaction' });
+  const hint = dialog.getByText('Saving is paused until Allotment reconnects.');
+
+  // Allowed case while connected
+  await expect(applyButton).toBeEnabled();
+  await expect(hint).toHaveCount(0);
+
+  await stopDesktopServer();
+  try {
+    // Trigger TanStack Query's visibilitychange refetch against the stopped server while keeping preview rows loaded
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+    await expect(page.getByRole('status', { name: 'Connection' })).toContainText(
+      "Can't reach Allotment",
+    );
+    // Refused case while saving is paused
+    await expect(applyButton).toBeDisabled();
+    await expect(hint).toBeVisible();
+  } finally {
+    await startDesktopServer();
+  }
+
+  // Reconnects on its own and re-enables Apply
+  await expect(applyButton).toBeEnabled({ timeout: 15_000 });
+  await expect(hint).toHaveCount(0);
+  await applyButton.click();
+  await expect(dialog).toContainText('Updated 1 transaction.');
 });

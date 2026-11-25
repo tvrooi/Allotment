@@ -24,6 +24,7 @@ import { useRuleLookups } from '../components/rules/useRuleLookups';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useModalValue } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { EmptyState } from '../components/ui/EmptyState';
 import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { useOpenFromLink } from '../hooks/useOpenFromLink';
@@ -31,6 +32,7 @@ import RowMenu from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { actionText, conditionText, ruleSearchText, type RuleLookups } from '../utils/ruleFormat';
 import type { Rule, RuleInput } from '../types';
+import { PAGE_GUTTER } from '../components/ui/pageGutter';
 
 type Editing = { key: string; rule?: Rule; initial?: RuleInput; title?: string };
 type Applying = { key: string; ruleIds?: string[]; title: string; scope: 'uncategorized' | 'all' };
@@ -271,7 +273,7 @@ export default function RulesPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface">
-      <div className="px-6 py-4 border-b border-border shrink-0">
+      <div className={`py-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div data-guide="rules.header">
             <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
@@ -288,13 +290,16 @@ export default function RulesPage() {
               <div className="relative max-md:w-full">
                 <Search
                   size={14}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
                 />
-                <input
+                <Input
+                  fieldSize="sm"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search rules…"
-                  className="w-44 max-md:w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-full bg-surface text-text focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
+                  aria-label="Search rules"
+                  className="w-44 max-md:w-full pl-8"
                 />
               </div>
             )}
@@ -343,7 +348,7 @@ export default function RulesPage() {
             }
           />
         ) : (
-          <div className="max-w-5xl mx-auto px-6 py-4">
+          <div className={`max-w-5xl mx-auto py-4 ${PAGE_GUTTER}`}>
             <p className="text-xs text-text-tertiary mb-2">
               {search
                 ? `${shown.length} of ${localRules.length} rules`

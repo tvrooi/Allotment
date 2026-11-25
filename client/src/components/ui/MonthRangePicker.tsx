@@ -1,272 +1,267 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { format, parseISO } from 'date-fns';
-import { CalendarRange, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatMonth } from '../../utils/dateRange';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** Earliest year the arrows go back to ("All" starts in 2020) */
-const MIN_YEAR = 2000;
-const GAP = 6;
-const EDGE = 8;
+import { useId, useRef, useState, type ReactNode } from 'react';
+import { CalendarRange } from 'lucide-react';
+import { Button as AriaButton, Dialog, DialogTrigger, Group, Popover } from 'react-aria-components';
+import { useIsPhone } from '../../hooks/useIsPhone';
+import { thisMonthIso } from '../../utils/calendarDay';
+import {
+  formatMonth,
+  formatMonthRange,
+  isMonth,
+  pickRangeMonth,
+  type MonthRange,
+} from '../../utils/dateRange';
+import { Button } from './Button';
+import { describedByIds, FieldLines } from './Field';
+import { fieldHeights, pickerGroupBase, pickerPopoverClass } from './fieldClasses';
+import { Label } from './Label';
+import { MonthGrid } from './MonthPicker';
+import { supportsMonthInput } from './nativeInput';
 
 interface Props {
   /** 'yyyy-MM' */
   from: string;
   /** 'yyyy-MM' */
   to: string;
+  /** Called only when the range changed, with from on or before to and neither after max */
   onChange: (from: string, to: string) => void;
   /** Latest selectable month, 'yyyy-MM' (defaults to the current month) */
   max?: string;
-  /** Open the popover on mount, e.g. right after choosing the "Custom" preset */
+  /** Open the popover on mount, e.g. right after choosing the "Custom" preset (desktop only) */
   defaultOpen?: boolean;
+  /** A visible label; without one the range text alone names the control */
+  label?: string;
+  description?: ReactNode;
+  errorMessage?: ReactNode;
+  isDisabled?: boolean;
+  isInvalid?: boolean;
+  /** Focusable and announced, but the months cannot change and the grids do not open */
+  isReadOnly?: boolean;
+  id?: string;
+  /** Added to the outer box */
+  className?: string;
 }
 
-const ym = (year: number, monthIdx: number) => `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
-const rangeLabel = (from: string, to: string) =>
-  from === to ? formatMonth(from) : `${formatMonth(from)} – ${formatMonth(to)}`;
-
 /**
- * Below the button when it fits, else above; if neither fits (tall on a phone), as close to the
- * button as it can be while staying on screen
+ * MonthPicker's trigger group at the small control height (32 px, beside `sm` buttons): its
+ * three users sit in toolbars, so it is as wide as its text rather than the whole row
  */
-function placeNear(anchor: DOMRect, width: number, height: number) {
-  const left = Math.max(EDGE, Math.min(anchor.left, window.innerWidth - width - EDGE));
-  const lowest = Math.max(EDGE, window.innerHeight - height - EDGE);
-  if (anchor.top - GAP - height >= EDGE && anchor.bottom + GAP + height > window.innerHeight - EDGE)
-    return { top: anchor.top - GAP - height, left };
-  return { top: Math.min(anchor.bottom + GAP, lowest), left };
-}
+const rangeGroupClass = [
+  pickerGroupBase,
+  'w-fit max-w-full pl-3 pr-3 text-xs',
+  fieldHeights.sm,
+].join(' ');
 
-function MonthGrid({
-  title,
-  value,
-  onPick,
-  isDisabled,
-}: {
-  title: string;
-  value: string;
-  onPick: (v: string) => void;
-  isDisabled: (v: string) => boolean;
-}) {
-  const [year, setYear] = useState(() => Math.max(MIN_YEAR, parseInt(value.slice(0, 4), 10) || 0));
-  const navBtn =
-    'p-1 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded text-text-tertiary hover:text-text-secondary hover:bg-hover transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
-
-  return (
-    <div role="group" aria-label={title} className="w-[196px]">
-      <p className="text-xs font-medium text-text-tertiary mb-2">{title}</p>
-      <div className="flex items-center justify-between mb-2">
-        <button
-          type="button"
-          className={navBtn}
-          disabled={year <= MIN_YEAR}
-          onClick={() => setYear(year - 1)}
-          aria-label="Previous year"
-        >
-          <ChevronLeft size={14} />
-        </button>
-        <span className="text-sm font-semibold text-text tabular-nums">{year}</span>
-        <button
-          type="button"
-          className={navBtn}
-          onClick={() => setYear(year + 1)}
-          aria-label="Next year"
-        >
-          <ChevronRight size={14} />
-        </button>
-      </div>
-      <div className="grid grid-cols-3 gap-1">
-        {MONTHS.map((m, i) => {
-          const v = ym(year, i);
-          const selected = v === value;
-          const disabled = isDisabled(v);
-          return (
-            <button
-              key={m}
-              type="button"
-              disabled={disabled}
-              aria-pressed={selected}
-              aria-label={format(parseISO(`${v}-01`), 'MMMM yyyy')}
-              onClick={() => onPick(v)}
-              className={`py-1.5 max-md:min-h-11 text-xs font-medium rounded-md transition-colors ${
-                selected
-                  ? 'bg-brand-600 text-brand-contrast'
-                  : disabled
-                    ? 'text-text-disabled cursor-not-allowed'
-                    : 'text-text-secondary hover:bg-hover cursor-pointer'
-              }`}
-            >
-              {m}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+/** Phone From/To box: shows short month text behind a full-size transparent native month input */
+const phoneBoxClass = `${pickerGroupBase} relative w-full min-w-0 min-h-11 px-3 justify-between text-base`;
 
 /**
- * Compact "Jan 2025 – Dec 2025" button with a from/to month-grid popover. The popover is
- * portaled to the body so a sidebar, scroll area or dialog can't cut it off.
+ * A month range (02-UI-SPEC.md, per-control item 11; D-04, D-11). On desktop, a compact
+ * "Jan 2025 – Nov 2026" trigger opening two of MonthPicker's month grids, From and To, so the two
+ * controls cannot drift apart; picks are a draft until Done. On phones (under 768 px), two native
+ * month inputs, where the phone's own picker is the draft; a browser without a native month input
+ * (supportsMonthInput) keeps the grids, stacked to fit the phone. Every pick goes through
+ * pickRangeMonth, so the range never ends before it starts and never passes max.
  */
 export function MonthRangePicker({
   from,
   to,
   onChange,
-  max = format(new Date(), 'yyyy-MM'),
+  max = thisMonthIso(),
   defaultOpen = false,
+  label,
+  description,
+  errorMessage,
+  isDisabled = false,
+  isInvalid = false,
+  isReadOnly = false,
+  id,
+  className = '',
 }: Props) {
+  const isPhone = useIsPhone();
   const [open, setOpen] = useState(defaultOpen);
-  // Picks are a draft until Done; closing any other way discards them
-  const [draftFrom, setDraftFrom] = useState(from);
-  const [draftTo, setDraftTo] = useState(to);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [draft, setDraft] = useState<MonthRange>({ from, to });
+  // Neither grid steps past the year of the last month either can choose (02-REVIEW IN-03)
+  const maxYear = isMonth(max) ? Number(max.split('-')[0]) : undefined;
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const popRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const ids = useId();
+  const error = isInvalid ? errorMessage : undefined;
+  const describedBy = describedByIds(ids, description, error);
+  const labelId = `${ids}-label`;
 
-  const dirty = draftFrom !== from || draftTo !== to;
-
-  // The draft starts from the saved months each time it opens
-  function openPicker() {
-    setDraftFrom(from);
-    setDraftTo(to);
-    setOpen(true);
+  // A browser with no native month input keeps the grids on phones too (02-REVIEW WR-02)
+  if (isPhone && supportsMonthInput()) {
+    // A cleared or half-typed month reads as '', which pickRangeMonth refuses: the inputs stay
+    // on the saved range
+    const change = (side: 'from' | 'to', month: string) => {
+      const next = pickRangeMonth({ from, to }, side, month, max);
+      if (next.from !== from || next.to !== to) onChange(next.from, next.to);
+    };
+    const input = (side: 'from' | 'to', name: string) => {
+      const inputId = side === 'from' && id ? id : `${ids}-${side}`;
+      const value = side === 'from' ? from : to;
+      const formatted = value ? formatMonth(value) : '';
+      return (
+        <div className="flex flex-1 min-w-0 flex-col gap-1">
+          <Label htmlFor={inputId}>{name}</Label>
+          <div
+            data-disabled={isDisabled || undefined}
+            data-invalid={isInvalid || undefined}
+            data-readonly={isReadOnly || undefined}
+            className={phoneBoxClass}
+          >
+            {/* Input comes first with `peer` so keyboard focus shows native segment editing and hides the display span (WR-03) */}
+            <input
+              type="month"
+              id={inputId}
+              value={value}
+              min={side === 'to' ? from : undefined}
+              max={max}
+              onChange={(e) => change(side, e.target.value)}
+              disabled={isDisabled}
+              readOnly={isReadOnly}
+              aria-invalid={isInvalid || undefined}
+              aria-describedby={describedBy}
+              className={`peer absolute inset-0 z-10 h-full w-full min-h-11 rounded-md bg-transparent px-3 text-base text-text outline-none opacity-0 focus-visible:opacity-100 ${
+                isDisabled ? 'cursor-not-allowed' : isReadOnly ? 'cursor-default' : 'cursor-pointer'
+              }`}
+            />
+            <span
+              aria-hidden="true"
+              data-month-display={side}
+              className={`min-w-0 truncate tabular-nums peer-focus-visible:invisible ${formatted ? '' : 'text-text-tertiary'}`}
+            >
+              {formatted || 'Select month'}
+            </span>
+            <CalendarRange
+              size={16}
+              aria-hidden="true"
+              className={`shrink-0 peer-focus-visible:invisible ${isDisabled ? 'text-text-disabled' : 'text-text-tertiary'}`}
+            />
+          </div>
+        </div>
+      );
+    };
+    return (
+      <div className={`flex flex-col gap-1 w-full ${className}`}>
+        {label && (
+          <Label elementType="span" id={labelId}>
+            {label}
+          </Label>
+        )}
+        <div
+          role="group"
+          aria-label={label ? undefined : 'Months'}
+          aria-labelledby={label ? labelId : undefined}
+          className="flex gap-2"
+        >
+          {input('from', 'From')}
+          {input('to', 'To')}
+        </div>
+        <FieldLines id={ids} description={description} error={error} />
+      </div>
+    );
   }
 
-  function close(refocus = false) {
-    setOpen(false);
-    setPos(null);
-    if (refocus) triggerRef.current?.focus();
+  // Back to the trigger, unless the person pressed outside onto something that took focus
+  function refocus() {
+    const active = document.activeElement;
+    if (!active || active === document.body || dialogRef.current?.contains(active))
+      triggerRef.current?.focus();
+  }
+
+  function openChange(next: boolean) {
+    // Read-only never opens; the draft starts from the saved months each time it does
+    if (next && isReadOnly) return;
+    if (next) setDraft({ from, to });
+    else refocus();
+    setOpen(next);
   }
 
   function apply() {
-    if (dirty) onChange(draftFrom, draftTo);
-    close(true);
+    if (draft.from !== from || draft.to !== to) onChange(draft.from, draft.to);
+    openChange(false);
   }
 
-  // Measured before paint, so it never flashes in the wrong place
-  useLayoutEffect(() => {
-    if (!open) return;
-    function place() {
-      if (!triggerRef.current || !popRef.current) return;
-      const { offsetWidth, offsetHeight } = popRef.current;
-      setPos(placeNear(triggerRef.current.getBoundingClientRect(), offsetWidth, offsetHeight));
-    }
-    place();
-    const onScroll = (e: Event) => {
-      if (!popRef.current?.contains(e.target as Node)) place();
-    };
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', onScroll, true);
-    return () => {
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', onScroll, true);
-    };
-  }, [open]);
-
-  // Keyboard users start on the selected From month (once it's placed: hidden can't take focus)
-  const placed = pos !== null;
-  useEffect(() => {
-    if (open && placed) {
-      popRef.current
-        ?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')
-        ?.focus({ preventScroll: true });
-    }
-  }, [open, placed]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      // The button toggles the popover itself
-      if (popRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
-      close();
-    };
-    // Captured first, so Escape closes only the picker and not a dialog it's in
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      close(true);
-    };
-    document.addEventListener('mousedown', onDown);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      window.removeEventListener('keydown', onKey, true);
-    };
-  }, [open]);
+  const pick = (side: 'from' | 'to') => (month: string) =>
+    setDraft((range) => pickRangeMonth(range, side, month, max));
+  const valueId = `${ids}-value`;
 
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => (open ? close() : openPicker())}
-        className={`flex items-center gap-1.5 px-2.5 py-1 max-md:min-h-11 text-xs font-medium border rounded-md transition-colors cursor-pointer ${
-          open
-            ? 'border-brand-600 text-brand-600'
-            : 'border-border text-text-secondary hover:bg-hover'
-        }`}
+    <div className={`flex flex-col gap-1 ${className}`}>
+      {label && (
+        <Label elementType="span" id={labelId}>
+          {label}
+        </Label>
+      )}
+      <Group
+        isDisabled={isDisabled}
+        isInvalid={isInvalid}
+        isReadOnly={isReadOnly}
+        className={rangeGroupClass}
       >
-        <CalendarRange size={13} />
-        <span className="tabular-nums whitespace-nowrap">{rangeLabel(from, to)}</span>
-        <ChevronDown size={12} className="text-text-tertiary" />
-      </button>
-
-      {open &&
-        createPortal(
-          <div
-            ref={popRef}
-            role="dialog"
-            aria-label="Choose months"
-            className="fixed z-[60] max-h-[calc(100dvh-16px)] overflow-y-auto bg-surface border border-border rounded-lg shadow-hover p-4 animate-menu-in"
-            style={pos ?? { top: 0, left: 0, visibility: 'hidden' }}
+        <DialogTrigger isOpen={open && !isReadOnly} onOpenChange={openChange}>
+          <AriaButton
+            ref={triggerRef}
+            id={id}
+            aria-haspopup="dialog"
+            // "{Label} Jan 2025 – Nov 2026" with a label; the range text alone without one
+            aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
+            aria-describedby={describedBy}
+            isDisabled={isDisabled}
+            className="flex min-w-0 h-full items-center gap-2 font-medium text-text-secondary outline-none disabled:cursor-not-allowed"
           >
-            <div className="flex gap-5 max-md:flex-col max-md:gap-3">
-              <MonthGrid
-                title="From"
-                value={draftFrom}
-                onPick={(v) => {
-                  setDraftFrom(v);
-                  if (v > draftTo) setDraftTo(v);
-                }}
-                isDisabled={(v) => v > max}
-              />
-              <div className="w-px max-md:w-auto max-md:h-px bg-border-light" />
-              <MonthGrid
-                title="To"
-                value={draftTo}
-                onPick={setDraftTo}
-                isDisabled={(v) => v < draftFrom || v > max}
-              />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-border-light">
-              <span className="text-xs text-text-tertiary tabular-nums">
-                {rangeLabel(draftFrom, draftTo)}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => close(true)}
-                  className="px-3 py-1 max-md:min-h-11 max-md:min-w-11 text-xs font-medium text-text-secondary border border-border rounded-md hover:bg-hover transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={apply}
-                  className="px-3 py-1 max-md:min-h-11 max-md:min-w-11 text-xs font-medium text-brand-contrast bg-brand-600 rounded-md hover:bg-brand-700 transition-colors cursor-pointer"
-                >
-                  Done
-                </button>
+            <CalendarRange size={14} aria-hidden="true" className="shrink-0 text-text-tertiary" />
+            <span id={valueId} className="tabular-nums whitespace-nowrap">
+              {formatMonthRange(from, to)}
+            </span>
+          </AriaButton>
+          <Popover
+            placement="bottom start"
+            offset={4}
+            className={`${pickerPopoverClass} max-md:overflow-y-auto`}
+          >
+            <Dialog ref={dialogRef} aria-label="Choose months" className="p-3 outline-none">
+              {/* Stacked on a phone, which shows the grids only without a native month input */}
+              <div className="flex gap-4 max-md:flex-col">
+                <div className="w-[200px]">
+                  <MonthGrid
+                    label="From"
+                    value={draft.from}
+                    onPick={pick('from')}
+                    isDisabled={(month) => month > max}
+                    maxYear={maxYear}
+                    focusOnOpen
+                  />
+                </div>
+                <div className="w-[200px]">
+                  <MonthGrid
+                    label="To"
+                    value={draft.to}
+                    onPick={pick('to')}
+                    isDisabled={(month) => month < draft.from || month > max}
+                    maxYear={maxYear}
+                  />
+                </div>
               </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-    </>
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-border-light">
+                <span className="text-xs text-text-tertiary tabular-nums">
+                  {formatMonthRange(draft.from, draft.to)}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => openChange(false)}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={apply}>
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </Dialog>
+          </Popover>
+        </DialogTrigger>
+      </Group>
+      <FieldLines id={ids} description={description} error={error} />
+    </div>
   );
 }

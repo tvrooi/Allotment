@@ -1,11 +1,13 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useId, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from '../../api/budget';
 import type { BudgetSummary } from '../../types';
 import { useSetBudget } from '../../hooks/useBudget';
 import { useCanSave } from '../../hooks/useConnection';
-import { formatCurrency, parseCents, isUnreadableAmount } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { Button } from '../ui/Button';
+import { CurrencyInput } from '../ui/CurrencyInput';
+import { Label } from '../ui/Label';
 import { Modal } from '../ui/Modal';
 import { GuideLink } from '../guide/GuideLink';
 import { formatAsOfDay } from '../../utils/dates';
@@ -25,13 +27,19 @@ export function CardPayments({
     setBudget = useSetBudget();
   const [open, setOpen] = useState(false),
     [accountId, setAccount] = useState(''),
-    [amount, setAmount] = useState('0');
+    [initialCents, setInitialCents] = useState(0),
+    [initialDraft, setInitialDraft] = useState<number | null>(0),
+    [setupVersion, setSetupVersion] = useState(0);
   const [preview, setPreview] = useState<api.CardSetupPreview | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   const [funding, setFunding] = useState(''),
-    [fundAmount, setFundAmount] = useState(''),
+    [fundCents, setFundCents] = useState(0),
+    [fundDraft, setFundDraft] = useState<number | null>(0),
+    [fundVersion, setFundVersion] = useState(0),
     [fundPreview, setFundPreview] = useState<api.CardFundingPreview | null>(null);
+  const fundId = useId();
+  const setupId = useId();
   const data = useQuery({ queryKey: ['card-funding'], queryFn: api.getCardFunding });
   const refresh = () => {
     for (const key of ['budget', 'budget-summary', 'card-funding', 'payday'])
@@ -51,19 +59,13 @@ export function CardPayments({
       setBusy(false);
     }
   }
-  const number = (raw: string) => {
-    if (isUnreadableAmount(raw)) throw new Error('Enter a valid amount');
-    const n = parseCents(raw);
-    if (n < 0 || !Number.isSafeInteger(n)) throw new Error('Enter a nonnegative amount');
-    return n;
-  };
   if (!data.data?.accounts.length) return null;
   return (
     <section
       aria-label="Card payment funding"
       className="mb-4 bg-surface rounded-lg shadow-card border border-border-light p-4 text-sm space-y-3"
     >
-      <h2 className="font-semibold text-text">Card payments</h2>
+      <h2 className="text-base font-semibold text-text">Card payments</h2>
       <p className="text-xs text-text-secondary">
         Payment reserves as of {summary?.asOf ? formatAsOfDay(summary.asOf) : 'today'}. Record bank
         repayments as linked transfers.{' '}
@@ -101,7 +103,9 @@ export function CardPayments({
             }
             onClick={() => {
               setFunding(card.accountId);
-              setFundAmount('');
+              setFundCents(0);
+              setFundDraft(0);
+              setFundVersion((v) => v + 1);
               setFundPreview(null);
               setError('');
             }}
@@ -110,16 +114,20 @@ export function CardPayments({
           </Button>
           {funding === card.accountId && (
             <form
+              noValidate
               className="space-y-2"
               onSubmit={(e) => {
                 e.preventDefault();
                 run(async () => {
                   if (loading || summary?.month !== month)
                     throw new Error('Wait for this month to finish loading');
-                  const value = number(fundAmount);
-                  if (value <= 0) throw new Error('Enter a positive amount');
+                  if (fundDraft === null) throw new Error('Enter a valid amount');
+                  if (fundDraft < 0) throw new Error('Enter a nonnegative amount');
+                  if (fundDraft === 0) throw new Error('Enter a positive amount');
                   if (fundPreview === null) {
-                    setFundPreview(await api.previewCardAssignment(card.accountId, month, value));
+                    setFundPreview(
+                      await api.previewCardAssignment(card.accountId, month, fundDraft),
+                    );
                     return;
                   }
                   await setBudget.mutateAsync({
@@ -133,20 +141,28 @@ export function CardPayments({
                 });
               }}
             >
-              <label className="block">
-                Additional payment funding
-                <input
-                  disabled={busy}
-                  aria-label={`Additional funding for ${card.name}`}
-                  className="block w-full border border-border rounded bg-surface p-2"
-                  value={fundAmount}
-                  inputMode="decimal"
-                  onChange={(e) => {
-                    setFundAmount(e.target.value);
-                    setFundPreview(null);
+              <div className="grid gap-1">
+                <Label htmlFor={fundId}>Additional payment funding</Label>
+                <CurrencyInput
+                  key={fundVersion}
+                  id={fundId}
+                  value={fundCents}
+                  allowNegative
+                  onChange={(next) => {
+                    setFundCents(next);
+                    setFundDraft(next);
                   }}
+                  onTextChange={(next) => {
+                    setFundDraft(next);
+                    setFundPreview(null);
+                    if (next !== null) setError('');
+                  }}
+                  readOnly={busy}
+                  aria-busy={busy || undefined}
+                  aria-label={`Additional funding for ${card.name}`}
+                  className="text-right tabular-nums"
                 />
-              </label>
+              </div>
               {fundPreview !== null && (
                 <p role="status">
                   Payment availability after assignment: {formatCurrency(fundPreview.available)}.
@@ -175,7 +191,9 @@ export function CardPayments({
               disabled={!canSave || busy}
               onClick={() => {
                 setAccount(a.id);
-                setAmount('0');
+                setInitialCents(0);
+                setInitialDraft(0);
+                setSetupVersion((v) => v + 1);
                 setPreview(null);
                 setError('');
                 setOpen(true);
@@ -192,6 +210,7 @@ export function CardPayments({
       )}
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Review card payment funding">
         <form
+          noValidate
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
@@ -201,7 +220,11 @@ export function CardPayments({
                 setOpen(false);
                 setPreview(null);
                 refresh();
-              } else setPreview(await api.previewCardSetup(accountId, number(amount)));
+              } else {
+                if (initialDraft === null) throw new Error('Enter a valid amount');
+                if (initialDraft < 0) throw new Error('Enter a nonnegative amount');
+                setPreview(await api.previewCardSetup(accountId, initialDraft));
+              }
             });
           }}
         >
@@ -209,20 +232,28 @@ export function CardPayments({
             Existing purchases remain part of opening debt. This setup creates a payment envelope
             and changes how future purchases reserve cash.
           </p>
-          <label className="block">
-            Cash to reserve for existing debt
-            <input
-              disabled={busy}
-              aria-label="Initial card payment funding"
-              className="block w-full border border-border rounded bg-surface p-2"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setPreview(null);
+          <div className="grid gap-1">
+            <Label htmlFor={setupId}>Cash to reserve for existing debt</Label>
+            <CurrencyInput
+              key={setupVersion}
+              id={setupId}
+              value={initialCents}
+              allowNegative
+              onChange={(next) => {
+                setInitialCents(next);
+                setInitialDraft(next);
               }}
+              onTextChange={(next) => {
+                setInitialDraft(next);
+                setPreview(null);
+                if (next !== null) setError('');
+              }}
+              readOnly={busy}
+              aria-busy={busy || undefined}
+              aria-label="Initial card payment funding"
+              className="text-right tabular-nums"
             />
-          </label>
+          </div>
           {preview && (
             <div role="status" className="space-y-2">
               <p>Existing debt: {formatCurrency(preview.card.debt)}</p>

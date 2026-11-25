@@ -1,4 +1,15 @@
-import { test, expect, open, isoDay, typeAmount } from './fixtures';
+import {
+  test,
+  expect,
+  open,
+  isoDay,
+  fillDate,
+  thisMonth,
+  typeAmount,
+  setToggle,
+  categoryOption,
+  chooseOption,
+} from './fixtures';
 import type { Api } from './fixtures';
 
 // Multiple currencies: the budget has one, accounts can each have their own, and the budget
@@ -15,7 +26,7 @@ test('a budget with one currency sees nothing new', async ({ page, api }) => {
   await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add account' });
   // No currency to pick until asked for
-  await expect(dialog.getByRole('combobox', { name: 'Currency' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: /\bCurrency$/ })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Choose a currency' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 
@@ -28,7 +39,7 @@ test('a budget with one currency sees nothing new', async ({ page, api }) => {
 test('choosing the budget currency, then adding accounts in others', async ({ page, api }) => {
   await api.createAccount('Girokonto', 100_000);
   await open(page, '/settings?tab=currencies');
-  await page.getByRole('combobox', { name: 'Budget currency' }).selectOption('EUR');
+  await chooseOption(page.getByRole('button', { name: /Budget currency/ }), 'EUR · Euro');
   await page.getByRole('button', { name: 'Use this currency' }).click();
   await expect(page.getByRole('heading', { name: 'Exchange rates' })).toBeVisible();
   await expect.poll(async () => (await api.call('GET', '/currency')).currency).toBe('EUR');
@@ -38,7 +49,7 @@ test('choosing the budget currency, then adding accounts in others', async ({ pa
   await page.getByRole('main').getByRole('button', { name: 'Add account' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add account' });
   await dialog.getByRole('textbox', { name: 'Account name' }).fill('Tokyo cash');
-  await dialog.getByRole('combobox', { name: 'Currency' }).selectOption('JPY');
+  await chooseOption(dialog.getByRole('button', { name: /\bCurrency$/ }), 'JPY · Japanese Yen');
   const balance = dialog.getByRole('textbox', { name: 'Current balance' });
   await typeAmount(balance, '12.5');
   await expect(balance).toHaveAttribute('aria-invalid', 'true');
@@ -63,7 +74,8 @@ test('the złoty is written after the amount, the dollar before', async ({ page,
   await api.createAccount('Konto', 123_456, 'checking', { currency: 'PLN' });
   await open(page, '/accounts');
   const main = page.getByRole('main');
-  await expect(main.getByText('$1,234.56').first()).toBeVisible();
+  // The phone-only net worth line comes first in the page and is hidden at this width
+  await expect(main.getByText('$1,234.56').filter({ visible: true }).first()).toBeVisible();
   await expect(main.getByText(/^1,234\.56\szł$/)).toBeVisible();
 });
 
@@ -79,10 +91,10 @@ test('money moved between currencies keeps both amounts and the budget unchanged
   await open(page, '/transactions?add=1');
   const dialog = page.getByRole('dialog', { name: 'Add transaction' });
   await typeAmount(dialog.getByLabel('Amount', { exact: true }), '100');
-  await dialog.getByRole('button', { name: /Select account/ }).click();
-  await dialog.getByRole('button', { name: /Girokonto/ }).click();
+  await dialog.getByRole('combobox', { name: 'Account' }).click();
+  await dialog.getByRole('option', { name: /Girokonto/ }).click();
   await dialog.getByRole('button', { name: /^Category:/ }).click();
-  await dialog.getByRole('button', { name: 'Transfer: US checking' }).click();
+  await categoryOption(dialog, 'Transfer: US checking').click();
 
   // What arrives is filled in at the day's rate, and can be typed over (the bank's own rate)
   const arrived = dialog.getByRole('textbox', { name: 'Amount in USD' });
@@ -122,9 +134,22 @@ test('a purchase without a rate is flagged until one is added', async ({ page, a
   await expect(page.getByText('No rate').first()).toBeVisible();
 
   await open(page, '/settings?tab=currencies');
-  await page.getByRole('combobox', { name: 'Currency', exact: true }).selectOption('GBP');
+  // Scope to the Add rate form rather than relying on letter case against "Budget currency" (IN-04)
+  const rateForm = page.locator('form', { has: page.getByRole('button', { name: 'Add rate' }) });
+  const rateCurrency = rateForm.getByRole('button', { name: /Currency/i });
+  await expect(rateCurrency).toBeVisible();
+  await expect(rateCurrency).toHaveAttribute('aria-haspopup', 'listbox');
+  await chooseOption(rateCurrency, 'GBP · British Pound');
   await page.getByRole('textbox', { name: /1 GBP in EUR/ }).fill('1,25');
-  await page.getByRole('button', { name: 'Add rate' }).click();
+  const addRate = rateForm.getByRole('button', { name: 'Add rate' });
+  const day = rateForm.getByRole('group', { name: 'Day' }).locator('[data-type="day"]');
+  await day.click();
+  for (let i = 0; i < 4 && (await day.getAttribute('data-placeholder')) === null; i++)
+    await day.press('Backspace');
+  await expect(day).toHaveAttribute('data-placeholder', 'true');
+  await expect(addRate).toBeDisabled();
+  await fillDate(rateForm, 'Day', isoDay());
+  await addRate.click();
   await expect(page.getByText('1 GBP = 1.25 EUR', { exact: true })).toBeVisible();
 
   await open(page, '/budget');
@@ -147,10 +172,145 @@ test('ECB rates download only when turned on', async ({ page, api }) => {
 
   await open(page, '/settings?tab=currencies');
   const download = page.getByRole('checkbox', { name: 'Download ECB reference rates' });
-  await download.click();
+  await setToggle(download);
   await expect(download).toBeChecked();
   await page.getByRole('button', { name: 'Download now' }).click();
   await expect(page.getByText('1 PLN = 0.235294 EUR')).toBeVisible();
   const [tx] = await api.call('GET', `/transactions?account_id=${zloty.id}`);
   expect(tx).toMatchObject({ mainAmount: -2_000, mainAmountSource: 'rate' });
+});
+
+test('amounts drawn before the budget currency arrives still use its symbol', async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'AUD');
+  const checking = await api.createAccount('Checking', 0);
+  await api.createTransaction({
+    accountId: checking.id,
+    date: isoDay(),
+    amount: 300_000,
+    payeeName: 'Employer',
+    categoryId: (await api.category('Paychecks')).id,
+  });
+  const groceries = await api.category('Groceries');
+  await api.call('PUT', `/budget/${thisMonth()}/${groceries.id}`, { budgeted: 40_000 });
+
+  // The currency answers after the budget, as on a slow first load
+  await page.route('**/api/currency', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await route.continue();
+  });
+  await open(page, '/budget');
+  // The budget's own dollar is plain $ even on this American device, in the table and the summary alike
+  const ready = page.getByRole('status', { name: 'Ready to assign' });
+  await expect(ready).toContainText('$2,600');
+  await expect(ready).not.toContainText('A$');
+  await expect(page.getByRole('button', { name: /^Assigned to Groceries: \$400/ })).toBeVisible();
+});
+
+test("a payee's page says when a purchase without a rate is left out (#235)", async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'EUR');
+  const pounds = await api.createAccount('UK current account', 0, 'checking', { currency: 'GBP' });
+  await api.createTransaction({
+    accountId: pounds.id,
+    date: isoDay(),
+    amount: -4_000,
+    payeeName: 'Corner shop',
+  });
+  const payee = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Corner shop',
+  )!;
+  await open(page, `/payees/${payee.id}`);
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText(
+    '1 without a rate left out',
+  );
+  const chart = page.getByRole('region', { name: 'Spending by month' });
+  await expect(chart).toContainText('1 without a rate left out');
+  // Its only spending has no rate yet: that is not "no spending"
+  await expect(chart).not.toContainText('No spending');
+});
+
+test("the payee chart's note counts only what the chart would show (#235)", async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'EUR');
+  const pounds = await api.createAccount('UK current account', 0, 'checking', { currency: 'GBP' });
+  const old = new Date();
+  old.setMonth(old.getMonth() - 14);
+  // A deposit, long ago: neither spending nor in the chart's year
+  await api.createTransaction({
+    accountId: pounds.id,
+    date: old.toISOString().slice(0, 10),
+    amount: 4_000,
+    payeeName: 'Corner shop',
+  });
+  const payee = (await api.call<{ id: string; name: string }[]>('GET', '/payees')).find(
+    (p) => p.name === 'Corner shop',
+  )!;
+  await open(page, `/payees/${payee.id}`);
+  const chart = page.getByRole('region', { name: 'Spending by month' });
+  await expect(chart).toContainText('No spending in the last 12 months');
+  await expect(chart).not.toContainText('without a rate');
+});
+
+test('on a phone, CurrencySelect renders the native select (D-04)', async ({ page, api }) => {
+  await api.createAccount('Checking', 10_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '/settings?tab=currencies');
+  const field = page.getByRole('combobox', { name: 'Budget currency' });
+  await expect(field).toBeVisible();
+  expect(await field.evaluate((el) => el.tagName)).toBe('SELECT');
+  await chooseOption(field, 'EUR · Euro');
+  await page.getByRole('button', { name: 'Use this currency' }).click();
+  await expect.poll(async () => (await api.call('GET', '/currency')).currency).toBe('EUR');
+});
+
+test('CurrencyDifference picks from filtered categories via CategoryPicker', async ({
+  page,
+  api,
+}) => {
+  await setCurrency(api, 'EUR');
+  const groceries = await api.category('Groceries');
+  // Seed a hidden expense category to verify CurrencyDifference preserves hidden choices (WR-04)
+  const hiddenCat = await api.call<{ id: string }>('POST', '/categories', {
+    groupId: groceries.groupId,
+    name: 'Retired FX',
+  });
+  await api.call('PUT', `/categories/${hiddenCat.id}`, { hidden: 1 });
+
+  const usd = await api.createAccount('US checking', 0, 'checking', { currency: 'USD' });
+  await addRate(api, 'EUR', 'USD', '1.0', isoDay(-5));
+  await api.createTransaction({
+    accountId: usd.id,
+    date: isoDay(-5),
+    amount: 10_000,
+    payeeName: 'Transfer in',
+  });
+  // USD weakened vs EUR: loss (-20 EUR), so only expense categories and No category are offered
+  await addRate(api, 'EUR', 'USD', '1.25', isoDay());
+
+  await open(page, `/accounts/${usd.id}`);
+  await page.getByRole('button', { name: /from the rate/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Currency difference' });
+  const category = dialog.getByRole('button', { name: 'Category: No category (net worth only)' });
+  await expect(category).toBeVisible();
+  await category.click();
+  await expect(categoryOption(dialog, 'No category (net worth only)')).toBeVisible();
+  await expect(categoryOption(dialog, 'Groceries')).toBeVisible();
+  await expect(categoryOption(dialog, 'Retired FX')).toBeVisible();
+  // Loss must not offer income categories or inline category creation (D-15 / WR-04)
+  await expect(categoryOption(dialog, 'Paychecks')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Create new category' })).toHaveCount(0);
+  await categoryOption(dialog, 'Groceries').click();
+  await expect(dialog.getByRole('button', { name: 'Category: Groceries' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Record difference' }).click();
+  await expect(dialog).toBeHidden();
+
+  const txs = await api.call<any[]>('GET', `/transactions?account_id=${usd.id}`);
+  expect(txs.some((t) => t.isAdjustment === 1 && t.categoryId === groceries.id)).toBe(true);
 });

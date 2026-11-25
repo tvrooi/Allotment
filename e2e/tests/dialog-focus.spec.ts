@@ -76,6 +76,22 @@ for (const phone of [false, true]) {
     expect(accounts.find((a) => a.id === account.id)?.closedAt).toBeNull();
   });
 
+  test(`Add transaction opens on Amount and gives focus back${where}`, async ({ page, api }) => {
+    if (phone) await page.setViewportSize({ width: 390, height: 844 });
+    await api.createAccount('Everyday', 100_000);
+    await open(page, '/dashboard');
+    // Desktop: the sidebar's button; phones: the tab bar's centre Add
+    const add = (
+      phone ? page.getByRole('navigation', { name: 'Main pages' }) : page.getByRole('complementary')
+    ).getByRole('button', { name: 'Add a transaction' });
+    await add.click();
+    const dialog = page.getByRole('dialog', { name: 'Add transaction' });
+    await expect(dialog.getByLabel('Amount', { exact: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(add).toBeFocused();
+  });
+
   test(`a dialog from a row menu returns focus to that menu${where}`, async ({ page, api }) => {
     if (phone) await page.setViewportSize({ width: 390, height: 844 });
     await api.call('POST', '/goals', { name: 'Holiday', targetAmount: 200_000 });

@@ -8,12 +8,19 @@ import { DemoFirstEditToast } from '../demo/DemoFirstEditToast';
  * render on <body>, outside the app, so they're still announced and usable while an open
  * dialog makes the app inert (utils/inertRoot.ts).
  */
-export function Toasts() {
+export function Toasts({ aboveTabBar = false }: { aboveTabBar?: boolean }) {
   return createPortal(
-    <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] inset-x-0 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none">
-      <CategoryFollowupToast />
-      <UndoToast />
-      <DemoFirstEditToast />
+    // Phones: clear of the tab bar (PhoneTabBar.tsx, 3.5rem tall above the home indicator)
+    <div
+      className={`fixed ${aboveTabBar ? 'bottom-[calc(5rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom))]'} inset-x-0 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none`}
+    >
+      {/* One column: each toast takes the width of the widest, so they share one centre and
+          one gap (#245) */}
+      <div className="flex flex-col items-stretch gap-2 max-w-[min(720px,100%)]">
+        <CategoryFollowupToast />
+        <UndoToast />
+        <DemoFirstEditToast />
+      </div>
     </div>,
     document.body,
   );

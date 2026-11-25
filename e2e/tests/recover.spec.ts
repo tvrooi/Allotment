@@ -1,4 +1,4 @@
-import { test, expect, open, isoDay } from './fixtures';
+import { test, expect, open, isoDay, categoryOption } from './fixtures';
 
 // Phase 2 "let people recover": a reconciliation can be undone, one locked row unlocked, and a
 // reconciled row still takes a category.
@@ -41,11 +41,16 @@ test('a reconciled transaction can still be categorised, but its amount stays lo
   await row(page, 'Coles').click();
   const panel = page.getByRole('complementary', { name: 'Transaction details' });
   await expect(panel).toContainText('amount, date and account are locked');
-  await expect(panel.getByRole('textbox', { name: 'Date' })).toBeDisabled();
+  // The date is the shared DatePicker (D-07): its typed parts and its calendar button are disabled
+  const daySegment = panel
+    .getByRole('group', { name: 'Date', exact: true })
+    .getByRole('spinbutton')
+    .first();
+  await expect(daySegment).toBeDisabled();
+  await expect(panel.getByRole('button', { name: 'Choose from a calendar' })).toBeDisabled();
   await panel.getByRole('button', { name: 'Uncategorised' }).click();
   await page.getByPlaceholder('Search categories...').fill('grocer');
-  await page
-    .getByRole('button', { name: /Groceries/ })
+  await categoryOption(page, /Groceries/)
     .first()
     .click();
   const groceries = await api.category('Groceries');
@@ -71,7 +76,10 @@ test('Unlock frees one reconciled transaction after a warning', async ({ page, a
   await panel.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.getByText(/no longer match your statement/)).toBeVisible();
   await page.getByRole('button', { name: 'Unlock', exact: true }).last().click();
-  await expect(panel.getByRole('textbox', { name: 'Date' })).toBeEnabled();
+  await expect(panel.getByRole('button', { name: 'Choose from a calendar' })).toBeEnabled();
+  await expect(
+    panel.getByRole('group', { name: 'Date', exact: true }).getByRole('spinbutton').first(),
+  ).toBeEnabled();
   const rows = await api.transactions(`?account_id=${account.id}`);
   expect(rows.find((t) => t.id === coles.id)?.reconciled).toBe(0);
   expect(rows.filter((t) => t.reconciled === 1).length).toBe(2); // cafe + adjustment stay locked
