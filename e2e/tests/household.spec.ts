@@ -1412,7 +1412,10 @@ test('Paid by falls back to a person when a pool expense becomes an advance', as
   const event = page.getByRole('heading', { name: 'Record something else' }).locator('../..');
   const paidBy = event.getByRole('combobox', { name: 'Paid by' });
   await paidBy.fill('');
-  await paidBy.press('Tab');
+  // Clearing opens the suggestions, and React Aria hides everything else from assistive technology
+  // while they are open, the heading that `event` is found by included: press the focused field
+  // directly, as a locator lookup through the hidden heading fails whenever the list opens first
+  await page.keyboard.press('Tab');
   await expect(paidBy).toHaveValue('');
   await chooseOption(event.getByRole('button', { name: /Event$/ }), 'Advance into pool');
   await expect(event.getByRole('combobox', { name: 'Paid by' })).toHaveValue('Me');
