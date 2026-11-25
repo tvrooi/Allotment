@@ -27,19 +27,22 @@ reference and nothing reads it now.
 - The repository rules in `CLAUDE.md` / `AGENTS.md` (branches, verification, releases, invariants)
   outrank anything in a plan.
 
-## Where things stand (24 November 2026)
+## Where things stand (25 November 2026)
 
-Milestone **v1.0 Redesign finish** on branch `redesign`. Spec:
+Milestone **v1.0 Redesign finish**: done, merged into `main` (PR #288) and released as up.182. Spec:
 [specs/2026-11-14-redesign-finish-design.md](specs/2026-11-14-redesign-finish-design.md).
 
-| Phase                              | State                                                                                                                                                                                                           |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Settings split and good moments | Done 16 Nov 2026                                                                                                                                                                                                |
-| 2. Shared form controls            | All 20 plans done                                                                                                                                                                                               |
-| 3. Screens on shared controls      | All plans done; UAT 03 round 2 (PR #283, up.180) merged into `redesign`: [plans/2026-11-23-uat-03-round-2-close-out.md](plans/2026-11-23-uat-03-round-2-close-out.md)                                           |
-| 4. Remaining screens and the guard | G4 (PR #284, up.181) merged into `redesign`. G5 (PR #287, up.182) open for review: [plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md](plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md) |
+| Phase                              | State                                                                                                                                                                             |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Settings split and good moments | Done 16 Nov 2026                                                                                                                                                                  |
+| 2. Shared form controls            | All 20 plans done                                                                                                                                                                 |
+| 3. Screens on shared controls      | All plans done; UAT 03 round 2 (PR #283, up.180) merged into `redesign`: [plans/2026-11-23-uat-03-round-2-close-out.md](plans/2026-11-23-uat-03-round-2-close-out.md)             |
+| 4. Remaining screens and the guard | Done: G4 (PR #284, up.181) and G5 (PR #287, up.182): [plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md](plans/2026-11-23-phase-04-remaining-screens-and-the-guard.md) |
 
 The owner still needs to re-run UAT 03 tests 1 and 2.
+
+Next: D4b car expenses, [plans/2026-11-25-d4b-car-expenses.md](plans/2026-11-25-d4b-car-expenses.md)
+(design: [docs/TAX-CAR-AND-HOME.md](../TAX-CAR-AND-HOME.md)). Budgeting review Phase 2 needs a spec first.
 The backlog for later milestones is at the end of
 [gsd-records/ROADMAP.md](gsd-records/ROADMAP.md#backlog-later-milestones-not-scheduled), with
 IDs in [gsd-records/REQUIREMENTS.md](gsd-records/REQUIREMENTS.md).
