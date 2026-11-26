@@ -14,13 +14,14 @@ Last updated: 25 November 2026 (the redesign merged into `main` and released as 
 - **The redesign is on `main`** (PR #288, merged 25 November 2026, owner-requested): every design
   pass, Waves D to G and the UAT 03 fixes. The `redesign` branch is finished; new work branches
   from `main`. Milestone v1.0 Redesign finish: [docs/superpowers/README.md](docs/superpowers/README.md).
-- **Released:** `v0.2.0-up.182` (up.154 to up.181 were never tagged; their CHANGELOG entries
-  describe what up.182 brings).
-- **Live:** `0.2.0-up.182` on the catalog app `24ff2149_flybudget_up` since 25 November 2026
-  (source `9c5f50da`), auto update on, updated by hand from up.152 after app-only cold backups
-  `3e4181c7` and `3a3e3082` ("Before Allotment 0.2.0-up.182 (final)"), both password-protected
-  with no failed apps. Both budgets started with no errors in the log and `/api/health` answers ok.
-  Not verified from here: that the budget opens (the app has its own password).
+- **Released:** `v0.2.0-up.183` (interface polish, PR #292: touch tablets show what hover shows,
+  44 px taps on touch, press feedback, picture edges). up.154 to up.181 were never tagged; their
+  CHANGELOG entries describe what up.182 brings.
+- **Live:** `0.2.0-up.183` on the catalog app `24ff2149_flybudget_up` since 26 November 2026
+  (source `2f525320`), auto update on, updated by hand after the app-only cold backup `d9af9c92`
+  ("Before Allotment 0.2.0-up.183", app at up.182, password-protected, no failed apps). Both budgets
+  started with no errors in the log and `/api/health` answers ok. Not verified from here: that the
+  budget opens and Up sync (the app has its own password).
 - Shared form controls: every field is a `components/ui/` control, enforced by the
   `allotment/no-raw-form-control` lint rule; UI handover and traps in [docs/ui/HANDOVER-UI.md](docs/ui/HANDOVER-UI.md).
 - The demo has sample records on every tab (up.179): a household, receipts and files that open
