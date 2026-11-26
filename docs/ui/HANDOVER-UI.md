@@ -1,6 +1,7 @@
 # UI handover
 
-Overwritten at the end of each UI session, never appended. Wave G5 entry written 24 November 2026
+Overwritten at the end of each UI session, never appended. Interface polish entry written 26 November 2026
+(branch `fix/ui-polish-touch-and-states`, up.183). Wave G5 entry written 24 November 2026
 (branch `feat/phase-04-g5`, up.182, PR #287 into `redesign`); Wave G4 merged 24 November 2026
 (PR #284, up.181); UAT 03 round 2 merged 24 November 2026 (PR #283, up.180); UAT 03 fixes entry
 22 November 2026 (PR #280, up.178, merged into `redesign`); Wave G3 entry written 21 November 2026
@@ -11,6 +12,20 @@ for the revised PR #273 (branch `wave-f`, up.174, merged); Wave E entry 13 Novem
 
 ## Done this session
 
+- Interface polish (up.183, branch `fix/ui-polish-touch-and-states`): fixes from the owner's
+  make-interfaces-feel-better review of 25 November 2026. Touch tablets (desktop layout, no hover)
+  now show what hover reveals: Rules' row actions and a saved report's Delete (the `touch:`
+  variant, `@media (hover: none)`, in `index.css`). Payees' table rows swap their hover icons for
+  the phone's ⋮ menu on touch (Rename, Remove image, Delete); `PayeeIcon inList` leaves the logo's
+  × out there, and a single icon (a payee's page) keeps it drawn. Small controls
+  take a 44 px tap on a coarse pointer: `RowMenu`'s ⋮, Payees' and Rules' icon buttons, drag
+  handles, and Rules' desktop switch (its track stays 32×18; a pseudo-element widens the tap).
+  Add transaction's Debit and Credit carry `aria-pressed` in a named group. Every `transition-all`
+  names its properties now; Button presses to 0.96; the goal colour picker rings the chosen swatch
+  instead of enlarging it; rule chips wrap between words; h1 to h3 balance their lines (base
+  layer); goal progress, household balance, payment plan and investment figures are tabular;
+  pictures use `IMAGE_EDGE`; raw palette colours became tokens. Tests: `touch-screens.spec.ts`,
+  `interface-polish.spec.ts` and `lint/tokens/classes.test.js`.
 - Wave G5 (#267, WAVG-09, WAVG-10; up.182, branch `feat/phase-04-g5`, PR #287 into `redesign`):
   added ESLint rule `allotment/no-raw-form-control` (`lint/rules/no-raw-form-control.js` +
   `no-raw-form-control.test.js`) as an error over `client/src/**/*.tsx` outside
@@ -255,6 +270,10 @@ for the revised PR #273 (branch `wave-f`, up.174, merged); Wave E entry 13 Novem
 
 ## Traps
 
+- A control that only hover shows (`opacity-0 group-hover:opacity-100`) also needs
+  `touch:opacity-100`, or a tablet draws it invisible but still takes the tap. Tailwind's
+  `group-hover` already applies only where hover works. `max-md:` sizes are phones only; a tablet
+  is wide, so a touch target also needs `pointer-coarse:` (`touch-screens.spec.ts`).
 - Settings' moved tabs: a moved section is a row of `MOVED_SETTINGS_TABS` (`utils/movedSections.ts`).
   Link through `CONNECTED_BANKS_PATH`, `connectedBanksLink`, `bankFeedLink` and `CATEGORIES_PATH`,
   never a hand-typed path or `?tab=`: `movedSections.test.ts` fails on a spelled-out path.

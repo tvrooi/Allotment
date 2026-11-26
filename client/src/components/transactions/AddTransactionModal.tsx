@@ -244,11 +244,16 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
       <AmountFields report={report}>
         <div className="space-y-5">
           {/* Debit / Credit toggle */}
-          <div className="flex gap-1 bg-surface-alt rounded-lg p-1">
+          <div
+            role="group"
+            aria-label="Debit or credit"
+            className="flex gap-1 bg-surface-alt rounded-lg p-1"
+          >
             <button
               type="button"
               onClick={() => setType('debit')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
+              aria-pressed={type === 'debit'}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 type === 'debit'
                   ? 'bg-negative-subtle text-negative ring-1 ring-negative/20'
                   : 'text-text-tertiary hover:text-text-secondary hover:bg-hover'
@@ -260,7 +265,8 @@ export function AddTransactionModal({ isOpen, onClose }: Props) {
             <button
               type="button"
               onClick={() => setType('credit')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
+              aria-pressed={type === 'credit'}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 type === 'credit'
                   ? 'bg-positive-subtle text-positive ring-1 ring-positive/20'
                   : 'text-text-tertiary hover:text-text-secondary hover:bg-hover'

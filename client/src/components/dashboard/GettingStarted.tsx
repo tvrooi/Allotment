@@ -205,7 +205,7 @@ export default function GettingStarted({
         aria-valuenow={doneCount}
       >
         <div
-          className="h-full bg-brand-600 rounded-full transition-all"
+          className="h-full bg-brand-600 rounded-full transition-[width] motion-reduce:transition-none"
           style={{ width: `${(doneCount / steps.length) * 100}%` }}
         />
       </div>

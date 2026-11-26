@@ -83,7 +83,7 @@ function RuleRow({
         <button
           {...attributes}
           {...listeners}
-          className={`mt-0.5 text-text-disabled hover:text-text-tertiary touch-none ${sortable ? 'cursor-grab active:cursor-grabbing' : 'invisible'}`}
+          className={`p-1 -m-1 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center text-text-disabled hover:text-text-tertiary touch-none ${sortable ? 'cursor-grab active:cursor-grabbing' : 'invisible'}`}
           aria-label="Drag to reorder"
         >
           <GripVertical size={16} />
@@ -100,7 +100,7 @@ function RuleRow({
         className={
           phone
             ? '-my-3 -ml-2 min-w-11 min-h-11 flex items-center justify-center shrink-0 cursor-pointer'
-            : `mt-0.5 relative w-8 h-[18px] rounded-full shrink-0 transition-colors cursor-pointer ${rule.enabled ? 'bg-brand-600' : 'bg-border'}`
+            : `mt-0.5 relative w-8 h-[18px] rounded-full shrink-0 transition-colors cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-x-1.5 pointer-coarse:after:-inset-y-[13px] ${rule.enabled ? 'bg-brand-600' : 'bg-border'}`
         }
       >
         {phone ? (
@@ -159,7 +159,7 @@ function RuleRow({
             {rule.actions.map((a, i) => (
               <span
                 key={i}
-                className="px-2 py-0.5 rounded-md bg-brand-50 text-xs text-brand-700 break-all"
+                className="px-2 py-0.5 rounded-md bg-brand-50 text-xs text-brand-700 break-words"
               >
                 {actionText(a, lookups)}
               </span>
@@ -183,7 +183,7 @@ function RuleRow({
           />
         </div>
       ) : (
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 touch:opacity-100 transition-opacity">
           {[
             { icon: Play, label: 'Apply to existing transactions', onClick: onApply },
             { icon: Copy, label: 'Duplicate', onClick: onDuplicate },
@@ -194,7 +194,7 @@ function RuleRow({
               onClick={onClick}
               title={label}
               aria-label={label}
-              className="p-1.5 text-text-tertiary hover:text-brand-600 rounded transition-colors cursor-pointer"
+              className="p-1.5 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center text-text-tertiary hover:text-brand-600 rounded transition-colors cursor-pointer"
             >
               <Icon size={14} />
             </button>
@@ -203,7 +203,7 @@ function RuleRow({
             onClick={onDelete}
             title="Delete"
             aria-label="Delete"
-            className="p-1.5 text-text-tertiary hover:text-negative rounded transition-colors cursor-pointer"
+            className="p-1.5 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center text-text-tertiary hover:text-negative rounded transition-colors cursor-pointer"
           >
             <Trash2 size={14} />
           </button>

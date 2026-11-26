@@ -412,7 +412,7 @@ function AccountCard({
               {account.holdingsValue === null ? '—' : formatMoney(account.holdingsValue, currency)}
             </span>
           </p>
-          <p className="text-xs text-text-tertiary">
+          <p className="text-xs text-text-tertiary tabular-nums">
             Recorded balance {formatMoney(account.recordedBalance, currency)}
           </p>
         </div>

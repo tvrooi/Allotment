@@ -32,8 +32,11 @@ const sizes = {
   md: 'h-10 px-4 text-sm max-md:min-h-11',
 };
 
+// Pressing a button shrinks it slightly (0.96): it feels pressed. Not under reduced motion.
+const press = 'active:scale-[0.96] motion-reduce:active:scale-100';
+
 const buttonClass = (variant: Variant, size: Size, className: string) =>
-  `inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium rounded-full transition-colors disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`;
+  `inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium rounded-full transition-[color,background-color,border-color,opacity,scale] disabled:pointer-events-none ${press} ${variants[variant]} ${sizes[size]} ${className}`;
 
 export function Button({
   variant = 'primary',

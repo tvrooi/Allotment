@@ -250,8 +250,8 @@ export function GoalFormModal({ isOpen, onClose, onSave, editGoal }: Props) {
                 onClick={() => setColor(c)}
                 aria-label={`Colour ${c}`}
                 aria-pressed={color === c}
-                className={`w-7 h-7 rounded-full border-2 transition-all ${
-                  color === c ? 'border-text scale-110' : 'border-transparent'
+                className={`w-7 h-7 rounded-full transition-shadow ${
+                  color === c ? 'ring-2 ring-text ring-offset-2 ring-offset-surface' : ''
                 }`}
                 style={{ backgroundColor: c }}
               />

@@ -79,7 +79,7 @@ export function PlanCard({ plan }: { plan: PaymentPlan }) {
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-sm font-medium text-text">
+          <div className="text-sm font-medium tabular-nums text-text">
             <Private>{formatCurrency(plan.remaining)}</Private>
           </div>
           <div className="text-xs text-text-tertiary">to pay</div>
@@ -129,7 +129,7 @@ export function PlanCard({ plan }: { plan: PaymentPlan }) {
                     {i.status === 'paid' && <Check size={12} className="inline mr-0.5" />}
                     {STATUS[i.status]}
                   </span>
-                  <span className="w-24 text-right">{formatCurrency(i.amount)}</span>
+                  <span className="w-24 text-right tabular-nums">{formatCurrency(i.amount)}</span>
                   {i.status === 'paid' ? (
                     <button
                       type="button"

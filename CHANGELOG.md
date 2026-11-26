@@ -1,5 +1,12 @@
 # Changes
 
+## 0.2.0-up.183
+
+- **Tablets show the buttons that hover shows on a computer.** On an iPad or other touch screen with the wide layout, Rules' Apply, Duplicate, Edit and Delete and a saved report's Delete are always drawn. Before, they were invisible but still answered a tap. Payees' rows get the phone's ⋮ menu there (Rename, Remove image, Delete), and the list no longer has an invisible × on each logo; on phones Remove image is in the same menu. A payee's own page keeps the × on its logo. Removing an image offers Undo.
+- **Bigger taps on touch screens.** Row ⋮ menus, Payees' and Rules' icon buttons, drag handles and the rule on/off switch take a full-size (44 px) tap on any touch screen, tablets included, not just phones.
+- **Screen readers hear Debit or Credit.** In Add transaction, the chosen one is announced as pressed.
+- **Small details.** Buttons give a little when pressed (not with reduced motion). Progress bars and hover effects animate only what changes. The chosen goal colour is ringed instead of enlarged. Rule actions wrap between words, not inside one, and page titles balance their lines. Goal progress, household balances, payment plans and investment balances keep their figures the same width as they change. Logos and photos have a neutral edge in light and dark mode. A delete button's hover and a restore message use the theme's colours, so they suit dark mode.
+
 ## 0.2.0-up.182
 
 - **Guard against raw form controls (#267, WAVG-09).** Added ESLint rule `allotment/no-raw-form-control` as an error over `client/src/**/*.tsx` outside `client/src/components/ui/`, blocking raw `<input>`, `<select>`, and `<textarea>` elements (except static `<input type="file">` and explicit allowlisted exceptions) as well as any `type="number"` field.

@@ -12,7 +12,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { QueryProblem, loadFailed } from '../components/ui/QueryProblem';
 import { PayeeIcon } from '../components/payees/PayeeIcon';
 import { DefaultCategoryButton } from '../components/payees/DefaultCategoryButton';
-import RowMenu from '../components/ui/RowMenu';
+import RowMenu, { type RowMenuItem } from '../components/ui/RowMenu';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { useCanSave } from '../hooks/useConnection';
 import type { PayeeWithCount } from '../types';
@@ -158,6 +158,18 @@ export default function PayeesPage() {
   // Renaming and logos need the server: not offered while saving is paused
   const canSave = useCanSave();
 
+  // A row's ⋮ menu: phones, and the table on a touch screen (no hover, so no hidden buttons)
+  const rowActions = (p: PayeeWithCount): RowMenuItem[] => [
+    { label: 'Rename', onClick: () => startEditName(p), hidden: !canSave },
+    {
+      label: 'Remove image',
+      onClick: () =>
+        updatePayee.mutate({ id: p.id, logo: null, message: `Removed the image for ${p.name}` }),
+      hidden: !canSave || !p.logo,
+    },
+    { label: 'Delete', danger: true, onClick: () => setDeleteId(p.id) },
+  ];
+
   return (
     <div className="flex flex-col h-full bg-surface">
       <div className={`py-4 border-b border-border shrink-0 ${PAGE_GUTTER}`}>
@@ -265,6 +277,7 @@ export default function PayeesPage() {
                     onLogoChange={
                       canSave ? (logo) => updatePayee.mutate({ id: p.id, logo }) : undefined
                     }
+                    inList
                   />
                   {editingId === p.id ? (
                     <Input
@@ -293,13 +306,7 @@ export default function PayeesPage() {
                       </span>
                     </span>
                   )}
-                  <RowMenu
-                    label={`Actions for ${p.name}`}
-                    items={[
-                      { label: 'Rename', onClick: () => startEditName(p), hidden: !canSave },
-                      { label: 'Delete', danger: true, onClick: () => setDeleteId(p.id) },
-                    ]}
-                  />
+                  <RowMenu label={`Actions for ${p.name}`} items={rowActions(p)} />
                 </div>
                 <DefaultCategoryButton payee={p} className="w-full" />
               </li>
@@ -362,6 +369,7 @@ export default function PayeesPage() {
                           onLogoChange={
                             canSave ? (logo) => updatePayee.mutate({ id: p.id, logo }) : undefined
                           }
+                          inList
                         />
                         {editingId === p.id ? (
                           <Input
@@ -394,21 +402,25 @@ export default function PayeesPage() {
                       {p.transactionCount}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-right">
-                      {/* Renaming is a visible button, as on phones (no double-click) */}
+                      {/* Renaming is a visible button, as on phones (no double-click). A touch
+                          screen gets the phone's ⋮ menu instead, which also removes the image */}
+                      <span className="hidden touch:inline-block align-middle">
+                        <RowMenu label={`Actions for ${p.name}`} items={rowActions(p)} />
+                      </span>
                       <button
                         type="button"
                         onClick={() => startEditName(p)}
                         disabled={!canSave}
                         aria-label={`Rename ${p.name}`}
                         title="Rename"
-                        className="p-1 text-text-tertiary hover:text-text-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="p-1 pointer-coarse:min-w-11 pointer-coarse:min-h-11 inline-flex touch:hidden items-center justify-center align-middle text-text-tertiary hover:text-text-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => setDeleteId(p.id)}
                         aria-label={`Delete ${p.name}`}
-                        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 text-text-tertiary hover:text-negative transition-all"
+                        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 pointer-coarse:min-w-11 pointer-coarse:min-h-11 inline-flex touch:hidden items-center justify-center align-middle text-text-tertiary hover:text-negative transition-opacity"
                       >
                         <Trash2 size={14} />
                       </button>

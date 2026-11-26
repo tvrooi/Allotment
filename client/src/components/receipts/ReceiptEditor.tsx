@@ -32,6 +32,7 @@ import { CurrencyInput } from '../ui/CurrencyInput';
 import { DatePicker } from '../ui/DatePicker';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { IMAGE_EDGE } from '../ui/imageEdge';
 
 /** What matching did to the transaction, in words */
 export function outcomeText(o: AttachOutcome | null | undefined): string | null {
@@ -197,7 +198,7 @@ function Editor({
           href={fileSrc}
           target="_blank"
           rel="noreferrer"
-          className="block rounded-md border border-border-light bg-surface-alt overflow-hidden"
+          className={`block rounded-md ${photo ? IMAGE_EDGE : 'border border-border-light'} bg-surface-alt overflow-hidden`}
         >
           {photo ? (
             <img

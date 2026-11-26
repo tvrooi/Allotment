@@ -1,5 +1,6 @@
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { ACCOUNT_TYPE_COLORS } from '../../utils/transactionColors';
+import { IMAGE_EDGE } from '../ui/imageEdge';
 
 const SIZES = {
   xs: { box: 'w-4 h-4', text: 'text-[8px]' },
@@ -31,7 +32,7 @@ export function AccountIcon({ name, type, logo, size = 'sm', force = false }: Pr
       <img
         src={logo}
         alt=""
-        className={`${box} rounded-full object-cover shrink-0 bg-surface border border-border-light`}
+        className={`${box} rounded-full object-cover shrink-0 bg-surface ${IMAGE_EDGE}`}
       />
     );
   }

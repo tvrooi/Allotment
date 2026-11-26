@@ -101,7 +101,7 @@ export default function WidgetCard({ widget, report, pages, dashboardRange, edit
         if (editing || (e.target as Element).closest('a[href]')) return;
         navigate(openPath);
       }}
-      className={`h-full bg-surface rounded-lg border p-3 transition-all @container ${
+      className={`h-full bg-surface rounded-lg border p-3 transition-[background-color,border-color,box-shadow] @container ${
         editing
           ? 'border-dashed border-brand-300 cursor-move'
           : 'border-border-light hover:shadow-hover hover:border-brand-200 cursor-pointer group'

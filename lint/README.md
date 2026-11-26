@@ -20,7 +20,8 @@ cd lint && npm ci && npm test && npm run lint
   (`rules/no-raw-form-control.js`, Wave G WAVG-09); static file inputs are allowed and any other
   native exception requires an explicit `{ file, element, reason }` entry in `eslint.config.js`.
 - **Tests.** `npm test` runs three groups with node's test runner: the rules above, WCAG contrast
-  of the theme's text colours in both themes (`tokens/`, read from `client/src/index.css`), and
+  of the theme's text colours in both themes and no `transition-all` or Tailwind palette colour in
+  client classes (`tokens/`, read from `client/src/`), and
   the retired names that must not come back (`terms/`, from docs/GLOSSARY.md).
 - **Warnings are a burn-down.** These are accessibility (jsx-a11y, audit F-15), `any` outside
   tests, and hook dependency lists. `npm run lint` allows at most the current number

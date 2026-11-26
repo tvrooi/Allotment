@@ -101,7 +101,7 @@ function SummarySection({ label, planned, actual, actualLabel, type }: SummarySe
 
       <div className="h-3 w-full bg-surface-alt rounded-full overflow-hidden mt-2">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+          className={`h-full rounded-full transition-[width] motion-reduce:transition-none duration-300 ${barColor}`}
           style={{ width: `${(ratio * 100).toFixed(1)}%` }}
         />
       </div>

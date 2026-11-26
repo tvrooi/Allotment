@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { receiptFileUrl, type Receipt } from '../../api/tax';
 import { useDeleteReceipt, useReceipts, useUploadReceipt } from '../../hooks/useTax';
 import { useFileSrc } from '../../hooks/useFileSrc';
+import { IMAGE_EDGE } from '../ui/imageEdge';
 
 /** A receipt's preview: the photo itself, or a document icon for a PDF or HEIC */
 export function ReceiptThumb({ receipt, size = 56 }: { receipt: Receipt; size?: number }) {
@@ -16,7 +17,7 @@ export function ReceiptThumb({ receipt, size = 56 }: { receipt: Receipt; size?: 
       target="_blank"
       rel="noreferrer"
       title={receipt.hasFile ? `Open ${receipt.fileName}` : 'The file is not on this installation'}
-      className="shrink-0 rounded-md border border-border-light bg-surface-alt overflow-hidden flex items-center justify-center"
+      className={`shrink-0 rounded-md ${shows ? IMAGE_EDGE : 'border border-border-light'} bg-surface-alt overflow-hidden flex items-center justify-center`}
       style={{ width: size, height: size }}
     >
       {shows ? (
