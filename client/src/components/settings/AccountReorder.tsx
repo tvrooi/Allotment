@@ -44,12 +44,12 @@ function SortableAccountRow({ account }: { account: Account }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 px-4 py-2.5 bg-surface border border-border-light rounded-md hover:border-border transition-all"
+      className="flex items-center gap-3 px-4 py-2.5 bg-surface border border-border-light rounded-md hover:border-border transition-colors"
     >
       <button
         {...attributes}
         {...listeners}
-        className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0"
+        className="p-1 -m-1 max-md:min-w-11 max-md:min-h-11 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0"
         aria-label="Drag to reorder"
       >
         <GripVertical size={16} />

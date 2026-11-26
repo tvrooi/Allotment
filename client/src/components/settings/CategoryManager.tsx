@@ -107,12 +107,12 @@ function SortableCategoryRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-1 pl-2 bg-surface rounded-lg hover:bg-hover hover:shadow-sm transition-all mx-2"
+      className="flex items-center gap-1 pl-2 bg-surface rounded-lg hover:bg-hover hover:shadow-sm transition-[background-color,border-color,box-shadow] mx-2"
     >
       <button
         {...attributes}
         {...listeners}
-        className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 p-1 max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
+        className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 p-1 max-md:min-w-11 max-md:min-h-11 pointer-coarse:min-w-11 pointer-coarse:min-h-11 inline-flex items-center justify-center"
         aria-label={`Drag to reorder ${cat.name}`}
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
@@ -215,7 +215,7 @@ function GroupCard({
             <button
               {...dragAttributes}
               {...dragListeners}
-              className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 -ml-1 max-md:min-w-11 max-md:min-h-11 max-md:inline-flex max-md:items-center max-md:justify-center"
+              className="text-text-disabled hover:text-text-tertiary cursor-grab active:cursor-grabbing touch-none shrink-0 -ml-1 p-1 max-md:min-w-11 max-md:min-h-11 pointer-coarse:min-w-11 pointer-coarse:min-h-11 inline-flex items-center justify-center"
               aria-label="Drag to reorder group"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">

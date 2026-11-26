@@ -93,7 +93,7 @@ export default function SpendingBreakdown({ currentMonth }: Props) {
                 </div>
                 <div className="h-1.5 w-full bg-surface-alt rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all"
+                    className="h-full rounded-full transition-[width] motion-reduce:transition-none"
                     style={{ width: `${pct.toFixed(1)}%`, backgroundColor: color }}
                   />
                 </div>

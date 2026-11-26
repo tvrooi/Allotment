@@ -308,7 +308,7 @@ Sidebar links have md corners, 12px horizontal and 8px vertical padding, 12px ic
 
 Desktop dialogs are centered at the shared sm/md/lg/xl widths (384/448/512/768px). On phones they become full-width bottom sheets with rounded top corners and home-indicator clearance. Keep focus trapping, opener focus restoration, Escape handling and discard prompts.
 
-Backdrops fade in 150ms and out 120ms. Dialogs enter in 160ms with a small rise and scale; menus enter in 110ms. Sheets enter in 220ms. Reduced-motion mode replaces movement with fades. General color transitions use Tailwind transition-colors; sidebar width transitions use 200ms.
+Backdrops fade in 150ms and out 120ms. Dialogs enter in 160ms with a small rise and scale; menus enter in 110ms. Sheets enter in 220ms. Reduced-motion mode replaces movement with fades. General color transitions use Tailwind transition-colors and progress bars transition-[width]; sidebar width transitions use 200ms. A transition names the properties it moves: `transition-all` is refused by `lint/tokens/classes.test.js`, as are Tailwind palette colours (`bg-red-50`). A pressed Button shrinks to 0.96 (not under reduced motion).
 
 Global keyboard focus is a 2px brand-600 outline offset by 3px, kept in the CSS base layer so a component's own focus utility wins: fields show only their own ring, and controls without one (a Button, a link) keep the outline. Horizontally clipped tab rows still draw focus inside.
 
@@ -320,6 +320,8 @@ Global keyboard focus is a 2px brand-600 outline offset by 3px, kept in the CSS 
 - Do reuse the shared Button, Input, Card, Badge, Modal and PageHeader components.
 - Do keep money tabular and unbroken while allowing labels to wrap.
 - Do retain visible keyboard focus and reduced-motion behavior.
+- Do show controls that hover reveals all the time on screens without hover (the `touch:` variant in `index.css`), and give small controls a 44px target on a coarse pointer (`pointer-coarse:min-w-11 pointer-coarse:min-h-11`), tablets included.
+- Do give pictures (logos, photos, receipts) the `IMAGE_EDGE` outline (`components/ui/imageEdge.ts`, token `image-outline`): pure black or white at 10%, never a warm border.
 
 ### Don’t
 

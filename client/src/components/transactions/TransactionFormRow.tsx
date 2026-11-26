@@ -346,7 +346,7 @@ export function TransactionFormRow({
                 {onDelete && (
                   <button
                     onClick={onDelete}
-                    className="p-1.5 rounded text-text-tertiary hover:text-negative hover:bg-red-50 ml-1"
+                    className="p-1.5 rounded text-text-tertiary hover:text-negative hover:bg-negative-subtle ml-1"
                     title="Delete"
                   >
                     <Trash2 size={16} />

@@ -424,7 +424,7 @@ function HeaderTooltip({ children }: { children: React.ReactNode }) {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute top-full right-0 mt-1.5 z-10 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white shadow-lg opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 max-md:hidden"
+      className="pointer-events-none absolute top-full right-0 mt-1.5 z-10 whitespace-nowrap rounded bg-text px-2 py-1 text-xs font-medium text-surface shadow-lg opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 max-md:hidden"
     >
       {children}
     </span>

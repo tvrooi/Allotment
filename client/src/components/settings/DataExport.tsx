@@ -233,7 +233,7 @@ export function DataExport() {
         {restoreMessage && (
           <p
             role="status"
-            className={`text-xs ${restoreMessage.ok ? 'text-text-secondary' : 'text-red-600'}`}
+            className={`text-xs ${restoreMessage.ok ? 'text-text-secondary' : 'text-negative'}`}
           >
             {restoreMessage.text}
           </p>

@@ -19,6 +19,7 @@ import {
 import { fileUrl, type FileKind, type StoredDocument } from '../../api/files';
 import { PdfPreview } from './PdfPreview';
 import { useFileSrc } from '../../hooks/useFileSrc';
+import { IMAGE_EDGE } from '../ui/imageEdge';
 
 /** What the Files library accepts (the server checks each file's bytes) */
 export const FILE_ACCEPT =
@@ -75,7 +76,7 @@ export function FileThumb({ doc, size = 48 }: { doc: StoredDocument; size?: numb
   const src = useFileSrc(drawable(doc) ? fileUrl(doc.id) : undefined);
   return (
     <span
-      className="shrink-0 rounded-md border border-border-light bg-surface-alt overflow-hidden flex items-center justify-center"
+      className={`shrink-0 rounded-md ${drawable(doc) ? IMAGE_EDGE : 'border border-border-light'} bg-surface-alt overflow-hidden flex items-center justify-center`}
       style={{ width: size, height: size }}
     >
       {drawable(doc) ? (
@@ -121,11 +122,7 @@ export function FilePreview({ doc }: { doc: StoredDocument }) {
     );
   if (drawable(doc))
     return (
-      <img
-        src={src}
-        alt={doc.fileName}
-        className="max-h-[60vh] mx-auto rounded border border-border-light"
-      />
+      <img src={src} alt={doc.fileName} className={`max-h-[60vh] mx-auto rounded ${IMAGE_EDGE}`} />
     );
   if (doc.kind === 'video')
     return (

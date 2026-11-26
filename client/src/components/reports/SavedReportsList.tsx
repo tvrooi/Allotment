@@ -58,7 +58,7 @@ export default function SavedReportsList({ activeId }: Props) {
                   deleteMutation.mutate(r.id);
                 }}
                 aria-label={`Delete ${r.name}`}
-                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 text-text-tertiary hover:text-negative transition-all"
+                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100 p-1 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center text-text-tertiary hover:text-negative transition-[opacity,color]"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

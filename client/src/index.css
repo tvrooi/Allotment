@@ -3,6 +3,11 @@
 /* The macOS desktop app's window has no title bar (electron/main.ts) */
 @custom-variant mac-window (&:where(.mac-window, .mac-window *));
 
+/* Screens without hover (phones, tablets): a control that hover reveals elsewhere is shown all
+   the time here, or it would be invisible but still tappable. Tailwind's hover: and
+   group-hover: already apply only where hover works. */
+@custom-variant touch (@media (hover: none));
+
 /* Dragging this area moves the window (Electron). Clicks on it never reach the page. */
 @utility drag-region {
   -webkit-app-region: drag;
@@ -189,6 +194,9 @@
   --text-title: 1.75rem; /* 28px: every page's h1 */
   --text-title--line-height: 2.25rem; /* 36px */
 
+  /* Pictures (logos, photos): a 1px edge of pure black, white in dark mode, at 10% */
+  --color-image-outline: rgb(0 0 0 / 0.1);
+
   /* Radii */
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -256,6 +264,8 @@
 
   --color-invest-bg: #382d40;
   --color-invest-text: #d0b3de;
+
+  --color-image-outline: rgb(255 255 255 / 0.1);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.6);
@@ -338,6 +348,16 @@ body {
   button {
     -webkit-user-select: none;
     user-select: none;
+  }
+}
+
+/* Headings balance their lines, so a title never leaves one word alone on its last line. In
+   the base layer, so a heading's own text-wrap utility (truncate) wins. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 }
 

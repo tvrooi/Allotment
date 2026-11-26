@@ -262,7 +262,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
                   type="button"
                   onClick={() => setIsExpense(true)}
                   aria-pressed={isExpense}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                     isExpense
                       ? 'bg-negative-subtle text-negative ring-1 ring-negative/20'
                       : 'text-text-tertiary hover:bg-hover'
@@ -274,7 +274,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
                   type="button"
                   onClick={() => setIsExpense(false)}
                   aria-pressed={!isExpense}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                     !isExpense
                       ? 'bg-positive-subtle text-positive ring-1 ring-positive/20'
                       : 'text-text-tertiary hover:bg-hover'
@@ -300,7 +300,7 @@ export default function RecurringFormModal({ isOpen, onClose, onSave, editItem, 
                   type="button"
                   onClick={() => setAmountType(opt.value)}
                   aria-pressed={amountType === opt.value}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                     amountType === opt.value
                       ? 'bg-brand-50 text-brand-600 ring-1 ring-brand-600/20'
                       : 'text-text-tertiary hover:bg-hover'

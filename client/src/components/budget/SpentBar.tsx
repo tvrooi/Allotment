@@ -41,13 +41,13 @@ export function SpentBar({
     >
       {fill > 0 && (
         <div
-          className={`h-full rounded-full transition-all ${FILL[state]}`}
+          className={`h-full rounded-full transition-[width] motion-reduce:transition-none ${FILL[state]}`}
           style={{ width: pct(fill) }}
         />
       )}
       {expectedFill > 0 && (
         <div
-          className="h-full rounded-full transition-all bg-expected opacity-70"
+          className="h-full rounded-full transition-[width] motion-reduce:transition-none bg-expected opacity-70"
           style={{ width: pct(expectedFill) }}
           data-testid="expected-bar"
         />

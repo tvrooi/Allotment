@@ -28,7 +28,7 @@ function AccountRow({ account }: { account: Account }) {
     <NavLink
       to={`/accounts/${account.id}`}
       className={({ isActive }) =>
-        `flex items-center justify-between pl-6 pr-3 py-1.5 max-md:min-h-11 rounded-md text-nav transition-all duration-150 ${
+        `flex items-center justify-between pl-6 pr-3 py-1.5 max-md:min-h-11 rounded-md text-nav transition-colors duration-150 ${
           isActive
             ? 'bg-sidebar-active text-sidebar-text-hi font-medium'
             : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-hi'

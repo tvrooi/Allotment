@@ -69,7 +69,7 @@ export default function RowMenu({
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={pos !== null}
-        className={`p-1 max-md:min-w-11 max-md:min-h-11 flex items-center justify-center rounded text-text-tertiary hover:text-text-secondary hover:bg-hover transition-colors cursor-pointer ${
+        className={`p-1 max-md:min-w-11 max-md:min-h-11 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center rounded text-text-tertiary hover:text-text-secondary hover:bg-hover transition-colors cursor-pointer ${
           pos ? 'bg-hover text-text-secondary' : ''
         }`}
       >

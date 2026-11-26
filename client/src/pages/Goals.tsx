@@ -233,12 +233,12 @@ function GoalRow({
       <div className="mt-3 pl-12 grid grid-cols-[1fr_auto] items-center gap-x-2">
         <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${complete ? 'bg-positive' : 'bg-brand-500'}`}
+            className={`h-full rounded-full transition-[width] motion-reduce:transition-none ${complete ? 'bg-positive' : 'bg-brand-500'}`}
             style={{ width: complete ? '100%' : `${pct}%` }}
           />
         </div>
         <GoalPlant goalId={goal.id} pct={pct} complete={complete} />
-        <div className="flex items-center justify-between mt-1.5 text-xs">
+        <div className="flex items-center justify-between mt-1.5 text-xs tabular-nums">
           <span className={complete ? 'text-positive font-medium' : 'text-text-secondary'}>
             {complete ? (
               'Goal reached'
@@ -457,7 +457,7 @@ export default function GoalsPage() {
             )}
             <section aria-label="Goal progress" className="pb-1">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <p className="text-sm text-text-secondary">
+                <p className="text-sm text-text-secondary tabular-nums">
                   <span className="text-xl font-semibold tabular-nums text-text">
                     {formatCurrency(totalSaved)}
                   </span>{' '}
@@ -476,7 +476,7 @@ export default function GoalsPage() {
                 className="mt-2.5 h-2 rounded-full bg-surface-alt overflow-hidden"
               >
                 <div
-                  className="h-full rounded-full bg-brand-500 transition-all"
+                  className="h-full rounded-full bg-brand-500 transition-[width] motion-reduce:transition-none"
                   style={{ width: `${Math.min(100, overallPct)}%` }}
                 />
               </div>

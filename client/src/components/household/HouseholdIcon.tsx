@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Pencil, X } from 'lucide-react';
 import { payeeColor } from '../../utils/transactionColors';
 import { fileToSquareDataUrl } from '../../utils/imageResize';
+import { IMAGE_EDGE } from '../ui/imageEdge';
 
 // A household's picture (Household → Sharing), or its colored initial. Rounded squares, so a
 // household never reads as a merchant's round icon. Shown on payments shared with it.
@@ -33,7 +34,7 @@ export function HouseholdIcon({ name, logo, size = 'sm', title, onLogoChange }: 
       src={logo}
       alt=""
       {...label}
-      className={`${box} object-cover shrink-0 bg-surface border border-border-light`}
+      className={`${box} object-cover shrink-0 bg-surface ${IMAGE_EDGE}`}
     />
   ) : (
     <span

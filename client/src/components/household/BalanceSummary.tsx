@@ -61,7 +61,7 @@ export function BalanceSummary({
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
-          <p className={`text-xl font-semibold tracking-tight ${tone}`}>
+          <p className={`text-xl font-semibold tracking-tight tabular-nums ${tone}`}>
             {headline.text}
             {headline.amount !== undefined && ` ${money(headline.amount)}`}
           </p>

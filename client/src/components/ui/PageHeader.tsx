@@ -48,7 +48,7 @@ export function PageHeader({ title, subtitle, actions, tabs, breadcrumbs, childr
             <h1 className="font-display text-title max-md:text-2xl tracking-tight text-text">
               {title}
             </h1>
-            {subtitle && <p className="text-sm text-text-secondary mt-1">{subtitle}</p>}
+            {subtitle && <p className="text-sm text-text-secondary mt-1 text-pretty">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>

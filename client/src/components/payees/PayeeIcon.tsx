@@ -3,6 +3,7 @@ import { ArrowLeftRight, Pencil, X } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { payeeColor } from '../../utils/transactionColors';
 import { fileToSquareDataUrl } from '../../utils/imageResize';
+import { IMAGE_EDGE } from '../ui/imageEdge';
 
 const SIZES = {
   sm: { box: 'w-6 h-6', text: 'text-[10px]', icon: 12, edit: 10 },
@@ -20,6 +21,11 @@ interface Props {
   force?: boolean;
   /** Makes the icon editable: hover shows a pencil, click uploads an image, × removes it */
   onLogoChange?: (logo: string | null) => void;
+  /**
+   * One of a list whose rows offer Remove image in their ⋮ menu: on a touch screen the × is left
+   * out, so a list isn't a column of ×s. A single icon (a payee's page) keeps its × there.
+   */
+  inList?: boolean;
 }
 
 /**
@@ -33,6 +39,7 @@ export function PayeeIcon({
   size = 'sm',
   force = false,
   onLogoChange,
+  inList = false,
 }: Props) {
   const show = usePreferencesStore((s) => s.showMerchantIcons);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,7 +52,7 @@ export function PayeeIcon({
       <img
         src={logo}
         alt=""
-        className={`${box} rounded-full object-cover shrink-0 bg-surface border border-border-light`}
+        className={`${box} rounded-full object-cover shrink-0 bg-surface ${IMAGE_EDGE}`}
       />
     ) : (
       <div
@@ -91,7 +98,7 @@ export function PayeeIcon({
           onClick={() => onLogoChange(null)}
           title="Use initial instead"
           aria-label={`Remove image for ${name}`}
-          className="absolute -top-1 -right-1 w-4 h-4 max-md:-top-2 max-md:-right-2 max-md:w-6 max-md:h-6 rounded-full flex items-center justify-center bg-surface border border-border text-text-tertiary hover:text-negative opacity-0 group-hover/logo:opacity-100 group-focus-within/logo:opacity-100 transition-opacity cursor-pointer"
+          className={`absolute -top-1 -right-1 w-4 h-4 max-md:-top-2 max-md:-right-2 max-md:w-6 max-md:h-6 pointer-coarse:-top-2 pointer-coarse:-right-2 pointer-coarse:w-6 pointer-coarse:h-6 rounded-full flex items-center justify-center bg-surface border border-border text-text-tertiary hover:text-negative opacity-0 group-hover/logo:opacity-100 group-focus-within/logo:opacity-100 ${inList ? 'touch:hidden' : 'touch:opacity-100'} transition-opacity cursor-pointer`}
         >
           <X size={10} />
         </button>

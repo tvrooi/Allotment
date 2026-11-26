@@ -46,7 +46,7 @@ function SetupOption({ icon, title, tag, time, description, action, onClick }: O
   return (
     <button
       onClick={onClick}
-      className="group relative flex flex-col bg-surface border border-border hover:border-brand-500 rounded-xl p-4 text-left transition-all duration-200 hover:shadow-hover"
+      className="group relative flex flex-col bg-surface border border-border hover:border-brand-500 rounded-xl p-4 text-left transition-[background-color,border-color,box-shadow] duration-200 hover:shadow-hover"
     >
       <span
         aria-hidden

@@ -52,12 +52,14 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <Heading className={`font-semibold text-text ${compact ? 'text-sm' : 'text-base'}`}>
+      <Heading
+        className={`font-semibold text-text text-balance ${compact ? 'text-sm' : 'text-base'}`}
+      >
         {title}
       </Heading>
       {description && (
         <p
-          className={`text-text-tertiary mt-1 max-w-sm leading-relaxed ${compact ? 'text-xs' : 'text-sm'}`}
+          className={`text-text-tertiary mt-1 max-w-sm leading-relaxed text-pretty ${compact ? 'text-xs' : 'text-sm'}`}
         >
           {description}
         </p>

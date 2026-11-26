@@ -49,7 +49,7 @@ export default function GuidePage() {
               <li key={a.page}>
                 <Link
                   to={`/guide/${a.page}`}
-                  className="flex h-full gap-3 rounded-xl border border-border-light bg-surface p-4 hover:border-brand-500 hover:shadow-hover transition-all"
+                  className="flex h-full gap-3 rounded-xl border border-border-light bg-surface p-4 hover:border-brand-500 hover:shadow-hover transition-[background-color,border-color,box-shadow]"
                 >
                   <BookOpen size={18} className="text-brand-600 shrink-0 mt-0.5" aria-hidden />
                   <span>
